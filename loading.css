@@ -21,3 +21,11 @@ body{
         transform: rotate(360deg);
     }    
 }
+#video {
+    color: #ae9f48;
+    text-decoration: none;
+    font-size: medium;
+    position: absolute;
+    top: 5px;
+    left: 1px;
+}
