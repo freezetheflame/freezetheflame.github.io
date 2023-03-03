@@ -35,6 +35,9 @@ body{
     padding: 5px;
     border-radius: 20px 20px 20px 20px;
 }
+.cs61b_text {
+    --border_radius4:20px 20px 20px 20px/30px 30px 30px 30px;
+}
 #CS61B {
     color: #93ae48;
     background-color: #1d1fcc;
@@ -214,9 +217,7 @@ body{
 .bird__face::after{
     right: -5px ;
 }
-.button__bird {
-    --border_radius1: 60px 60px 40px 40px / 48px 48px 30px 30px ;
-}
+
 .bird {
    border-radius: var(--border_radius1) ;
 }
