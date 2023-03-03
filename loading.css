@@ -35,6 +35,20 @@ body{
     padding: 5px;
     border-radius: 20px 20px 20px 20px;
 }
+#CS61B {
+    color: #93ae48;
+    background-color: #1d1fcc;
+    font-weight: bold;
+    font-family: Verdana;
+    text-decoration: none;
+    font-size: medium;
+    position: absolute;
+    top: 5px;
+    left: 10px;
+    border: 4px solid #c1102d;
+    padding: 5px;
+    border-radius: 20px 20px 20px 20px;
+}
 .button {
     display: flex;
     justify-content: center;
