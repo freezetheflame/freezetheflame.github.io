@@ -1,4 +1,8 @@
-
+body {
+    background-image: url("hello.jpg");
+    background-size: cover;
+    background-repeat: repeat-y;
+  }
 .button{
     background-color: #4CAF50; /* Green */
     border: none;

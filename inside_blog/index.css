@@ -1,3 +1,7 @@
+body {
+    background-image: url("background.jpg");
+    background-size: cover;
+  }
 .button{
     background-color: #4CAF50; /* Green */
     border: none;
