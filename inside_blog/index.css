@@ -1,0 +1,33 @@
+.button{
+    background-color: #4CAF50; /* Green */
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+}
+.button:hover {
+    background-color: #3e8e41;
+}
+.button-buttonmain{
+    /*write its place at the left corner*/
+    position: absolute;
+    top: 5px;
+    left: 5px;
+}
+/*write a sub button at the left corner*/
+.button-buttonsub{
+    position: absolute;
+    top: 5px;
+    left: 150px;
+}
+/*write a sub button at the left corner*/
+.button-buttonsub2{
+    position: absolute;
+    top: 5px;
+    left: 320px;
+}
