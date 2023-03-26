@@ -73,3 +73,16 @@
     font-family: "montserrat";
     animation: bganimation 15s infinite;
 }
+.btn {
+    display: block;
+    /* background-color: rgba(156, 39, 176, .5); */
+    padding: 14px 0;
+    color: #fff;
+    cursor: pointer;
+    margin-top: 8px;
+    width: 100%;
+    border: 1px solid #aaa;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 600;
+}
