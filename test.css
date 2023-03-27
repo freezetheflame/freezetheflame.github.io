@@ -34,6 +34,7 @@ a {
 
 /* 右侧二级菜单 */
 .menu .item .nav {
+    float: down;
     min-width: 250px;
     height: 460px;
     background-color: #fff;
