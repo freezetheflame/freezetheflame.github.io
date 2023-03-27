@@ -1,5 +1,5 @@
 body {
-    background-image: url("background_of_notes.jpg");
+    background-image: url("bg_notes.jpg");
     background-size: cover;
     background-repeat: repeat-y;
   }
@@ -42,57 +42,74 @@ body {
     top: 5px;
     left: 460px;
 }
-/*write a sub button at the left corner*/
-.button-buttonsub4{
-    position: absolute;
-    top: 5px;
-    left: 660px;
+a {
+    text-decoration: none;
+    /*adapt the font color to white*/
+    color: #efefe9;
 }
-/*write a sub button at the left corner*/
-.button-buttonsub5{
-    position: absolute;
-    top: 5px;
-    left: 830px;
+
+.menu {
+    width: 230px;
+    height: 420px;
+    padding: 20px 0;
+    background-color: rgba(188, 75, 38, 0.5);
+    margin: 50px 0 0 50px;
+    position: relative;
 }
-.button-buttonsub6{
-    position: absolute;
-    /*on the second row*/
-    top: 70px;
-    left: 5px;
-}
-/*get the form in the centre place*/
-.form{
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 200px;
-    height: 200px;
-    background: #fff;
-    padding: 40px;
-    box-sizing: border-box;
-    box-shadow: 0 15px 25px rgba(0,0,0,.5);
-    border-radius: 10px;
-}
-/*make the input look better*/
-.input{
-    width: 100%;
-    margin-bottom: 20px;
-    background-color: white;
-    background-size: 400%;
-    font-family: "montserrat";
-    animation: bganimation 15s infinite;
-}
-.btn {
-    display: block;
-    /* background-color: rgba(156, 39, 176, .5); */
-    padding: 14px 0;
-    color: #fff;
+
+.menu .item {
+    height: 42px;
+    /* border: 1px solid red; */
+    color: #d3dd13;
+    font-size: 14px;
+    line-height: 42px;
+    padding-left: 30px;
     cursor: pointer;
-    margin-top: 8px;
-    width: 100%;
-    border: 1px solid #aaa;
-    border-radius: 10px;
-    font-size: 18px;
-    font-weight: 600;
+}
+
+.menu .item:hover {
+    background-color: #eab52e;
+}
+
+/* 右侧二级菜单 */
+.menu .item .nav {
+    min-width: 250px;
+    height: 460px;
+    background-color: #fff;
+    border: 1px solid #666;
+    position: absolute;
+    top: 0;
+    left: 100%;
+    box-sizing: border-box;
+    /* 六行单元格平分整个区域 */
+    display: grid;
+    grid-template-rows: repeat(6, 1fr);
+    grid-template-columns: 250px;
+    /* 排列方式设置为先列后行 */
+    grid-auto-flow: column;
+    /* 设置隐式网格宽度 */
+    grid-auto-columns: 250px;
+    padding: 20px;
+    /* 初始默认隐藏 */
+    display: none;
+}
+
+.item .nav a {
+    /* border: 1px solid red; */
+    color: #000;
+    display: flex;
+    /* 垂直方向居中对齐,防止随父元素高度而被拉伸 */
+    align-items: center;
+}
+
+.item .nav a img {
+    margin-right: 10px;
+}
+
+.item .nav a:hover {
+    color: #ff6700;
+}
+
+.item:hover .nav {
+    display: grid;
 }
