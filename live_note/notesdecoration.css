@@ -24,11 +24,11 @@ body {
     top: 200px;
     left: 200px;
 }
-/*write a sub button at the left corner*/
+/*write a sub button at the left side of the main*/
 .button-buttonsub{
     position: absolute;
-    top: 5px;
-    left: 150px;
+    top: 200px;
+    left: 320px;
 }
 /*write a sub button at the left corner*/
 .button-buttonsub2{
