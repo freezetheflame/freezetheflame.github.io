@@ -1,0 +1,98 @@
+body {
+    background-image: url("background_of_notes.jpg");
+    background-size: cover;
+    background-repeat: repeat-y;
+  }
+.button{
+    background-color: #b5c5c9; /* White */
+    border: none;
+    color: rgb(25, 118, 139);
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+}
+.button:hover {
+    background-color: #3e8e41;
+}
+.button-buttonmain{
+    /*write its place in the centre*/
+    position: absolute;
+    top: 200px;
+    left: 200px;
+}
+/*write a sub button at the left corner*/
+.button-buttonsub{
+    position: absolute;
+    top: 5px;
+    left: 150px;
+}
+/*write a sub button at the left corner*/
+.button-buttonsub2{
+    position: absolute;
+    top: 5px;
+    left: 320px;
+}
+/*write a sub button at the left corner*/
+.button-buttonsub3{
+    position: absolute;
+    top: 5px;
+    left: 460px;
+}
+/*write a sub button at the left corner*/
+.button-buttonsub4{
+    position: absolute;
+    top: 5px;
+    left: 660px;
+}
+/*write a sub button at the left corner*/
+.button-buttonsub5{
+    position: absolute;
+    top: 5px;
+    left: 830px;
+}
+.button-buttonsub6{
+    position: absolute;
+    /*on the second row*/
+    top: 70px;
+    left: 5px;
+}
+/*get the form in the centre place*/
+.form{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    background: #fff;
+    padding: 40px;
+    box-sizing: border-box;
+    box-shadow: 0 15px 25px rgba(0,0,0,.5);
+    border-radius: 10px;
+}
+/*make the input look better*/
+.input{
+    width: 100%;
+    margin-bottom: 20px;
+    background-color: white;
+    background-size: 400%;
+    font-family: "montserrat";
+    animation: bganimation 15s infinite;
+}
+.btn {
+    display: block;
+    /* background-color: rgba(156, 39, 176, .5); */
+    padding: 14px 0;
+    color: #fff;
+    cursor: pointer;
+    margin-top: 8px;
+    width: 100%;
+    border: 1px solid #aaa;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 600;
+}
