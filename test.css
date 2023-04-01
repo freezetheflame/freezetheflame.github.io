@@ -70,3 +70,25 @@ a {
 .item:hover .nav {
     display: grid;
 }
+#github-stars {
+    display: inline-block;
+  }
+  
+  #github-stars-button {
+    display: flex;
+    align-items: center;
+    background-color: #0366d6;
+    color: #fff;
+    text-decoration: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+  }
+  
+  #github-stars-button:hover {
+    background-color: #035aa6;
+  }
+  
+  #github-stars-button span:last-child {
+    margin-left: 5px;
+  }

@@ -6,6 +6,26 @@
     <link rel="stylesheet" href="test.css">
     </head>
 <body>
+    <script>
+        (function(){
+  const repoUrl = 'https://api.github.com/repos/freezetheflame/freezetheflame.github.io';
+
+  fetch(repoUrl)
+    .then(response => response.json())
+    .then(data => {
+      const starsCount = data.stargazers_count;
+      const starsCountElement = document.getElementById('stars-count');
+      starsCountElement.textContent = starsCount;
+    })
+    .catch(error => console.error('Error fetching GitHub stars:', error));
+})();
+    </script>
+    <div id="github-stars">
+        <a href="https://github.com/freezetheflame/freezetheflame.github.io" target="_blank" id="github-stars-button">
+          <span>Star</span>
+          <span id="stars-count">0</span>
+        </a>
+    </div>
     <div class="menu">
         <div class="item">手机
         </div>
