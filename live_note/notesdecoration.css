@@ -135,3 +135,11 @@ a {
   #github-stars-button span:last-child {
     margin-left: 5px;
   }
+  /*put the picture at the right of the star;*/
+  .pictures{
+    width: 8%;
+    height: 10%;
+    position: absolute;
+    top: 0px;
+    left: 100px;
+  }
