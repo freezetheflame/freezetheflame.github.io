@@ -3,4 +3,4 @@
 push:
 	git add .
 	git commit -m "makefile push"
-	git push origin master
+	git push origin main
