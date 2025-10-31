@@ -21,6 +21,8 @@
 ├── components.css          # 可复用组件样式
 ├── utilities.css           # 实用工具类样式
 ├── script.js               # 全局JavaScript功能
+├── package.json            # Node.js 依赖配置
+├── DOCS.md                 # Markdown 转换功能说明
 ├── blog_space/             # 博客页面
 │   ├── blog.html           # 博客主页
 │   ├── index.html          # 动画展示页
@@ -38,6 +40,11 @@
 ├── inside_blog/            # 内部博客资源
 │   ├── index.html
 │   └── index.css
+├── .github/
+│   ├── workflows/          # GitHub Actions 工作流
+│   │   └── markdown-to-html.yml
+│   └── scripts/            # 转换脚本
+│       └── convert-markdown.js
 └── sitemap.html            # 网站地图
 ```
 
@@ -48,6 +55,8 @@
 - **JavaScript** - DOM操作和交互功能
 - **jQuery** - 简化DOM操作
 - **Slick Carousel** - 响应式图片轮播（用于相册页面）
+- **Node.js** - Markdown 转换工具（marked, highlight.js）
+- **GitHub Actions** - 自动化部署和转换
 
 ## 🎨 设计亮点
 
@@ -65,6 +74,7 @@
 3. 根据需要修改内容和样式
 4. 切换主题使用右下角的主题切换按钮
 5. 返回顶部使用右下角的返回顶部按钮
+6. 在 `live_note`、`blog_space` 或 `inside_blog` 目录下创建 `.md` 文件，系统会自动转换为 HTML 页面
 
 ## 📞 联系方式
 

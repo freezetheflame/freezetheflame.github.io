@@ -1,0 +1,43 @@
+name: Convert Markdown to HTML
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  convert-markdown:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        npm install marked highlight.js
+        
+    - name: Create output directories
+      run: |
+        mkdir -p blog_posts
+        mkdir -p docs
+        
+    - name: Convert Markdown files to HTML
+      run: |
+        node .github/scripts/convert-markdown.js
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .
+        git commit -m "Auto-convert Markdown to HTML" || echo "No changes to commit"
+        git push

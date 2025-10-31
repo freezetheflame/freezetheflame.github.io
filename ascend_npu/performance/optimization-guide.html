@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ascend NPU性能优化指南</title>
+  <link rel="stylesheet" href="../shared.css">
+  <link rel="stylesheet" href="../main_page.css">
+  <link rel="stylesheet" href="../components.css">
+  <link rel="stylesheet" href="../utilities.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <style>
+    .markdown-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+      color: #2c3e50;
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+    }
+    
+    .markdown-content p {
+      line-height: 1.6;
+      color: #333;
+      margin-bottom: 1em;
+    }
+    
+    .markdown-content a {
+      color: #3498db;
+      text-decoration: none;
+    }
+    
+    .markdown-content a:hover {
+      text-decoration: underline;
+    }
+    
+    .markdown-content pre {
+      background: #f8f9fa;
+      border-radius: 5px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 1.5rem 0;
+    }
+    
+    .markdown-content code {
+      background: #f8f9fa;
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .markdown-content pre code {
+      background: none;
+      padding: 0;
+    }
+    
+    .markdown-content blockquote {
+      border-left: 4px solid #3498db;
+      padding: 0.5rem 1rem;
+      margin: 1.5rem 0;
+      background: #f8f9fa;
+      border-radius: 0 5px 5px 0;
+    }
+    
+    .markdown-content ul, .markdown-content ol {
+      padding-left: 2rem;
+      margin-bottom: 1rem;
+    }
+    
+    .markdown-content li {
+      margin-bottom: 0.5rem;
+    }
+    
+    .markdown-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 5px;
+      margin: 1rem 0;
+    }
+    
+    .markdown-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+    }
+    
+    .markdown-content th, .markdown-content td {
+      border: 1px solid #ddd;
+      padding: 0.75rem;
+      text-align: left;
+    }
+    
+    .markdown-content th {
+      background: #f8f9fa;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <h2>我的知识库</h2>
+      </div>
+      <nav class="nav-menu">
+        <ul>
+          <li><a href="../index.html">首页</a></li>
+          <li><a href="../blog_space/blog.html">博客</a></li>
+          <li><a href="../live_note/note&skills.html">笔记</a></li>
+          <li><a href="../photo_showing_place/photo.html">相册</a></li>
+          <li><a href="../sitemap.html">网站地图</a></li>
+          <li><a href="#contact">联系</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主要内容区域 -->
+  <main class="main-content">
+    <div class="markdown-content">
+      <h1>Ascend NPU性能优化指南</h1>
+      <h1 id="ascend-npu性能优化指南">Ascend NPU性能优化指南</h1>
+<p>本指南将介绍如何优化在Ascend NPU上运行的深度学习模型性能。</p>
+<h2 id="性能分析工具">性能分析工具</h2>
+<h3 id="1-mindspore-profiler">1. MindSpore Profiler</h3>
+<p>MindSpore提供了强大的性能分析工具：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> mindspore.profiler <span class="hljs-keyword">import</span> Profiler
+
+<span class="hljs-comment"># 创建Profiler实例</span>
+profiler = Profiler(output_path=<span class="hljs-string">&#x27;./profiler_data&#x27;</span>)
+
+<span class="hljs-comment"># 训练代码</span>
+<span class="hljs-comment"># ...</span>
+
+<span class="hljs-comment"># 分析性能数据</span>
+profiler.analyse()
+</code></pre>
+<h3 id="2-aisc平台工具">2. AISC平台工具</h3>
+<p>Ascend Insight是华为提供的AI模型性能分析工具：</p>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 启动Ascend Insight</span>
+aisc_insight --port=8080 --log_dir=./logs
+</code></pre>
+<h2 id="自动混合精度（amp）">自动混合精度（AMP）</h2>
+<p>自动混合精度可以显著提升训练速度并减少内存占用：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> mindspore <span class="hljs-keyword">as</span> ms
+<span class="hljs-keyword">from</span> mindspore.amp <span class="hljs-keyword">import</span> DynamicLossScaler, all_finite
+
+<span class="hljs-comment"># 设置自动混合精度</span>
+ms.context.set_context(enable_graph_kernel=<span class="hljs-literal">True</span>)
+
+<span class="hljs-comment"># 创建损失缩放器</span>
+loss_scaler = DynamicLossScaler(scale_value=<span class="hljs-number">2</span>**<span class="hljs-number">10</span>, scale_factor=<span class="hljs-number">2</span>, scale_window=<span class="hljs-number">50</span>)
+
+<span class="hljs-comment"># 在训练循环中使用</span>
+<span class="hljs-keyword">for</span> data, label <span class="hljs-keyword">in</span> dataset:
+    <span class="hljs-comment"># 前向传播（使用float16）</span>
+    output = network(data.astype(ms.float16))
+    
+    <span class="hljs-comment"># 计算损失</span>
+    loss = loss_fn(output, label)
+    
+    <span class="hljs-comment"># 损失缩放</span>
+    scaled_loss = loss_scaler.scale(loss)
+    
+    <span class="hljs-comment"># 反向传播</span>
+    scaled_loss.backward()
+    
+    <span class="hljs-comment"># 更新参数</span>
+    <span class="hljs-keyword">if</span> all_finite(scaled_loss):
+        loss_scaler.unscale(optimizer)
+        optimizer.step()
+    <span class="hljs-keyword">else</span>:
+        <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;检测到非有限值，跳过本次更新&quot;</span>)
+    
+    optimizer.zero_grad()
+</code></pre>
+<h2 id="图算融合优化">图算融合优化</h2>
+<p>图算融合可以减少内核启动开销：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 启用图算融合</span>
+ms.context.set_context(enable_graph_kernel=<span class="hljs-literal">True</span>)
+
+<span class="hljs-comment"># 设置图算融合级别</span>
+ms.context.set_context(graph_kernel_flags=<span class="hljs-string">&quot;--opt_level=2&quot;</span>)
+</code></pre>
+<h2 id="内存优化">内存优化</h2>
+<h3 id="1-内存复用">1. 内存复用</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 启用内存复用</span>
+ms.context.set_context(memory_optimize=<span class="hljs-literal">True</span>)
+</code></pre>
+<h3 id="2-梯度累积">2. 梯度累积</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 梯度累积实现</span>
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">GradientAccumulationCell</span>(nn.Cell):
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, network, optimizer, accumulation_steps</span>):
+        <span class="hljs-built_in">super</span>(GradientAccumulationCell, <span class="hljs-variable language_">self</span>).__init__()
+        <span class="hljs-variable language_">self</span>.network = network
+        <span class="hljs-variable language_">self</span>.optimizer = optimizer
+        <span class="hljs-variable language_">self</span>.accumulation_steps = accumulation_steps
+        <span class="hljs-variable language_">self</span>.one = ms.Tensor(<span class="hljs-number">1</span>, ms.int32)
+        <span class="hljs-variable language_">self</span>.zero = ms.Tensor(<span class="hljs-number">0</span>, ms.int32)
+        
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">construct</span>(<span class="hljs-params">self, data, label</span>):
+        loss = <span class="hljs-variable language_">self</span>.network(data, label)
+        loss = loss / <span class="hljs-variable language_">self</span>.accumulation_steps
+        loss.backward()
+        
+        <span class="hljs-keyword">if</span> <span class="hljs-variable language_">self</span>.accumulation_steps &gt; <span class="hljs-number">1</span>:
+            loss = loss * <span class="hljs-variable language_">self</span>.accumulation_steps
+            
+        <span class="hljs-keyword">return</span> loss
+</code></pre>
+<h2 id="并行计算优化">并行计算优化</h2>
+<h3 id="1-数据并行">1. 数据并行</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 设置数据并行</span>
+ms.context.set_auto_parallel_context(parallel_mode=<span class="hljs-string">&quot;data_parallel&quot;</span>, gradients_mean=<span class="hljs-literal">True</span>)
+</code></pre>
+<h3 id="2-模型并行">2. 模型并行</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 设置模型并行</span>
+ms.context.set_auto_parallel_context(parallel_mode=<span class="hljs-string">&quot;model_parallel&quot;</span>)
+</code></pre>
+<h3 id="3-混合并行">3. 混合并行</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 设置混合并行</span>
+ms.context.set_auto_parallel_context(parallel_mode=<span class="hljs-string">&quot;hybrid_parallel&quot;</span>)
+</code></pre>
+<h2 id="算子优化">算子优化</h2>
+<h3 id="1-自定义算子">1. 自定义算子</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 使用TBE自定义算子</span>
+<span class="hljs-keyword">from</span> mindspore.ops <span class="hljs-keyword">import</span> Primitive
+
+<span class="hljs-comment"># 注册自定义算子</span>
+custom_op = Primitive(<span class="hljs-string">&quot;CustomOp&quot;</span>)
+</code></pre>
+<h3 id="2-算子选择优化">2. 算子选择优化</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 启用算子选择优化</span>
+ms.context.set_context(enable_graph_kernel=<span class="hljs-literal">True</span>)
+ms.context.set_context(graph_kernel_flags=<span class="hljs-string">&quot;--opt_level=2 --enable_cluster_ops=Conv2D&quot;</span>)
+</code></pre>
+<h2 id="数据处理优化">数据处理优化</h2>
+<h3 id="1-数据预处理优化">1. 数据预处理优化</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> mindspore.dataset <span class="hljs-keyword">as</span> ds
+
+<span class="hljs-comment"># 优化数据处理管道</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">create_optimized_dataset</span>(<span class="hljs-params">data_path</span>):
+    dataset = ds.MnistDataset(data_path)
+    
+    <span class="hljs-comment"># 使用多线程处理</span>
+    dataset = dataset.<span class="hljs-built_in">map</span>(operations=[vision.Resize((<span class="hljs-number">32</span>, <span class="hljs-number">32</span>)), 
+                                     vision.Rescale(<span class="hljs-number">1.0</span> / <span class="hljs-number">255.0</span>, <span class="hljs-number">0.0</span>)],
+                         input_columns=<span class="hljs-string">&quot;image&quot;</span>,
+                         num_parallel_workers=<span class="hljs-number">4</span>)
+    
+    <span class="hljs-comment"># 预加载数据</span>
+    dataset = dataset.prefetch(<span class="hljs-number">2</span>)
+    
+    <span class="hljs-comment"># 打乱数据</span>
+    dataset = dataset.shuffle(buffer_size=<span class="hljs-number">10000</span>)
+    
+    <span class="hljs-keyword">return</span> dataset
+</code></pre>
+<h3 id="2-数据缓存">2. 数据缓存</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 启用数据缓存</span>
+dataset = dataset.cache(filename=<span class="hljs-string">&quot;cache_path&quot;</span>)
+</code></pre>
+<h2 id="模型压缩优化">模型压缩优化</h2>
+<h3 id="1-权重量化">1. 权重量化</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 权重量化示例</span>
+<span class="hljs-keyword">from</span> mindspore.compression.quant <span class="hljs-keyword">import</span> QuantizationAwareTraining
+
+<span class="hljs-comment"># 创建量化感知训练网络</span>
+quantizer = QuantizationAwareTraining(bn_fold=<span class="hljs-literal">True</span>, per_channel=<span class="hljs-literal">False</span>)
+network = quantizer.apply(network)
+</code></pre>
+<h3 id="2-模型剪枝">2. 模型剪枝</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 模型剪枝示例</span>
+<span class="hljs-keyword">from</span> mindspore.compression.pruner <span class="hljs-keyword">import</span> Pruner
+
+<span class="hljs-comment"># 创建剪枝器</span>
+pruner = Pruner()
+network = pruner.apply(network)
+</code></pre>
+<h2 id="编译优化">编译优化</h2>
+<h3 id="1-aoe优化">1. AOE优化</h3>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 使用AOE工具优化模型</span>
+aoe --model=model.om --output=model_optimized.om --soc_version=Ascend310
+</code></pre>
+<h3 id="2-离线模型编译">2. 离线模型编译</h3>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 使用ATC工具编译模型</span>
+atc --model=model.onnx --framework=5 --output=model --soc_version=Ascend310 --insert_op_conf=aipp.cfg
+</code></pre>
+<h2 id="性能监控">性能监控</h2>
+<h3 id="1-实时监控">1. 实时监控</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> time
+
+<span class="hljs-comment"># 性能监控装饰器</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">monitor_performance</span>(<span class="hljs-params">func</span>):
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">wrapper</span>(<span class="hljs-params">*args, **kwargs</span>):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;函数 <span class="hljs-subst">{func.__name__}</span> 执行时间: <span class="hljs-subst">{end_time - start_time:<span class="hljs-number">.2</span>f}</span> 秒&quot;</span>)
+        <span class="hljs-keyword">return</span> result
+    <span class="hljs-keyword">return</span> wrapper
+
+<span class="hljs-meta">@monitor_performance</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">train_epoch</span>():
+    <span class="hljs-comment"># 训练代码</span>
+    <span class="hljs-keyword">pass</span>
+</code></pre>
+<h3 id="2-资源使用监控">2. 资源使用监控</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> psutil
+
+<span class="hljs-comment"># 监控内存使用</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">monitor_memory</span>():
+    memory = psutil.virtual_memory()
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;内存使用率: <span class="hljs-subst">{memory.percent}</span>%&quot;</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;可用内存: <span class="hljs-subst">{memory.available / (<span class="hljs-number">1024</span>**<span class="hljs-number">3</span>):<span class="hljs-number">.2</span>f}</span> GB&quot;</span>)
+</code></pre>
+<h2 id="最佳实践建议">最佳实践建议</h2>
+<h3 id="1-环境配置优化">1. 环境配置优化</h3>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 设置Ascend相关环境变量</span>
+<span class="hljs-built_in">export</span> ASCEND_GLOBAL_LOG_LEVEL=3
+<span class="hljs-built_in">export</span> ASCEND_SLOG_PRINT_TO_STDOUT=0
+<span class="hljs-built_in">export</span> COMBINED_ENABLE=1
+</code></pre>
+<h3 id="2-批次大小优化">2. 批次大小优化</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 根据设备内存调整批次大小</span>
+batch_size = <span class="hljs-number">32</span>  <span class="hljs-comment"># 根据实际设备调整</span>
+</code></pre>
+<h3 id="3-学习率调度">3. 学习率调度</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 使用学习率调度器</span>
+scheduler = nn.cosine_decay_lr(min_lr=<span class="hljs-number">0.0001</span>, max_lr=<span class="hljs-number">0.01</span>, total_step=<span class="hljs-number">1000</span>, step_per_epoch=<span class="hljs-number">100</span>)
+</code></pre>
+<h2 id="性能基准测试">性能基准测试</h2>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 性能基准测试函数</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">benchmark_model</span>(<span class="hljs-params">network, dataset, num_iterations=<span class="hljs-number">100</span></span>):
+    start_time = time.time()
+    
+    <span class="hljs-keyword">for</span> i, (data, label) <span class="hljs-keyword">in</span> <span class="hljs-built_in">enumerate</span>(dataset.create_tuple_iterator()):
+        <span class="hljs-keyword">if</span> i &gt;= num_iterations:
+            <span class="hljs-keyword">break</span>
+        _ = network(data)
+    
+    end_time = time.time()
+    avg_time = (end_time - start_time) / num_iterations
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;平均推理时间: <span class="hljs-subst">{avg_time*<span class="hljs-number">1000</span>:<span class="hljs-number">.2</span>f}</span> ms&quot;</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;FPS: <span class="hljs-subst">{<span class="hljs-number">1</span>/avg_time:<span class="hljs-number">.2</span>f}</span>&quot;</span>)
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>通过以上优化技术，您可以显著提升模型在Ascend NPU上的性能：</p>
+<ol>
+<li><strong>使用Profiler工具</strong>分析性能瓶颈</li>
+<li><strong>启用自动混合精度</strong>提升计算效率</li>
+<li><strong>优化数据处理管道</strong>减少I/O等待</li>
+<li><strong>使用并行计算</strong>充分利用多设备资源</li>
+<li><strong>应用模型压缩技术</strong>减少计算量</li>
+<li><strong>启用编译优化</strong>提升执行效率</li>
+</ol>
+<p>根据具体应用场景选择合适的优化策略，通常可以实现2-10倍的性能提升。</p>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2025 个人知识分享网站. 保留所有权利.</p>
+  </footer>
+</body>
+</html>

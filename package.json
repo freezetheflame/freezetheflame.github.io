@@ -1,0 +1,22 @@
+{
+  "name": "personal-knowledge-website",
+  "version": "1.0.0",
+  "description": "Personal knowledge sharing website with automatic Markdown to HTML conversion",
+  "main": "index.js",
+  "scripts": {
+    "convert": "node .github/scripts/convert-markdown.js",
+    "update-index": "node .github/scripts/update-posts-index.js"
+  },
+  "dependencies": {
+    "marked": "^4.3.0",
+    "highlight.js": "^11.7.0"
+  },
+  "keywords": [
+    "markdown",
+    "html",
+    "static-site",
+    "knowledge-sharing"
+  ],
+  "author": "Personal Knowledge Website",
+  "license": "MIT"
+}

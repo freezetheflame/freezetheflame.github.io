@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人知识分享网站</title>
+  <link rel="stylesheet" href="../shared.css">
+  <link rel="stylesheet" href="../main_page.css">
+  <link rel="stylesheet" href="../components.css">
+  <link rel="stylesheet" href="../utilities.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <style>
+    .markdown-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+      color: #2c3e50;
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+    }
+    
+    .markdown-content p {
+      line-height: 1.6;
+      color: #333;
+      margin-bottom: 1em;
+    }
+    
+    .markdown-content a {
+      color: #3498db;
+      text-decoration: none;
+    }
+    
+    .markdown-content a:hover {
+      text-decoration: underline;
+    }
+    
+    .markdown-content pre {
+      background: #f8f9fa;
+      border-radius: 5px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 1.5rem 0;
+    }
+    
+    .markdown-content code {
+      background: #f8f9fa;
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .markdown-content pre code {
+      background: none;
+      padding: 0;
+    }
+    
+    .markdown-content blockquote {
+      border-left: 4px solid #3498db;
+      padding: 0.5rem 1rem;
+      margin: 1.5rem 0;
+      background: #f8f9fa;
+      border-radius: 0 5px 5px 0;
+    }
+    
+    .markdown-content ul, .markdown-content ol {
+      padding-left: 2rem;
+      margin-bottom: 1rem;
+    }
+    
+    .markdown-content li {
+      margin-bottom: 0.5rem;
+    }
+    
+    .markdown-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 5px;
+      margin: 1rem 0;
+    }
+    
+    .markdown-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+    }
+    
+    .markdown-content th, .markdown-content td {
+      border: 1px solid #ddd;
+      padding: 0.75rem;
+      text-align: left;
+    }
+    
+    .markdown-content th {
+      background: #f8f9fa;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <h2>我的知识库</h2>
+      </div>
+      <nav class="nav-menu">
+        <ul>
+          <li><a href="../index.html">首页</a></li>
+          <li><a href="../blog_space/blog.html">博客</a></li>
+          <li><a href="../live_note/note&skills.html">笔记</a></li>
+          <li><a href="../photo_showing_place/photo.html">相册</a></li>
+          <li><a href="../sitemap.html">网站地图</a></li>
+          <li><a href="#contact">联系</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主要内容区域 -->
+  <main class="main-content">
+    <div class="markdown-content">
+      <h1>个人知识分享网站</h1>
+      <h1 id="个人知识分享网站">个人知识分享网站</h1>
+<p>这是一个用于分享学习笔记、技术心得和个人项目的现代化静态网站。</p>
+<h2 id="🌟-网站特色">🌟 网站特色</h2>
+<ul>
+<li><strong>响应式设计</strong> - 适配各种设备屏幕</li>
+<li><strong>现代化UI</strong> - 渐变色彩、阴影效果和动画过渡</li>
+<li><strong>交互体验</strong> - 平滑滚动、悬停效果和动态交互</li>
+<li><strong>模块化结构</strong> - 清晰的代码组织和可复用组件</li>
+<li><strong>主题切换</strong> - 支持亮色和暗色主题切换</li>
+<li><strong>SEO优化</strong> - 包含网站地图和元标签优化</li>
+<li><strong>实用工具类</strong> - 提供丰富的CSS实用工具类</li>
+</ul>
+<h2 id="📁-网站结构">📁 网站结构</h2>
+<pre><code>├── index.html              # 主页
+├── shared.css              # 共享样式文件
+├── main_page.css           # 主页特定样式
+├── components.css          # 可复用组件样式
+├── utilities.css           # 实用工具类样式
+├── script.js               # 全局JavaScript功能
+├── package.json            # Node.js 依赖配置
+├── DOCS.md                 # Markdown 转换功能说明
+├── blog_space/             # 博客页面
+│   ├── blog.html           # 博客主页
+│   ├── index.html          # 动画展示页
+│   ├── style.css
+│   └── script.js
+├── live_note/              # 学习笔记
+│   ├── note&amp;skills.html
+│   └── notesdecoration.css
+├── photo_showing_place/    # 相册页面
+│   ├── photo.html
+│   ├── Yoimiya1.jpg
+│   ├── Yoimiya2.jpg
+│   ├── Yoimiya3.png
+│   └── Yoimiya4.jpg
+├── inside_blog/            # 内部博客资源
+│   ├── index.html
+│   └── index.css
+├── .github/
+│   ├── workflows/          # GitHub Actions 工作流
+│   │   └── markdown-to-html.yml
+│   └── scripts/            # 转换脚本
+│       └── convert-markdown.js
+└── sitemap.html            # 网站地图
+</code></pre>
+<h2 id="🛠-技术栈">🛠 技术栈</h2>
+<ul>
+<li><strong>HTML5</strong> - 语义化标签和现代结构</li>
+<li><strong>CSS3</strong> - 渐变、阴影、动画和Flexbox/Grid布局</li>
+<li><strong>JavaScript</strong> - DOM操作和交互功能</li>
+<li><strong>jQuery</strong> - 简化DOM操作</li>
+<li><strong>Slick Carousel</strong> - 响应式图片轮播（用于相册页面）</li>
+<li><strong>Node.js</strong> - Markdown 转换工具（marked, highlight.js）</li>
+<li><strong>GitHub Actions</strong> - 自动化部署和转换</li>
+</ul>
+<h2 id="🎨-设计亮点">🎨 设计亮点</h2>
+<ol>
+<li><strong>统一设计语言</strong> - 所有页面使用一致的色彩方案和组件样式</li>
+<li><strong>微交互动画</strong> - 悬停效果、波纹动画和页面过渡</li>
+<li><strong>渐进式增强</strong> - 基础功能兼容性好，现代浏览器体验更佳</li>
+<li><strong>性能优化</strong> - 合理的资源加载和代码组织</li>
+<li><strong>可访问性</strong> - 良好的语义化结构和键盘导航支持</li>
+<li><strong>主题支持</strong> - 支持亮色和暗色主题切换</li>
+</ol>
+<h2 id="🚀-使用说明">🚀 使用说明</h2>
+<ol>
+<li>克隆或下载仓库</li>
+<li>使用浏览器直接打开 <code>index.html</code> 文件</li>
+<li>根据需要修改内容和样式</li>
+<li>切换主题使用右下角的主题切换按钮</li>
+<li>返回顶部使用右下角的返回顶部按钮</li>
+<li>在 <code>live_note</code>、<code>blog_space</code> 或 <code>inside_blog</code> 目录下创建 <code>.md</code> 文件，系统会自动转换为 HTML 页面</li>
+</ol>
+<h2 id="📞-联系方式">📞 联系方式</h2>
+<p>如有任何问题或建议，请通过以下方式联系：</p>
+<ul>
+<li>GitHub Issues: <a href="https://github.com/yourusername/yourrepo/issues">提交问题</a></li>
+</ul>
+<h2 id="©-版权信息">© 版权信息</h2>
+<p>版权所有 © 2025 @sjw</p>
+<p>保留所有权利。</p>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2025 个人知识分享网站. 保留所有权利.</p>
+  </footer>
+</body>
+</html>

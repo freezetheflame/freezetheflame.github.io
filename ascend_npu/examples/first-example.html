@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第一个Ascend NPU示例：手写数字识别</title>
+  <link rel="stylesheet" href="../shared.css">
+  <link rel="stylesheet" href="../main_page.css">
+  <link rel="stylesheet" href="../components.css">
+  <link rel="stylesheet" href="../utilities.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <style>
+    .markdown-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+      color: #2c3e50;
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+    }
+    
+    .markdown-content p {
+      line-height: 1.6;
+      color: #333;
+      margin-bottom: 1em;
+    }
+    
+    .markdown-content a {
+      color: #3498db;
+      text-decoration: none;
+    }
+    
+    .markdown-content a:hover {
+      text-decoration: underline;
+    }
+    
+    .markdown-content pre {
+      background: #f8f9fa;
+      border-radius: 5px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 1.5rem 0;
+    }
+    
+    .markdown-content code {
+      background: #f8f9fa;
+      padding: 0.2rem 0.4rem;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .markdown-content pre code {
+      background: none;
+      padding: 0;
+    }
+    
+    .markdown-content blockquote {
+      border-left: 4px solid #3498db;
+      padding: 0.5rem 1rem;
+      margin: 1.5rem 0;
+      background: #f8f9fa;
+      border-radius: 0 5px 5px 0;
+    }
+    
+    .markdown-content ul, .markdown-content ol {
+      padding-left: 2rem;
+      margin-bottom: 1rem;
+    }
+    
+    .markdown-content li {
+      margin-bottom: 0.5rem;
+    }
+    
+    .markdown-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 5px;
+      margin: 1rem 0;
+    }
+    
+    .markdown-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+    }
+    
+    .markdown-content th, .markdown-content td {
+      border: 1px solid #ddd;
+      padding: 0.75rem;
+      text-align: left;
+    }
+    
+    .markdown-content th {
+      background: #f8f9fa;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <h2>我的知识库</h2>
+      </div>
+      <nav class="nav-menu">
+        <ul>
+          <li><a href="../index.html">首页</a></li>
+          <li><a href="../blog_space/blog.html">博客</a></li>
+          <li><a href="../live_note/note&skills.html">笔记</a></li>
+          <li><a href="../photo_showing_place/photo.html">相册</a></li>
+          <li><a href="../sitemap.html">网站地图</a></li>
+          <li><a href="#contact">联系</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主要内容区域 -->
+  <main class="main-content">
+    <div class="markdown-content">
+      <h1>第一个Ascend NPU示例：手写数字识别</h1>
+      <h1 id="第一个ascend-npu示例：手写数字识别">第一个Ascend NPU示例：手写数字识别</h1>
+<p>本教程将指导您使用MindSpore和Ascend NPU训练一个简单的手写数字识别模型。</p>
+<h2 id="数据集准备">数据集准备</h2>
+<p>我们将使用MNIST数据集，这是一个经典的手写数字识别数据集。</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> mindspore <span class="hljs-keyword">as</span> ms
+<span class="hljs-keyword">from</span> mindspore <span class="hljs-keyword">import</span> nn, ops, context
+<span class="hljs-keyword">from</span> mindspore.dataset <span class="hljs-keyword">import</span> vision, transforms
+<span class="hljs-keyword">import</span> mindspore.dataset <span class="hljs-keyword">as</span> ds
+
+<span class="hljs-comment"># 设置运行环境</span>
+context.set_context(mode=context.GRAPH_MODE, device_target=<span class="hljs-string">&quot;Ascend&quot;</span>, device_id=<span class="hljs-number">0</span>)
+
+<span class="hljs-comment"># 下载并处理MNIST数据集</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">create_dataset</span>(<span class="hljs-params">data_path, batch_size=<span class="hljs-number">32</span>, repeat_size=<span class="hljs-number">1</span></span>):
+    <span class="hljs-comment"># 定义数据集</span>
+    mnist_ds = ds.MnistDataset(data_path)
+    
+    <span class="hljs-comment"># 定义数据处理操作</span>
+    resize_op = vision.Resize((<span class="hljs-number">32</span>, <span class="hljs-number">32</span>))
+    rescale_op = vision.Rescale(<span class="hljs-number">1.0</span> / <span class="hljs-number">255.0</span>, <span class="hljs-number">0.0</span>)
+    hwc2chw_op = vision.HWC2CHW()
+    type_cast_op = transforms.TypeCast(ms.int32)
+    
+    <span class="hljs-comment"># 应用数据处理操作</span>
+    mnist_ds = mnist_ds.<span class="hljs-built_in">map</span>(operations=type_cast_op, input_columns=<span class="hljs-string">&quot;label&quot;</span>)
+    mnist_ds = mnist_ds.<span class="hljs-built_in">map</span>(operations=[resize_op, rescale_op, hwc2chw_op], input_columns=<span class="hljs-string">&quot;image&quot;</span>)
+    
+    <span class="hljs-comment"># 打乱数据集</span>
+    mnist_ds = mnist_ds.shuffle(buffer_size=<span class="hljs-number">10000</span>)
+    
+    <span class="hljs-comment"># 设置batch大小和重复次数</span>
+    mnist_ds = mnist_ds.batch(batch_size, drop_remainder=<span class="hljs-literal">True</span>)
+    mnist_ds = mnist_ds.repeat(repeat_size)
+    
+    <span class="hljs-keyword">return</span> mnist_ds
+</code></pre>
+<h2 id="定义网络结构">定义网络结构</h2>
+<p>我们使用LeNet-5网络结构：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">class</span> <span class="hljs-title class_">LeNet5</span>(nn.Cell):
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, num_class=<span class="hljs-number">10</span>, num_channel=<span class="hljs-number">1</span></span>):
+        <span class="hljs-built_in">super</span>(LeNet5, <span class="hljs-variable language_">self</span>).__init__()
+        <span class="hljs-comment"># 定义卷积层和池化层</span>
+        <span class="hljs-variable language_">self</span>.conv1 = nn.Conv2d(num_channel, <span class="hljs-number">6</span>, <span class="hljs-number">5</span>, pad_mode=<span class="hljs-string">&#x27;valid&#x27;</span>)
+        <span class="hljs-variable language_">self</span>.conv2 = nn.Conv2d(<span class="hljs-number">6</span>, <span class="hljs-number">16</span>, <span class="hljs-number">5</span>, pad_mode=<span class="hljs-string">&#x27;valid&#x27;</span>)
+        <span class="hljs-variable language_">self</span>.pool = nn.MaxPool2d(<span class="hljs-number">2</span>, <span class="hljs-number">2</span>)
+        
+        <span class="hljs-comment"># 定义全连接层</span>
+        <span class="hljs-variable language_">self</span>.fc1 = nn.Dense(<span class="hljs-number">16</span> * <span class="hljs-number">5</span> * <span class="hljs-number">5</span>, <span class="hljs-number">120</span>)
+        <span class="hljs-variable language_">self</span>.fc2 = nn.Dense(<span class="hljs-number">120</span>, <span class="hljs-number">84</span>)
+        <span class="hljs-variable language_">self</span>.fc3 = nn.Dense(<span class="hljs-number">84</span>, num_class)
+        
+        <span class="hljs-comment"># 定义激活函数</span>
+        <span class="hljs-variable language_">self</span>.relu = nn.ReLU()
+        <span class="hljs-variable language_">self</span>.flatten = nn.Flatten()
+        
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">construct</span>(<span class="hljs-params">self, x</span>):
+        <span class="hljs-comment"># 前向传播</span>
+        x = <span class="hljs-variable language_">self</span>.pool(<span class="hljs-variable language_">self</span>.relu(<span class="hljs-variable language_">self</span>.conv1(x)))
+        x = <span class="hljs-variable language_">self</span>.pool(<span class="hljs-variable language_">self</span>.relu(<span class="hljs-variable language_">self</span>.conv2(x)))
+        x = <span class="hljs-variable language_">self</span>.flatten(x)
+        x = <span class="hljs-variable language_">self</span>.relu(<span class="hljs-variable language_">self</span>.fc1(x))
+        x = <span class="hljs-variable language_">self</span>.relu(<span class="hljs-variable language_">self</span>.fc2(x))
+        x = <span class="hljs-variable language_">self</span>.fc3(x)
+        <span class="hljs-keyword">return</span> x
+</code></pre>
+<h2 id="定义训练过程">定义训练过程</h2>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 创建网络实例</span>
+network = LeNet5()
+
+<span class="hljs-comment"># 定义损失函数</span>
+net_loss = nn.SoftmaxCrossEntropyWithLogits(sparse=<span class="hljs-literal">True</span>, reduction=<span class="hljs-string">&#x27;mean&#x27;</span>)
+
+<span class="hljs-comment"># 定义优化器</span>
+net_opt = nn.Momentum(network.trainable_params(), learning_rate=<span class="hljs-number">0.01</span>, momentum=<span class="hljs-number">0.9</span>)
+
+<span class="hljs-comment"># 定义训练网络</span>
+train_net = nn.TrainOneStepCell(network, net_opt)
+train_net.set_train()
+</code></pre>
+<h2 id="训练模型">训练模型</h2>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 加载数据集</span>
+train_dataset = create_dataset(<span class="hljs-string">&quot;./datasets/Mnist/train&quot;</span>, <span class="hljs-number">32</span>, <span class="hljs-number">1</span>)
+
+<span class="hljs-comment"># 训练模型</span>
+num_epochs = <span class="hljs-number">10</span>
+<span class="hljs-keyword">for</span> epoch <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(num_epochs):
+    <span class="hljs-keyword">for</span> batch, (data, label) <span class="hljs-keyword">in</span> <span class="hljs-built_in">enumerate</span>(train_dataset.create_tuple_iterator()):
+        loss = train_net(data, label)
+        
+        <span class="hljs-comment"># 每100个batch打印一次损失值</span>
+        <span class="hljs-keyword">if</span> batch % <span class="hljs-number">100</span> == <span class="hljs-number">0</span>:
+            <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;Epoch: <span class="hljs-subst">{epoch}</span>, Batch: <span class="hljs-subst">{batch}</span>, Loss: <span class="hljs-subst">{loss}</span>&quot;</span>)
+            
+<span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;训练完成！&quot;</span>)
+</code></pre>
+<h2 id="模型评估">模型评估</h2>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 定义评估网络</span>
+eval_net = nn.WithEvalCell(network, net_loss, <span class="hljs-literal">False</span>)
+eval_net.set_train(<span class="hljs-literal">False</span>)
+
+<span class="hljs-comment"># 加载测试数据集</span>
+test_dataset = create_dataset(<span class="hljs-string">&quot;./datasets/Mnist/test&quot;</span>, <span class="hljs-number">32</span>, <span class="hljs-number">1</span>)
+
+<span class="hljs-comment"># 评估模型</span>
+acc = <span class="hljs-number">0</span>
+eval_steps = <span class="hljs-number">0</span>
+<span class="hljs-keyword">for</span> data, label <span class="hljs-keyword">in</span> test_dataset.create_tuple_iterator():
+    output, loss = eval_net(data, label)
+    <span class="hljs-comment"># 计算准确率</span>
+    pred = ops.ArgMaxWithValue(axis=<span class="hljs-number">1</span>)(output)[<span class="hljs-number">0</span>]
+    equal = ops.Equal()(pred, label)
+    acc += equal.<span class="hljs-built_in">sum</span>().asnumpy()
+    eval_steps += <span class="hljs-built_in">len</span>(label)
+    
+<span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;测试准确率: <span class="hljs-subst">{acc / eval_steps}</span>&quot;</span>)
+</code></pre>
+<h2 id="模型保存">模型保存</h2>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 保存模型</span>
+ms.save_checkpoint(network, <span class="hljs-string">&quot;lenet_mnist.ckpt&quot;</span>)
+<span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;模型已保存&quot;</span>)
+</code></pre>
+<h2 id="模型推理">模型推理</h2>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 加载模型</span>
+param_dict = ms.load_checkpoint(<span class="hljs-string">&quot;lenet_mnist.ckpt&quot;</span>)
+ms.load_param_into_net(network, param_dict)
+
+<span class="hljs-comment"># 进行推理</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">predict</span>(<span class="hljs-params">image</span>):
+    network.set_train(<span class="hljs-literal">False</span>)
+    output = network(image)
+    predicted = ops.ArgMaxWithValue(axis=<span class="hljs-number">1</span>)(output)[<span class="hljs-number">0</span>]
+    <span class="hljs-keyword">return</span> predicted
+
+<span class="hljs-comment"># 使用测试数据进行推理</span>
+<span class="hljs-keyword">for</span> data, label <span class="hljs-keyword">in</span> test_dataset.create_tuple_iterator():
+    prediction = predict(data)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;预测结果: <span class="hljs-subst">{prediction}</span>, 实际标签: <span class="hljs-subst">{label}</span>&quot;</span>)
+    <span class="hljs-keyword">break</span>
+</code></pre>
+<h2 id="性能优化">性能优化</h2>
+<h3 id="1-启用自动混合精度">1. 启用自动混合精度</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 设置自动混合精度</span>
+context.set_context(enable_graph_kernel=<span class="hljs-literal">True</span>)
+network.to_float(ms.float16)
+</code></pre>
+<h3 id="2-启用图算融合">2. 启用图算融合</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 启用图算融合</span>
+context.set_context(enable_graph_kernel=<span class="hljs-literal">True</span>)
+</code></pre>
+<h3 id="3-使用profiler分析性能">3. 使用Profiler分析性能</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> mindspore.profiler <span class="hljs-keyword">import</span> Profiler
+
+<span class="hljs-comment"># 创建Profiler</span>
+profiler = Profiler(output_path=<span class="hljs-string">&#x27;./profiler_data&#x27;</span>)
+
+<span class="hljs-comment"># 训练代码</span>
+<span class="hljs-comment"># ...</span>
+
+<span class="hljs-comment"># 分析性能数据</span>
+profiler.analyse()
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>通过这个示例，您已经学会了：</p>
+<ol>
+<li>如何在Ascend NPU上搭建深度学习环境</li>
+<li>如何使用MindSpore构建和训练神经网络</li>
+<li>如何评估和保存模型</li>
+<li>如何进行模型推理</li>
+<li>如何优化模型性能</li>
+</ol>
+<h2 id="下一步">下一步</h2>
+<ol>
+<li>尝试更复杂的网络结构</li>
+<li>学习<a href="../performance/">性能优化技巧</a></li>
+<li>探索<a href="../frameworks/mindspore-guide.md">MindSpore高级特性</a></li>
+<li>尝试其他深度学习框架在Ascend NPU上的应用</li>
+</ol>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2025 个人知识分享网站. 保留所有权利.</p>
+  </footer>
+</body>
+</html>
