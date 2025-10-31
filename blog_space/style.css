@@ -1,62 +1,188 @@
-html{
-      margin: 0;
-      padding: 0;
-      height: 100%;
+@import url('../shared.css');
+
+/* 博客头部 */
+.blog-header {
+  text-align: center;
+  margin-bottom: 3rem;
 }
 
-/* Hide scrollbar for Chrome, Safari and Opera */
-body::-webkit-scrollbar {
-  display: none;
+.blog-header h1 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  font-size: 2.5rem;
+  position: relative;
+  display: inline-block;
 }
 
-/* Hide scrollbar for IE, Edge and Firefox */
-body {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+.blog-header h1::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 4px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  border-radius: 3px;
 }
 
-svg {
-      display: block;
-      width: 100%;
-      height: 100vh;
-      position: fixed;
-      top: 0;
-      left: 0;
+.blog-header p {
+  color: #7f8c8d;
+  font-size: 1.2rem;
+  max-width: 600px;
+  margin: 2rem auto 0;
 }
 
-.scrollElement {
-      position: absolute;
-      height: 6000px;
-      width: 100px;
-      top: 0;
-      z-index: 0;
+/* 博客文章卡片 */
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2.5rem;
+  margin-top: 2rem;
 }
 
-  .btn {
-      position: fixed;
-      bottom: 5%;
-      right: 0px;
-      transform: translateX(-50%);
-      border: 1px solid #fff;
-      border-radius: 5px;
-      font-size: 0.9rem;
-      padding: 0.5rem 0.7em;
-      background-color: transparent;
-      color: #ffffff;
-      font-family: Verdana, Geneva, Tahoma, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      cursor: pointer;
-      transition: all .3s;
-      z-index: 11;
+.blog-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+}
+
+.blog-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+
+.blog-image {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(135deg, #3498db, #8e44ad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+  position: relative;
+  overflow: hidden;
+}
+
+.blog-image::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.blog-card:hover .blog-image::before {
+  transform: translateX(100%);
+}
+
+.blog-content {
+  padding: 2rem;
+}
+
+.blog-content h3 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.blog-content h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  border-radius: 3px;
+}
+
+.blog-content p {
+  color: #7f8c8d;
+  margin-bottom: 1.5rem;
+  line-height: 1.7;
+}
+
+.blog-content .date {
+  font-size: 0.9rem;
+  color: #95a5a6;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.read-more {
+  display: inline-block;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  color: white;
+  padding: 10px 25px;
+  border-radius: 30px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.read-more::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: rgba(255,255,255,0.2);
+  transition: all 0.5s ease;
+  z-index: -1;
+}
+
+.read-more:hover::before {
+  width: 100%;
+}
+
+.read-more:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(52, 152, 219, 0.4);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .blog-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
   }
-
-  .btn_works {
-      left: 100px;
-      right: unset;
-      text-decoration: none;
+  
+  .blog-content {
+    padding: 1.5rem;
   }
+}
 
-  .btn:hover {
-      background: #ffffff;
-      color: #1B1734;
+@media (max-width: 480px) {
+  .blog-card {
+    padding: 1rem;
   }
+  
+  .blog-content {
+    padding: 1.2rem;
+  }
+  
+  .blog-content h3 {
+    font-size: 1.3rem;
+  }
+  
+  .blog-header h1 {
+    font-size: 2rem;
+  }
+}

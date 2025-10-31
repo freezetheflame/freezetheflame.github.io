@@ -1,56 +1,154 @@
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="favicon.ico" type="image/x-icon" />
-    <title>My HTML Test Page</title>
-    <!-- Inside a subdirectory called styles inside the current directory -->
-    <link rel="stylesheet" href="main_page.css">
-  </head>
-  <body>
-    <!--  get a button link to www.cousera.com and make the button in a css style-->
-    <a href="http://www.coursera.org" target="_blank">
-      <button class="button button-buttonmain">Coursera</button> 
-    </a>
-    <a href="https://sp21.datastructur.es/" target="_blank">
-      <button class="button button-buttonsub">Data Structure</button>
-    </a>
-    <a href="https://csdiy.wiki/" target="_blank">
-      <button class="button button-buttonsub2">CSDIY</button>
-    </a>
-    <a href="https://www.bilibili.com/video/BV1JE411w7Ub/?vd_source=cec3df857ded7ccdd234805aeaaf8f3f" target="_blank">
-      <button class="button button-buttonsub3">CS229</button>
-    </a>
-    <!--link a Markdown to the page-->
-    <a href="/inside_blog/README.md" target="_blank">
-      <button class="button button-buttonsub4">README</button>
-    </a>
-    <a href="photo_showing_place/photo.html">
-      <button class="button button-buttonsub5">pictures!!!</button>
-    </a>
-    <a href="https://gpt-of-mine.netlify.app">
-      <button class="button button-buttonsub11">GPT</button>
-    </a>
-    <script async src="https://cse.google.com/cse.js?cx=903ddd18d53d949e4">
-    </script>
-    <form action="https://cse.google.com/cse?cx=903ddd18d53d949e4" class="form">
-      <input type="text" name="wd" class="input"></input>
-      <input type="submit"  value="Google" class="btn"></input>
-    </form>
-    </a>
-    <a href="live_note/note&skills.html">
-      <button class="button button-buttonsub6">my notes</button>
-    </a>
-    <a href="trial.html">
-      <button class="button button-buttonsub7">testpage</button>
-    </a>
-    <a href="live_note/files/ML-advice.pdf">
-      <button class="button button-buttonsub8">ML-advice</button>
-    </a>
-    <a href="https://composingprograms.netlify.app/sicp-python/intro">
-      <button class="button button-buttonsub9">SICP</button>
-    </a>
-    <a href="http://composingprograms.com/">
-      <button class="button button-buttonsub10">SICP_origin</button>
-    </a>
-  </body>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="个人知识分享网站，分享编程技术、学习笔记和项目经验。涵盖机器学习、Python、前端开发等技术内容。">
+  <meta name="keywords" content="编程,学习笔记,技术博客,机器学习,Python,前端开发,算法">
+  <title>个人知识分享网站 - 技术博客与学习笔记</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="main_page.css">
+  <link rel="stylesheet" href="components.css">
+  <link rel="stylesheet" href="utilities.css">
+</head>
+<body>
+  <!-- 顶部导航栏 -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <h2>我的知识库</h2>
+      </div>
+      <nav class="nav-menu">
+        <ul>
+          <li><a href="#home">首页</a></li>
+          <li><a href="blog_space/blog.html">博客</a></li>
+          <li><a href="live_note/note&skills.html">笔记</a></li>
+          <li><a href="photo_showing_place/photo.html">相册</a></li>
+          <li><a href="sitemap.html">网站地图</a></li>
+          <li><a href="#contact">联系</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 主要内容区域 -->
+  <main class="main-content">
+    <section class="hero-section" id="home">
+      <div class="hero-content">
+        <h1>欢迎来到我的知识分享空间</h1>
+        <p>这里记录了我的学习笔记、技术心得和生活感悟。与你分享我的成长历程和思考。</p>
+        <div class="hero-buttons">
+          <a href="blog_space/index.html" class="btn primary-btn">浏览博客</a>
+          <a href="live_note/note&skills.html" class="btn secondary-btn">查看笔记</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="featured-section">
+      <h2>精选内容</h2>
+      <div class="content-grid">
+        <div class="card featured-card">
+          <div class="card-badge">热门</div>
+          <h3>📚 学习资源</h3>
+          <p>整理了各种在线课程和学习资料，帮助你快速掌握新技能</p>
+          <div class="card-links">
+            <a href="http://www.coursera.org" target="_blank" class="card-link">Coursera</a>
+            <a href="https://sp21.datastructur.es/" target="_blank" class="card-link">数据结构</a>
+            <a href="https://csdiy.wiki/" target="_blank" class="card-link">CSDIY</a>
+            <a href="https://www.bilibili.com/video/BV1JE411w7Ub/?vd_source=cec3df857ded7ccdd234805aeaaf8f3f" target="_blank" class="card-link">CS229</a>
+          </div>
+        </div>
+
+        <div class="card featured-card">
+          <div class="card-badge">推荐</div>
+          <h3>📝 技术笔记</h3>
+          <p>编程、算法、机器学习等技术笔记，记录学习过程中的重点</p>
+          <div class="card-links">
+            <a href="live_note/note&skills.html" class="card-link">我的笔记</a>
+            <a href="live_note/evenotes/CS229.html" class="card-link">CS229笔记</a>
+            <a href="live_note/evenotes/lambda.html" class="card-link">Lambda演算</a>
+            <a href="live_note/backend_notes/backend.html" class="card-link">后端笔记</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>📁 学习资料</h3>
+          <p>Python教程、代码示例和文档，实用的学习资源合集</p>
+          <div class="card-links">
+            <a href="live_note/files/python_tutorial/Numpy tutorial.ipynb" class="card-link">NumPy教程</a>
+            <a href="live_note/files/python_tutorial/class_example.py" class="card-link">类示例</a>
+            <a href="live_note/files/decision_tree_demo.ipynb" class="card-link">决策树示例</a>
+            <a href="live_note/files/ML-advice.pdf" class="card-link">ML建议</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>📖 编程书籍</h3>
+          <p>经典编程书籍和学习资源，深入理解计算机科学原理</p>
+          <div class="card-links">
+            <a href="https://composingprograms.netlify.app/sicp-python/intro" class="card-link">SICP-Python</a>
+            <a href="http://composingprograms.com/" class="card-link">SICP原版</a>
+            <a href="inside_blog/README.md" target="_blank" class="card-link">README</a>
+            <a href="gpt-of-mine.netlify.app" class="card-link">GPT应用</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 最新博客 -->
+    <section class="recent-posts">
+      <h2>最新博客</h2>
+      <div class="posts-grid">
+        <div class="post-card">
+          <div class="post-image">技术</div>
+          <div class="post-content">
+            <span class="post-date">2025年10月30日</span>
+            <h3>机器学习算法详解</h3>
+            <p>深入解析常见的机器学习算法及其应用场景</p>
+            <a href="blog_space/index.html" class="read-more">阅读更多</a>
+          </div>
+        </div>
+        
+        <div class="post-card">
+          <div class="post-image">编程</div>
+          <div class="post-content">
+            <span class="post-date">2025年10月25日</span>
+            <h3>Python高级编程技巧</h3>
+            <p>提升Python编程效率的实用技巧和最佳实践</p>
+            <a href="blog_space/index.html" class="read-more">阅读更多</a>
+          </div>
+        </div>
+        
+        <div class="post-card">
+          <div class="post-image">前端</div>
+          <div class="post-content">
+            <span class="post-date">2025年10月20日</span>
+            <h3>现代前端框架对比</h3>
+            <p>React、Vue和Angular的特性对比与选择指南</p>
+            <a href="blog_space/index.html" class="read-more">阅读更多</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 搜索框 -->
+    <section class="search-section">
+      <h2>搜索内容</h2>
+      <div class="search-container">
+        <script async src="https://cse.google.com/cse.js?cx=903ddd18d53d949e4"></script>
+        <form action="https://cse.google.com/cse?cx=903ddd18d53d949e4" class="search-form">
+          <input type="text" name="wd" class="search-input" placeholder="输入搜索关键词...">
+          <button type="submit" class="search-btn">搜索</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" id="contact">
+    <p>&copy; 2025 个人知识分享网站. 保留所有权利.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
 </html>

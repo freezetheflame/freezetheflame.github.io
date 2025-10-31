@@ -1,37 +1,133 @@
-body {
-    background-image: url("background.jpg");
-    background-size: cover;
+@import url('../shared.css');
+
+/* 资源卡片 */
+.content-section h1 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.content-section h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100px;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  border-radius: 3px;
+}
+
+.content-section p {
+  color: #7f8c8d;
+  margin-bottom: 2.5rem;
+  font-size: 1.2rem;
+  line-height: 1.7;
+}
+
+.resource-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 15px;
+  padding: 2.5rem;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  margin-bottom: 2.5rem;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+}
+
+.resource-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+
+.resource-card h3 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  position: relative;
+  padding-bottom: 0.8rem;
+}
+
+.resource-card h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  border-radius: 3px;
+}
+
+.resource-card p {
+  color: #7f8c8d;
+  margin-bottom: 2rem;
+  line-height: 1.7;
+}
+
+.resource-link {
+  display: inline-block;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  color: white;
+  padding: 12px 30px;
+  border-radius: 30px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.resource-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: rgba(255,255,255,0.2);
+  transition: all 0.5s ease;
+  z-index: -1;
+}
+
+.resource-link:hover::before {
+  width: 100%;
+}
+
+.resource-link:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(52, 152, 219, 0.4);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .resource-card {
+    padding: 2rem 1.5rem;
   }
-.button{
-    background-color: #4CAF50; /* Green */
-    border: none;
-    color: white;
-    padding: 15px 32px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin: 4px 2px;
-    cursor: pointer;
+  
+  .content-section h1 {
+    font-size: 1.7rem;
+  }
+  
+  .content-section p {
+    font-size: 1.1rem;
+  }
 }
-.button:hover {
-    background-color: #3e8e41;
-}
-.button-buttonmain{
-    /*write its place at the left corner*/
-    position: absolute;
-    top: 5px;
-    left: 5px;
-}
-/*write a sub button at the left corner*/
-.button-buttonsub{
-    position: absolute;
-    top: 5px;
-    left: 150px;
-}
-/*write a sub button at the left corner*/
-.button-buttonsub2{
-    position: absolute;
-    top: 5px;
-    left: 320px;
+
+@media (max-width: 480px) {
+  .resource-card {
+    padding: 1.5rem 1.2rem;
+  }
+  
+  .resource-card h3 {
+    font-size: 1.3rem;
+  }
+  
+  .resource-link {
+    padding: 10px 25px;
+  }
 }

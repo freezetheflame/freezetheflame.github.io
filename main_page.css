@@ -1,198 +1,472 @@
-body {
-    background-image: url("hello.jpg");
-    background-size: cover;
-    background-repeat: repeat-y;
+/* 英雄区域 */
+.hero-section {
+  background: linear-gradient(135deg, #3498db, #8e44ad);
+  color: white;
+  padding: 5rem 2rem;
+  border-radius: 15px;
+  text-align: center;
+  margin-bottom: 3rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  transform: rotate(30deg);
+  animation: rotate 15s linear infinite;
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.hero-content h1 {
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  animation: fadeInDown 1s ease-out;
+}
+
+.hero-content p {
+  font-size: 1.3rem;
+  margin-bottom: 2.5rem;
+  opacity: 0.9;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  animation: fadeInUp 1s ease-out 0.3s forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  animation: fadeIn 1s ease-out 0.6s forwards;
+  opacity: 0;
+}
+
+/* 精选内容区域 */
+.featured-section {
+  margin-bottom: 3rem;
+}
+
+.featured-section h2 {
+  color: #2c3e50;
+  margin-bottom: 2rem;
+  font-size: 2rem;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.featured-section h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100px;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  border-radius: 3px;
+}
+
+/* 内容网格 */
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2.5rem;
+  margin-bottom: 3rem;
+}
+
+.card-links {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* 卡片徽章 */
+.card-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 30px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  z-index: 1;
+}
+
+.featured-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.featured-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+}
+
+/* 最新博客 */
+.recent-posts {
+  margin-bottom: 3rem;
+}
+
+.recent-posts h2 {
+  color: #2c3e50;
+  margin-bottom: 2rem;
+  font-size: 2rem;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.recent-posts h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100px;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  border-radius: 3px;
+}
+
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2.5rem;
+}
+
+.post-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+}
+
+.post-card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+
+.post-image {
+  width: 100%;
+  height: 150px;
+  background: linear-gradient(135deg, #3498db, #8e44ad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.post-content {
+  padding: 2rem;
+}
+
+.post-date {
+  font-size: 0.9rem;
+  color: #95a5a6;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.post-content h3 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.post-content h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  border-radius: 3px;
+}
+
+.post-content p {
+  color: #7f8c8d;
+  margin-bottom: 1.5rem;
+  line-height: 1.7;
+}
+
+/* 网站地图 */
+.sitemap-container {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 15px;
+  padding: 2.5rem;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  margin-bottom: 3rem;
+  border: 1px solid rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+}
+
+.sitemap-section {
+  margin-bottom: 2rem;
+}
+
+.sitemap-section h2 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  position: relative;
+  padding-bottom: 0.8rem;
+}
+
+.sitemap-section h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  border-radius: 3px;
+}
+
+.sitemap-list {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.sitemap-list li {
+  padding: 0.8rem 0;
+  border-bottom: 1px dashed #eee;
+}
+
+.sitemap-list a {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.sitemap-list a:hover {
+  color: #2980b9;
+  padding-left: 5px;
+}
+
+.card-link {
+  color: #3498db;
+  text-decoration: none;
+  padding: 0.7rem 0;
+  border-bottom: 1px dashed #eee;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+.card-link::before {
+  content: '→';
+  margin-right: 10px;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.3s ease;
+}
+
+.card-link:hover {
+  color: #2980b9;
+  padding-left: 10px;
+}
+
+.card-link:hover::before {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* 搜索区域 */
+.search-section {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  padding: 2.5rem;
+  border-radius: 15px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.search-section h2 {
+  color: #2c3e50;
+  margin-bottom: 2rem;
+  font-size: 2rem;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.search-section h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  border-radius: 3px;
+}
+
+.search-container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.search-form {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.search-input {
+  flex: 1;
+  padding: 15px 25px;
+  border: 2px solid #ddd;
+  border-radius: 30px;
+  font-size: 1.1rem;
+  outline: none;
+  transition: all 0.3s ease;
+  background-color: #fff;
+}
+
+.search-input:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.search-btn {
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+.search-btn:hover {
+  background: linear-gradient(90deg, #2980b9, #1a2530);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(52, 152, 219, 0.4);
+}
+
+.content-section h1 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.content-section h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100px;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2c3e50);
+  border-radius: 3px;
+}
+
+.content-section p {
+  color: #7f8c8d;
+  margin-bottom: 2.5rem;
+  font-size: 1.2rem;
+  line-height: 1.7;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .hero-content h1 {
+    font-size: 2.2rem;
   }
-.button{
-    background-color: #4CAF50; /* Green */
-    border: none;
-    color: white;
-    padding: 15px 32px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin: 4px 2px;
-    cursor: pointer;
-}
-.button:hover {
-    background-color: #3e8e41;
-}
-.button-buttonmain{
-    /*write its place at the left corner*/
-    position: absolute;
-    top: 5px;
-    left: 5px;
-}
-/*write a sub button at the left corner*/
-.button-buttonsub{
-    position: absolute;
-    top: 5px;
-    left: 150px;
-}
-/*write a sub button at the left corner*/
-.button-buttonsub2{
-    position: absolute;
-    top: 5px;
-    left: 320px;
-}
-/*write a sub button at the left corner*/
-.button-buttonsub3{
-    position: absolute;
-    top: 5px;
-    left: 460px;
-}
-/*write a sub button at the left corner*/
-.button-buttonsub4{
-    position: absolute;
-    top: 5px;
-    left: 660px;
-}
-/*write a sub button at the left corner*/
-.button-buttonsub5{
-    position: absolute;
-    top: 5px;
-    left: 830px;
-}
-.button-buttonsub6{
-    position: absolute;
-    /*on the second row*/
-    top: 70px;
-    left: 5px;
-}
-.button-buttonsub7{
-    position: absolute;
-    /*on the second row*/
-    top: 70px;
-    left: 150px;
-}
-.button-buttonsub8{
-    position: absolute;
-    /*on the second row*/
-    top: 970px;
-    left: 320px;
-}
-.button-buttonsub9{
-    position: absolute;
-    /*on the second row*/
-    top: 70px;
-    left: 460px;
-}
-.button-buttonsub10{
-    position: absolute;
-    /*on the second row*/
-    top: 70px;
-    left: 300px;
-}
-.button-buttonsub11{
-    position: absolute;
-    /*on the second row*/
-    top: 70px;
-    left: 660px;
-}
-/*get the form in the centre place*/
-.form{
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 200px;
-    height: 200px;
-    background: #fff;
-    padding: 40px;
-    box-sizing: border-box;
-    box-shadow: 0 15px 25px rgba(0,0,0,.5);
-    border-radius: 10px;
-}
-/*make the input look better*/
-.input{
-    width: 100%;
-    margin-bottom: 20px;
-    background-color: white;
-    background-size: 400%;
-    font-family: "montserrat";
-    animation: bganimation 15s infinite;
-}
-.btn {
-    display: block;
-    /* background-color: rgba(156, 39, 176, .5); */
-    padding: 14px 0;
-    color: #fff;
-    cursor: pointer;
-    margin-top: 8px;
-    width: 100%;
-    border: 1px solid #aaa;
-    border-radius: 10px;
-    font-size: 18px;
-    font-weight: 600;
-}
-.menu {
-    width: 2300px;
-    height: 50px;
-    padding: 20px 20px;
-    background-color: rgba(0, 0, 0, 0.5);
-    margin: 50px 0 0 50px;
-    position: relative;
-}
-
-.menu .item {
-    float: left;
-    height: 42px;
-    width: 80px;
-    /* border: 1px solid red; */
-    color: #fff;
-    font-size: 14px;
-    line-height: 42px;
-    padding-left: 40px;
-    cursor: pointer;
-}
-
-.menu .item:hover {
-    background-color: #ff6700;
-    background-image: url('images/right-jiantou2.png');
-}
-
-/* 右侧二级菜单 */
-.menu .item .subitem {
-    min-width: 250px;
-    height: 460px;
-    background-color: #fff;
-    border: 1px solid #666;
-    position: absolute;
-    top: 0;
-    left: 100%;
-    box-sizing: border-box;
-    /* 六行单元格平分整个区域 */
-    display: grid;
-    grid-template-rows: repeat(6, 1fr);
-    grid-template-columns: 250px;
-    /* 排列方式设置为先列后行 */
-    grid-auto-flow: column;
-    /* 设置隐式网格宽度 */
-    grid-auto-columns: 250px;
-    padding: 20px;
-    /* 初始默认隐藏 */
-    display: none;
-}
-a {
-    text-decoration: none;
-}
-.item .subitem a {
-    /* border: 1px solid red; */
-    color: #000;
-    display: flex;
-    /* 垂直方向居中对齐,防止随父元素高度而被拉伸 */
+  
+  .hero-content p {
+    font-size: 1.1rem;
+  }
+  
+  .hero-buttons {
+    flex-direction: column;
     align-items: center;
+    gap: 1rem;
+  }
+  
+  .search-form {
+    flex-direction: column;
+  }
+  
+  .search-section {
+    padding: 2rem 1.5rem;
+  }
 }
 
-.item .subitem a img {
-    margin-right: 10px;
-}
-
-.item .subitem a:hover {
-    color: #ff6700;
-}
-
-.item:hover .subitem {
-    display: grid;
+@media (max-width: 480px) {
+  .hero-section {
+    padding: 3rem 1.5rem;
+  }
+  
+  .content-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .card {
+    padding: 1.5rem;
+  }
+  
+  .search-section {
+    padding: 1.5rem 1rem;
+  }
+  
+  .search-input, .search-btn {
+    padding: 12px 20px;
+    font-size: 1rem;
+  }
+  
+  .posts-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .post-content {
+    padding: 1.5rem;
+  }
+  
+  .sitemap-container {
+    padding: 1.5rem;
+  }
 }
