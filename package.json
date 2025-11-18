@@ -1,22 +1,21 @@
 {
-  "name": "personal-knowledge-website",
+  "name": "my-blog",
   "version": "1.0.0",
-  "description": "Personal knowledge sharing website with automatic Markdown to HTML conversion",
+  "description": "A simple blog system based on Markdown files",
   "main": "index.js",
   "scripts": {
     "convert": "node .github/scripts/convert-markdown.js",
-    "update-index": "node .github/scripts/update-posts-index.js"
+    "create-post": "node .github/scripts/create-post.js",
+    "start": "npx serve ."
   },
   "dependencies": {
     "marked": "^4.3.0",
     "highlight.js": "^11.7.0"
   },
-  "keywords": [
-    "markdown",
-    "html",
-    "static-site",
-    "knowledge-sharing"
-  ],
-  "author": "Personal Knowledge Website",
-  "license": "MIT"
+  "devDependencies": {
+    "serve": "^14.2.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

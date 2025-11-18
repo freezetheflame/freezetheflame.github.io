@@ -19,8 +19,52 @@ marked.setOptions({
   langPrefix: 'hljs language-',
 });
 
+// Function to parse frontmatter from markdown
+function parseFrontmatter(content) {
+  const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n/;
+  const match = content.match(frontmatterRegex);
+  
+  if (match) {
+    const frontmatter = {};
+    const lines = match[1].split('\n');
+    
+    lines.forEach(line => {
+      const [key, value] = line.split(':').map(str => str.trim());
+      if (key && value) {
+        if (key === 'tags') {
+          // Parse tags array
+          frontmatter[key] = value.replace(/[\[\]]/g, '').split(',').map(tag => tag.trim().replace(/^['"]|['"]$/g, ''));
+        } else {
+          frontmatter[key] = value.replace(/^['"]|['"]$/g, '');
+        }
+      }
+    });
+    
+    return {
+      frontmatter,
+      content: content.replace(frontmatterRegex, '')
+    };
+  }
+  
+  return {
+    frontmatter: {},
+    content
+  };
+}
+
 // Function to create HTML template
-function createHtmlTemplate(title, content) {
+function createHtmlTemplate(title, content, tags = [], date = '') {
+  // Create tags HTML
+  const tagsHtml = tags.length > 0 
+    ? `<div class="post-tags">
+        <span>标签:</span>
+        ${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+      </div>`
+    : '';
+  
+  // Create date HTML
+  const dateHtml = date ? `<div class="post-date">发布于: ${date}</div>` : '';
+  
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -123,6 +167,32 @@ function createHtmlTemplate(title, content) {
       background: #f8f9fa;
       font-weight: bold;
     }
+    
+    .post-meta {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .post-date {
+      color: #7f8c8d;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .post-tags {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .tag {
+      background: #3498db;
+      color: white;
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
   </style>
 </head>
 <body>
@@ -130,15 +200,12 @@ function createHtmlTemplate(title, content) {
   <header class="navbar">
     <div class="nav-container">
       <div class="logo">
-        <h2>我的知识库</h2>
+        <h2>我的博客</h2>
       </div>
       <nav class="nav-menu">
         <ul>
           <li><a href="../index.html">首页</a></li>
-          <li><a href="../blog_space/blog.html">博客</a></li>
-          <li><a href="../live_note/note&skills.html">笔记</a></li>
-          <li><a href="../photo_showing_place/photo.html">相册</a></li>
-          <li><a href="../sitemap.html">网站地图</a></li>
+          <li><a href="../posts/index.html">文章</a></li>
           <li><a href="#contact">联系</a></li>
         </ul>
       </nav>
@@ -149,12 +216,16 @@ function createHtmlTemplate(title, content) {
   <main class="main-content">
     <div class="markdown-content">
       <h1>${title}</h1>
+      <div class="post-meta">
+        ${dateHtml}
+        ${tagsHtml}
+      </div>
       ${content}
     </div>
   </main>
 
   <footer class="footer">
-    <p>&copy; 2025 个人知识分享网站. 保留所有权利.</p>
+    <p>&copy; 2025 我的博客. 保留所有权利.</p>
   </footer>
 </body>
 </html>`;
@@ -173,18 +244,24 @@ function processMarkdownFiles(dir) {
     } else if (path.extname(file) === '.md') {
       const markdownContent = fs.readFileSync(filePath, 'utf8');
       
-      // Extract title from first line (assuming it's a heading)
-      const lines = markdownContent.split('\n');
-      let title = 'Markdown Content';
-      if (lines[0].startsWith('# ')) {
-        title = lines[0].substring(2);
+      // Parse frontmatter
+      const { frontmatter, content } = parseFrontmatter(markdownContent);
+      
+      // Extract title from frontmatter or first line
+      let title = frontmatter.title || 'Markdown Content';
+      if (!frontmatter.title && content.startsWith('# ')) {
+        title = content.split('\n')[0].substring(2);
       }
       
+      // Extract tags and date
+      const tags = frontmatter.tags || [];
+      const date = frontmatter.date || '';
+      
       // Convert markdown to HTML
-      const htmlContent = marked.parse(markdownContent);
+      const htmlContent = marked.parse(content);
       
       // Create HTML template
-      const fullHtml = createHtmlTemplate(title, htmlContent);
+      const fullHtml = createHtmlTemplate(title, htmlContent, tags, date);
       
       // Write HTML file
       const htmlFilePath = filePath.replace('.md', '.html');
@@ -197,8 +274,9 @@ function processMarkdownFiles(dir) {
 
 // Process markdown files in specific directories
 const directoriesToProcess = [
-  'live_note',
+  'posts',
   'blog_space',
+  'live_note',
   'inside_blog',
   'ascend_npu'
 ];
