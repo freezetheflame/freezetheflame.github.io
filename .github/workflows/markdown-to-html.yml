@@ -1,10 +1,7 @@
 name: Convert Markdown to HTML
 
 on:
-  push:
-    branches: [ simple ]
-  pull_request:
-    branches: [ simple ]
+  workflow_dispatch:
 
 jobs:
   convert-markdown:
@@ -23,7 +20,7 @@ jobs:
         
     - name: Install dependencies
       run: |
-        npm install marked highlight.js
+        npm ci
         
     - name: Convert Markdown files to HTML
       run: |
