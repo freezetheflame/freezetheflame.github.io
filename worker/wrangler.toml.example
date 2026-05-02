@@ -8,4 +8,4 @@ USER_DAILY_LIMIT = "30"
 
 [[kv_namespaces]]
 binding = "CHATBOT_RATE_LIMIT"
-id = "replace-with-your-cloudflare-kv-namespace-id"
+id = "f9535fec960e479fae1a4ea42e2d1fcc"
