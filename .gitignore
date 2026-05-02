@@ -4,6 +4,7 @@ node_modules/
 # Build outputs
 _posts/
 *.html
+homepage-*.png
 
 # Logs
 *.log
