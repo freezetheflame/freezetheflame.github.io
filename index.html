@@ -26,6 +26,42 @@
       color: #2c3e50;
       margin: 0;
     }
+
+    .site-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .site-nav a {
+      color: #2c3e50;
+      text-decoration: none;
+      background: #f8f9fa;
+      border: 1px solid #e5e8eb;
+      border-radius: 4px;
+      padding: 0.45rem 0.8rem;
+      font-weight: bold;
+    }
+
+    .site-nav a:hover {
+      color: white;
+      background: #3498db;
+      border-color: #3498db;
+    }
+
+    .site-nav .bot-link {
+      color: white;
+      background: #2b725f;
+      border-color: #2b725f;
+    }
+
+    .site-nav .bot-link:hover {
+      background: #185948;
+      border-color: #185948;
+    }
     
     .container {
       display: grid;
@@ -159,6 +195,11 @@
   <header>
     <h1>我的博客</h1>
     <p>记录学习与思考的地方</p>
+    <nav class="site-nav" aria-label="主导航">
+      <a href="index.html">首页</a>
+      <a href="posts/index.html">文章</a>
+      <a href="chatbot.html" class="bot-link">Blog Bot</a>
+    </nav>
   </header>
   
   <div class="container">
