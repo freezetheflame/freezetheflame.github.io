@@ -1,0 +1,11 @@
+name = "blog-deepseek-bot"
+main = "deepseek-chat-worker.js"
+compatibility_date = "2026-05-02"
+
+[vars]
+DEEPSEEK_MODEL = "deepseek-v4-flash"
+USER_DAILY_LIMIT = "30"
+
+[[kv_namespaces]]
+binding = "CHATBOT_RATE_LIMIT"
+id = "replace-with-your-cloudflare-kv-namespace-id"

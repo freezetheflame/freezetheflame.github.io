@@ -146,6 +146,9 @@
       margin-top: 1rem;
       font-weight: bold;
     }
+    .blog-bot-link { margin-left: 0.75rem; background: #2b725f; }
+
+    .blog-bot-link:hover { background: #185948; }
     
     .cta-button:hover {
       background: #2980b9;
@@ -177,6 +180,7 @@
       </ul>
       
       <a href="posts/index.html" class="cta-button">查看所有文章</a>
+      <a href="chatbot.html" class="cta-button blog-bot-link">Blog Bot</a>
     </main>
     
     <aside class="sidebar">
@@ -212,5 +216,13 @@
       });
     });
   </script>
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://YOUR_WORKER_SUBDOMAIN.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="assets/chatbot-widget.js" defer></script>
 </body>
 </html>

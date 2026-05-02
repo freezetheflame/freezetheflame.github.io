@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blog Bot</title>
+  <link rel="stylesheet" href="assets/chatbot.css">
+</head>
+<body>
+  <main class="chat-shell">
+    <section class="chat-panel" aria-label="Blog Bot">
+      <header class="chat-header">
+        <div>
+          <p class="eyebrow">Blog Bot</p>
+          <h1>和博客助手聊一聊</h1>
+        </div>
+        <a class="home-link" href="index.html">返回首页</a>
+      </header>
+
+      <div class="chat-status" id="chat-status" role="status" aria-live="polite">
+        已准备好
+      </div>
+
+      <ol class="message-list" id="message-list" aria-live="polite">
+        <li class="message bot">
+          <div class="message-bubble">
+            你好，我可以帮你快速理解这个博客里的内容，也可以回答一些简单问题。每天有使用次数限制，请尽量把问题说清楚一点。
+          </div>
+        </li>
+      </ol>
+
+      <form class="composer" id="chat-form">
+        <label class="sr-only" for="chat-input">输入问题</label>
+        <textarea id="chat-input" name="message" rows="3" maxlength="1200" placeholder="输入你的问题..." required></textarea>
+        <div class="composer-actions">
+          <span id="quota-hint">每日限额由服务端控制</span>
+          <button type="submit">发送</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://YOUR_WORKER_SUBDOMAIN.workers.dev/chat",
+      title: "Blog Bot"
+    };
+  </script>
+  <script src="assets/chatbot.js" defer></script>
+</body>
+</html>
