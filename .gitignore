@@ -4,7 +4,11 @@ node_modules/
 # Build outputs
 _posts/
 *.html
+!index.html
+!chatbot.html
+!posts/**/*.html
 homepage-*.png
+*-preview.png
 
 # Logs
 *.log

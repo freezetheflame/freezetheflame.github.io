@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文章 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../index.html">首页</a>
+        <a href="index.html" aria-current="page">文章</a>
+        <a href="../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero-small">
+        <p class="eyebrow">POSTS / WRITING INDEX</p>
+        <h1 class="page-title">文章中心</h1>
+        <p class="page-copy">这里保留当前可正常访问的博客入口。旧的乱码样例和重复页面不会进入阅读导航。</p>
+      </section>
+
+      <section class="content-layout" aria-label="文章列表">
+        <div class="panel content-main">
+          <p class="section-kicker">AVAILABLE POSTS</p>
+          <h2 class="section-title">可阅读文章</h2>
+          <p class="section-intro">当前共 1 篇文章。</p>
+          <ul class="post-grid">
+            <li class="post-card">
+              <h3><a href="2025-11-18/我的第一篇博客文章.html">我的第一篇博客文章</a></h3>
+              <div class="post-meta">
+                <span>2025-11-18</span>
+                <span class="tag">博客</span>
+                <span class="tag">入门</span>
+                <span class="tag">教程</span>
+              </div>
+            </li>
+          </ul>
+          <div class="button-row">
+            <a href="../index.html" class="button secondary">返回首页</a>
+            <a href="../chatbot.html" class="button primary">询问 Blog Bot</a>
+          </div>
+        </div>
+        <aside class="panel side-panel" aria-label="文章侧栏">
+          <section class="side-block">
+            <h2>目录状态</h2>
+            <p>文章中心只展示稳定可访问的内容。</p>
+          </section>
+        </aside>
+      </section>
+    </main>
+  </div>
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

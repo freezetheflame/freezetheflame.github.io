@@ -2,9 +2,9 @@ name: Convert Markdown to HTML
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ simple ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ simple ]
 
 jobs:
   convert-markdown:
@@ -24,11 +24,6 @@ jobs:
     - name: Install dependencies
       run: |
         npm install marked highlight.js
-        
-    - name: Create output directories
-      run: |
-        mkdir -p blog_posts
-        mkdir -p docs
         
     - name: Convert Markdown files to HTML
       run: |
