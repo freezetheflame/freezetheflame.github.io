@@ -95,6 +95,7 @@ function renderPostsIndex(posts) {
       <nav class="site-nav" aria-label="主导航">
         <a href="../index.html">首页</a>
         <a href="index.html" aria-current="page">文章</a>
+        <a href="../llm-wiki/index.html">LLM Wiki</a>
         <a href="../chatbot.html" class="bot-link">Blog Bot</a>
       </nav>
     </header>

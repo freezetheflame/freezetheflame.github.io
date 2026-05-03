@@ -1,0 +1,263 @@
+:root {
+  color-scheme: light;
+  --ink: #20251f;
+  --muted: #69706a;
+  --line: #e3dbce;
+  --paper: #f8f5ee;
+  --panel: rgba(255, 252, 246, 0.9);
+  --accent: #2b725f;
+  --accent-2: #b76545;
+  --focus: #d79b3f;
+  --shadow: 0 24px 70px rgba(36, 42, 35, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) 1fr;
+  color: var(--ink);
+  background:
+    linear-gradient(120deg, #f8f5ee 0%, #eef4ef 48%, #f4f0e8 100%);
+  font: 16px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.sidebar {
+  min-height: 100vh;
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 12px 0 36px rgba(36, 42, 35, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.home-link {
+  width: fit-content;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 850;
+}
+
+.brand {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.brand small,
+.reader-header p,
+.page-link small,
+.search span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.search {
+  display: grid;
+  gap: 6px;
+}
+
+.search input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: #fffdf8;
+}
+
+.search input:focus {
+  outline: 3px solid color-mix(in srgb, var(--focus), transparent 55%);
+  border-color: var(--accent);
+}
+
+.page-list {
+  display: grid;
+  gap: 8px;
+  overflow: auto;
+}
+
+.page-link {
+  display: grid;
+  gap: 3px;
+  padding: 10px 11px;
+  min-height: 62px;
+  text-decoration: none;
+  color: var(--ink);
+  border: 1px solid transparent;
+  border-radius: 7px;
+}
+
+.page-link:hover,
+.page-link.active {
+  background: #fffdf8;
+  border-color: var(--line);
+  box-shadow: 0 10px 24px rgba(36, 42, 35, 0.06);
+}
+
+.page-link.active span {
+  color: var(--accent);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: auto;
+}
+
+.tags button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fffdf8;
+  color: var(--muted);
+  padding: 5px 9px;
+  cursor: pointer;
+}
+
+.reader {
+  min-width: 0;
+  padding: 46px clamp(24px, 6vw, 86px);
+}
+
+.top-nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 30px;
+}
+
+.top-nav a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: rgba(255, 252, 246, 0.82);
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 750;
+}
+
+.top-nav a:hover {
+  color: #fff;
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.reader-header {
+  max-width: 880px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+}
+
+.reader-header h1 {
+  margin: 0;
+  font-size: clamp(32px, 5vw, 58px);
+  line-height: 1.02;
+}
+
+.reader-header p {
+  margin: 0 0 10px;
+}
+
+.content {
+  max-width: 880px;
+  border: 1px solid rgba(227, 219, 206, 0.95);
+  border-radius: 8px;
+  background: rgba(255, 252, 246, 0.82);
+  box-shadow: var(--shadow);
+  padding: 30px;
+}
+
+.content h1 {
+  display: none;
+}
+
+.content h2 {
+  margin-top: 34px;
+  font-size: 24px;
+}
+
+.content h3 {
+  margin-top: 26px;
+  font-size: 18px;
+}
+
+.content p,
+.content li {
+  color: #263244;
+}
+
+.content a {
+  color: var(--accent);
+  font-weight: 650;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.content code {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 5px;
+  background: #f4f7fa;
+}
+
+.content pre {
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 14px;
+  background: #101722;
+  color: #e8edf5;
+}
+
+.error {
+  color: var(--accent-2);
+}
+
+@media (max-width: 820px) {
+  body {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .page-list {
+    max-height: 260px;
+  }
+
+  .top-nav {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .reader,
+  .sidebar,
+  .content {
+    padding: 16px;
+  }
+
+  .top-nav a {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}

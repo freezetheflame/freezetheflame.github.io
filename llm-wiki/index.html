@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LLM Wiki | Freeze the Flame</title>
+    <link rel="stylesheet" href="/llm-wiki/styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="home-link" href="../index.html">← Freeze the Flame</a>
+      <div class="brand">
+        <span>LLM Wiki</span>
+        <small>updated <b data-updated></b></small>
+      </div>
+      <label class="search">
+        <span>Search</span>
+        <input data-search type="search" placeholder="concept, source, workflow..." />
+      </label>
+      <nav data-page-list class="page-list" aria-label="Wiki pages"></nav>
+      <div class="tags" data-tag-list></div>
+    </aside>
+    <main class="reader">
+      <nav class="top-nav" aria-label="站点导航">
+        <a href="../index.html">首页</a>
+        <a href="../posts/index.html">文章</a>
+        <a href="../chatbot.html">Blog Bot</a>
+      </nav>
+      <header class="reader-header">
+        <p data-meta></p>
+        <h1 data-title></h1>
+      </header>
+      <article data-content class="content"></article>
+    </main>
+    <script type="module" src="/llm-wiki/app.js"></script>
+  </body>
+</html>

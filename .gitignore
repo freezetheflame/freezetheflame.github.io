@@ -7,8 +7,11 @@ _posts/
 !index.html
 !chatbot.html
 !posts/**/*.html
+!llm-wiki/**/*.html
 homepage-*.png
 *-preview.png
+.chrome-tmp/
+.chrome-tmp2/
 
 # Logs
 *.log

@@ -106,6 +106,7 @@ function createHtmlTemplate(filePath, title, content, tags = [], date = '') {
       <nav class="site-nav" aria-label="主导航">
         <a href="${prefix}/index.html">首页</a>
         <a href="${prefix}/posts/index.html">文章</a>
+        <a href="${prefix}/llm-wiki/index.html">LLM Wiki</a>
         <a href="${prefix}/chatbot.html" class="bot-link">Blog Bot</a>
       </nav>
     </header>
