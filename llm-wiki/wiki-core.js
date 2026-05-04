@@ -60,6 +60,10 @@ export function searchPages(pages, query) {
     .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
 }
 
+export function readerPages(pages) {
+  return pages.filter((page) => page.audience !== "maintenance");
+}
+
 export function markdownToHtml(markdown) {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const html = [];

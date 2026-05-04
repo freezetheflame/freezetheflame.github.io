@@ -11,28 +11,23 @@ Start here. This wiki is designed to be read and maintained by both humans and L
 - [[wiki/concepts/compilation-over-retrieval.md|Compilation Over Retrieval]]
 - [[wiki/concepts/memory-harness.md|Memory Harness]]
 
-## Agent Memory
+## Columns
 
-- [[agent/profile.md|Wiki Agent Profile]]
-- [[agent/operating-rules.md|Wiki Agent Operating Rules]]
-- [[agent/memory/decisions.md|Decisions]]
-- [[agent/memory/source-ledger.md|Source Ledger]]
-- [[agent/memory/user-preferences.md|User Preferences]]
-- [[agent/memory/open-questions.md|Open Questions]]
-- [[agent/memory/concepts.md|Concepts]]
+- [[wiki/columns/ai-se-testing/index.md|AI SE Testing Column]]
+- [[wiki/columns/ai-se-testing/reading-list.md|AI SE Testing Reading List]]
+- [[wiki/columns/ai-se-testing/test-generation.md|Test Generation]]
+- [[wiki/columns/ai-se-testing/swe-agent-evaluation.md|SWE Agent Evaluation]]
+- [[wiki/columns/ai-se-testing/ci-and-regression.md|CI And Regression]]
+- [[wiki/columns/ai-se-testing/testing-frameworks.md|Testing Frameworks]]
 
 ## Workflows
 
 - [[wiki/workflows/ingest.md|Ingest Workflow]]
 - [[wiki/workflows/query.md|Query Workflow]]
 - [[wiki/workflows/lint.md|Lint Workflow]]
-- [[agent/skills/ingest-source.md|Agent Skill: Ingest Source]]
-- [[agent/skills/synthesize-page.md|Agent Skill: Synthesize Page]]
-- [[agent/skills/maintain-memory.md|Agent Skill: Maintain Memory]]
-- [[agent/skills/propose-pr.md|Agent Skill: Propose PR]]
 
 ## Expansion Backlog
 
-- Add a page for local model/runtime setup if this wiki will track experiments.
-- Add a benchmark page if you use the wiki to compare tools or papers.
+- Add a local model/runtime page when the wiki agent chat layer is implemented.
+- Add experiment logs once AI testing prototypes begin.
 - Add a glossary once more than ten recurring terms appear.

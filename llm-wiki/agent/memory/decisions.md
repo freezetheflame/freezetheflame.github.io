@@ -7,3 +7,7 @@ Shared project memory should live in `agent/memory/` so multiple computers can s
 ## 2026-05-04: Treat This Repository as Public
 
 All committed source notes, memory, and wiki pages must be safe for a public GitHub repository.
+
+## 2026-05-04: Separate Reader Content From Maintenance Content
+
+Reader-facing wiki pages should be visible in the default browser navigation. Agent skills, operating rules, and project maintenance pages should be marked as maintenance content and kept out of the default reader view.

@@ -2,6 +2,9 @@
 
 ## 2026-05-04
 
+- Added the AI SE Testing column with a curated reading list and topic pages for test generation, SWE agent evaluation, CI/regression, and testing frameworks.
+- Hid agent maintenance pages from the default reader navigation by adding reader-vs-maintenance page audience metadata.
+- Moved maintenance links into `wiki/meta/project-maintenance.md`.
 - Added public wiki agent workspace under `agent/`, including profile, operating rules, skills, and repo-synced project memory.
 - Added `.gitignore` entries for `.wiki-agent/`, `.env`, local files, and `node_modules/`.
 - Ingested the WeChat article "微软M*：自进化的记忆Harness" as metadata plus original synthesis.

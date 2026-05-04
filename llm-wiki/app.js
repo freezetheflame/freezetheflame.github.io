@@ -1,8 +1,9 @@
-import { markdownToHtml, searchPages } from "./wiki-core.js";
+import { markdownToHtml, readerPages, searchPages } from "./wiki-core.js";
 import { wikiManifest } from "./wiki-data.js";
 
 const state = {
   pages: wikiManifest.pages,
+  readerPages: readerPages(wikiManifest.pages),
   loaded: new Map(),
   currentPath: "wiki/index.md",
 };
@@ -17,7 +18,7 @@ const meta = document.querySelector("[data-meta]");
 async function init() {
   document.querySelector("[data-updated]").textContent = wikiManifest.updated;
   renderTags();
-  renderPageList(state.pages);
+  renderPageList(state.readerPages);
   searchInput.addEventListener("input", handleSearch);
   window.addEventListener("hashchange", route);
   await route();
@@ -27,7 +28,7 @@ async function route() {
   const path = decodeURIComponent(location.hash.replace(/^#\//, "")) || "wiki/index.md";
   state.currentPath = path;
   await renderPage(path);
-  renderPageList(searchPages(state.pages, searchInput.value));
+  renderPageList(searchPages(state.readerPages, searchInput.value));
 }
 
 async function renderPage(path) {
@@ -62,7 +63,7 @@ async function loadMarkdown(path) {
 }
 
 function handleSearch() {
-  renderPageList(searchPages(state.pages, searchInput.value));
+  renderPageList(searchPages(state.readerPages, searchInput.value));
 }
 
 function renderPageList(pages) {
@@ -77,7 +78,7 @@ function renderPageList(pages) {
 }
 
 function renderTags() {
-  const tags = [...new Set(state.pages.flatMap((page) => page.tags))].sort();
+  const tags = [...new Set(state.readerPages.flatMap((page) => page.tags))].sort();
   tagList.innerHTML = "";
   tags.forEach((tag) => {
     const button = document.createElement("button");
