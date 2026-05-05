@@ -81,6 +81,42 @@ export const wikiManifest = {
       summary: "Framework criteria for AI agents that generate, run, and maintain tests.",
     },
     {
+      path: "wiki/columns/ai-se-testing/research-proposals/repomemorytest.md",
+      title: "RepoMemoryBench Research Proposal",
+      tags: ["column", "research", "testing", "memory"],
+      summary: "Benchmark-first research seed for testing-specific project memory in software agents.",
+    },
+    {
+      path: "wiki/columns/ai-se-testing/research-progress.md",
+      title: "RepoMemoryBench Research Progress",
+      tags: ["column", "research", "progress"],
+      summary: "Current status, next work, risks, and milestones for RepoMemoryBench.",
+    },
+    {
+      path: "wiki/columns/ai-se-testing/experiment-design-repomemorytest.md",
+      title: "RepoMemoryTest Experiment Design",
+      tags: ["column", "research", "experiment"],
+      summary: "Initial experimental plan for comparing stateless, retrieval, structured, and hybrid memory agents.",
+    },
+    {
+      path: "wiki/columns/ai-se-testing/testing-memory-related-work-map.md",
+      title: "Testing Memory Related Work Map",
+      tags: ["column", "research", "memory"],
+      summary: "Map of general agent memory, testing history, and the gap for testing-specific memory harnesses.",
+    },
+    {
+      path: "wiki/columns/ai-se-testing/literature-collection-plan.md",
+      title: "RepoMemoryBench Literature Collection Plan",
+      tags: ["column", "research", "sources"],
+      summary: "Collection strategy for agent memory, SWE agent benchmarks, testing history, and benchmark methodology.",
+    },
+    {
+      path: "wiki/columns/ai-se-testing/repomemorybench-source-matrix.md",
+      title: "RepoMemoryBench Source Matrix",
+      tags: ["column", "research", "sources", "benchmark"],
+      summary: "Primary-source matrix for building the RepoMemoryBench related-work base.",
+    },
+    {
       path: "agent/profile.md",
       title: "Wiki Agent Profile",
       tags: ["agent", "memory"],

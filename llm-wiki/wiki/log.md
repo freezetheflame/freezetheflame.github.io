@@ -2,6 +2,11 @@
 
 ## 2026-05-05
 
+- Finalized the first research direction as `RepoMemoryBench`, a benchmark-first study of whether current general software agents fail on testing tasks because they lack testing-specific project memory.
+- Added a RepoMemoryBench literature collection plan and source matrix, plus raw source metadata for the first collection pass.
+- Reframed the research agenda as `RepoMemoryBench -> RepoMemoryTest`, with a benchmark-first measurement stage followed by a testing-specific memory harness method.
+- Added a testing memory related-work map to separate general agent memory from testing-specific history and CI knowledge.
+- Captured `RepoMemoryTest: Project-Memory-Guided Agentic Regression Testing` as the first paper seed, including proposal, progress, and experiment design pages.
 - Added a reader-facing dashboard to the local wiki home page with current focus, roadmap phases, AI SE Testing page cards, research lanes, and source shortcuts.
 - Added `columnPages` filtering so dashboard sections can use reader-visible column pages without exposing maintenance pages.
 

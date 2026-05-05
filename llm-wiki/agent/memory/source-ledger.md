@@ -1,5 +1,9 @@
 # Source Ledger
 
+## 2026-05-05
+
+- `repomemorybench-literature-seeds`: Seed source set for RepoMemoryBench, covering SWE agents and benchmarks, agent memory, AI test generation, and testing-history sources to collect next.
+
 ## 2026-05-04
 
 - `ai-se-testing-reading-list`: Curated source set for AI-assisted automated software engineering testing, including SWE-bench, SWE-agent, TestGen-LLM, CODAMOSA, ChatUniTest, TestPilot, TestGenEval, and SWE-CI.

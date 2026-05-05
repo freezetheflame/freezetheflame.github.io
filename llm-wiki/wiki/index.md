@@ -6,6 +6,8 @@ Start here. This wiki is designed to be read and maintained by both humans and L
 
 The wiki is currently growing around **AI-assisted automated software engineering testing**. The near-term goal is to understand how AI systems can generate tests, run tests, repair failures, maintain regression suites, and eventually become a practical testing agent for real projects.
 
+The active research direction is now benchmark-first: use **RepoMemoryBench** to measure whether general software agents lack testing-specific project memory, then use **RepoMemoryTest** to study a memory design for that gap.
+
 ## Roadmap
 
 ### Phase 1: Research Radar
@@ -13,12 +15,14 @@ The wiki is currently growing around **AI-assisted automated software engineerin
 - Build the AI SE Testing column around primary sources, benchmarks, and field reports.
 - Track the difference between unit-test generation, repository-level SWE agents, GUI/E2E testing, fuzzing, and CI regression loops.
 - Keep short source notes in `raw/sources/` and durable synthesis in `wiki/columns/`.
+- Build a source matrix for agent memory, SWE agents, testing history, and benchmark methodology.
 
 ### Phase 2: Testing Agent Design
 
 - Design a local testing agent that can read a repository, find test commands, run focused tests, interpret failures, and propose new tests.
 - Track project memory for recurring failures, flaky tests, reliable commands, and environment setup traps.
 - Use [[wiki/concepts/memory-harness.md|Memory Harness]] thinking to keep source notes, test history, and private machine details in separate memory surfaces.
+- Develop [[wiki/columns/ai-se-testing/research-proposals/repomemorytest.md|RepoMemoryBench -> RepoMemoryTest]] as the first serious paper direction.
 
 ### Phase 3: Prototype Experiments
 
@@ -49,6 +53,11 @@ The wiki is currently growing around **AI-assisted automated software engineerin
 - [[wiki/columns/ai-se-testing/swe-agent-evaluation.md|SWE Agent Evaluation]]
 - [[wiki/columns/ai-se-testing/ci-and-regression.md|CI And Regression]]
 - [[wiki/columns/ai-se-testing/testing-frameworks.md|Testing Frameworks]]
+- [[wiki/columns/ai-se-testing/research-proposals/repomemorytest.md|RepoMemoryBench Research Proposal]]
+- [[wiki/columns/ai-se-testing/research-progress.md|RepoMemoryBench Progress]]
+- [[wiki/columns/ai-se-testing/experiment-design-repomemorytest.md|RepoMemoryTest Experiment Design]]
+- [[wiki/columns/ai-se-testing/literature-collection-plan.md|RepoMemoryBench Literature Collection Plan]]
+- [[wiki/columns/ai-se-testing/repomemorybench-source-matrix.md|RepoMemoryBench Source Matrix]]
 
 ## Open Research Tracks
 
@@ -57,7 +66,7 @@ The wiki is currently growing around **AI-assisted automated software engineerin
 - **Benchmark lifecycle**: track when a benchmark is high-signal, saturated, contaminated, or obsolete.
 - **GUI/E2E testing agents**: translate user intent into browser or app interactions with inspectable assertions.
 - **Fuzzing and security testing**: use LLMs for seed generation, fuzz driver creation, and exploit triage while preserving reproducibility.
-- **Project memory for testing**: preserve commands, failure modes, flaky tests, and setup notes across sessions and machines.
+- **Project memory for testing**: benchmark whether current agents miss commands, failure modes, flaky tests, and setup notes across repeated repository work.
 
 ## Workflows
 
@@ -67,7 +76,8 @@ The wiki is currently growing around **AI-assisted automated software engineerin
 
 ## Expansion Backlog
 
-- Add `trend-map.md` for the AI SE Testing column.
+- Expand the RepoMemoryBench source matrix into a full related-work table.
+- Add `trend-map.md` for the AI SE Testing column if it remains distinct from the source matrix.
 - Add pages for verified test generation, agentic regression loops, GUI/E2E testing agents, fuzzing/security testing, and project memory for testing.
 - Add a local model/runtime page when the wiki agent chat layer is implemented.
 - Add experiment logs once AI testing prototypes begin.
