@@ -1,7 +1,13 @@
 # Log
 
+## 2026-05-05
+
+- Added a reader-facing dashboard to the local wiki home page with current focus, roadmap phases, AI SE Testing page cards, research lanes, and source shortcuts.
+- Added `columnPages` filtering so dashboard sections can use reader-visible column pages without exposing maintenance pages.
+
 ## 2026-05-04
 
+- Enriched `wiki/index.md` with a roadmap for AI-assisted automated software engineering testing, including research radar, testing agent design, prototype experiments, and CI-loop phases.
 - Added the AI SE Testing column with a curated reading list and topic pages for test generation, SWE agent evaluation, CI/regression, and testing frameworks.
 - Hid agent maintenance pages from the default reader navigation by adding reader-vs-maintenance page audience metadata.
 - Moved maintenance links into `wiki/meta/project-maintenance.md`.

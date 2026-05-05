@@ -64,6 +64,10 @@ export function readerPages(pages) {
   return pages.filter((page) => page.audience !== "maintenance");
 }
 
+export function columnPages(pages, prefix) {
+  return readerPages(pages).filter((page) => page.path.startsWith(prefix));
+}
+
 export function markdownToHtml(markdown) {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const html = [];

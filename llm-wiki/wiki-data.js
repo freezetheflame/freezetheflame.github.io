@@ -1,6 +1,6 @@
 export const wikiManifest = {
   title: "LLM Wiki Starter",
-  updated: "2026-05-04",
+  updated: "2026-05-05",
   pages: [
     {
       path: "wiki/index.md",

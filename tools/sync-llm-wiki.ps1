@@ -25,7 +25,7 @@ foreach ($dir in @("wiki", "agent", "raw", "docs")) {
 }
 
 $appPath = Join-Path $targetRoot "app.js"
-$app = Get-Content -Raw $appPath
+$app = [System.IO.File]::ReadAllText($appPath, [System.Text.UTF8Encoding]::new($false))
 $app = $app.Replace('fetch(`../${path}`)', 'fetch(`/llm-wiki/${path}`)')
 [System.IO.File]::WriteAllText($appPath, $app, [System.Text.UTF8Encoding]::new($false))
 
