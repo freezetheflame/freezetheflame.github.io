@@ -4,21 +4,68 @@
 
 ## 最新文章
 
+- [python中的一些特别性质文件](posts/2025-12-15/python中的一些特别性质文件.html) (2025-12-15)
+- [Test Time Training](posts/2025-12-10/test-time-training.html) (2025-12-10)
+- [pip包管理机制](posts/2025-11-30/pip包管理机制.html) (2025-11-30)
 - [我的第一篇博客文章](posts/2025-11-18/post-1763478585508.html) (2025-11-18)
 - [我的第一篇博客文章](posts/2025-11-18/post-1763478602856.html) (2025-11-18)
 - [我的第一篇博客文章](posts/2025-11-18/我的第一篇博客文章.html) (2025-11-18)
+- [我的第一篇博客文章](posts/2025-11-18/.html) (2025-11-18)
+- [动态图and静态图（DL Frameworks）](posts/2025-11-01/动态图and静态图（dl-frameworks）.html) (2025-11-01)
+- [Optimizer in Neural Network](posts/2025-10-24/optimizer-in-neural-network.html) (2025-10-24)
+- [大语言模型的数值精度(llm percision)](posts/2025-10-17/大语言模型的数值精度llm-percision.html) (2025-10-17)
+- [最短路问题实战](posts/2025-09-29/最短路问题实战.html) (2025-09-29)
+- [Attention in an article](posts/2025-09-26/attention-in-an-article.html) (2025-09-26)
+- [RoPE in LLM](posts/2025-09-18/rope-in-llm.html) (2025-09-18)
+- [高可用的AI application系统设计](posts/2025-09-16/高可用的ai-application系统设计.html) (2025-09-16)
+- [Params in MindSpeed-MM Training&amp;Finetune](posts/2025-09-06/params-in-mindspeed-mm-trainingfinetune.html) (2025-09-06)
+- [高可用中的2PC,3PC以及幂等性概念](posts/2025-09-05/高可用中的2pc3pc以及幂等性概念.html) (2025-09-05)
+- [图的存储专项](posts/2025-09-04/图的存储专项.html) (2025-09-04)
+- [Step into MoE](posts/2025-09-03/step-into-moe.html) (2025-09-03)
+- [Dropout in Deep Learning](posts/2025-08-29/dropout-in-deep-learning.html) (2025-08-29)
+- [GPT关于进行LLM 训练的建议](posts/2025-08-29/gpt关于进行llm-训练的建议.html) (2025-08-29)
 
+*共 121 篇文章*
 
 ## 标签分类
 
-- [](tags/.html) (2 篇文章)
-- [入门](tags/入门.html) (1 篇文章)
-- [博客](tags/博客.html) (1 篇文章)
-- [教程](tags/教程.html) (1 篇文章)
-
-
-## 搜索
-
-你可以使用浏览器的页面搜索功能（Ctrl+F 或 Cmd+F）来查找特定内容。
-
-*更多文章将在您添加 Markdown 文件后自动显示在此处。*
+- Windows相关 (25)
+- AI (15)
+- 计算机基础 (13)
+- C++ (12)
+- 服务器后端内容 (12)
+- CG (12)
+- Java (9)
+- 深度学习 (9)
+- data science (7)
+- 算法与数据结构 (6)
+- LLM (6)
+- python (6)
+- 软件工程理论 (4)
+- 随笔 (2)
+- 图论 (2)
+- framework (2)
+- RUST (2)
+- 基础语法 (2)
+- PL理论 (2)
+- 算法 (1)
+- 数据结构 (1)
+- MoE (1)
+- Linux相关 (1)
+- MindSpeed (1)
+- tools (1)
+- 2PC (1)
+- 高可用 (1)
+- 计网 (1)
+- MySQL (1)
+- 数据库 (1)
+- SQL (1)
+- java垃圾回收 (1)
+- 博客 (1)
+- 入门 (1)
+- 教程 (1)
+- transformer (1)
+- algorithm (1)
+- 最短路 (1)
+- TTT (1)
+- TypeScript/JavaScript (1)
