@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpringBoot(Cloud)中，application.yml和bootstrap.yml的关联？ | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-05-04</p>
+        <h1>SpringBoot(Cloud)中，application.yml和bootstrap.yml的关联？</h1>
+        <div class="post-meta">
+          <span>2025-05-04</span>
+          <span class="tag">Java</span>
+        </div>
+        <p>\n</p>
+<p>写过SpringBoot应用的都知道，在启动一个springboot应用时，我们通常会上手去写一个application.yml或者application.properties去配置一些启动参数，比如说server.port，datasource相关的一些参数等等。这些参数写在application这个文件中之后，启动时就会自动加载。但最近在我写一些springcloud相关的应用时，发现有类似的bootstrap文件对于springcloud的服务进行配置，不过在一次配置datasource参数失败后，GPT建议我在application文件中再写一遍，发现application.yml的配置对于springcloud同样适用，那么，他们究竟是什么关系呢？如果同时存在的话又是先加载哪一个，覆盖情况如何呢？</p>
+<p>\n\n\n\n</p>
+<p>在官方的文档中这样写的（参考了知乎博主的手动解释）：</p>
+<p>\n\n\n\n</p>
+<p>Spring Cloud 构建于 Spring Boot 之上，在 Spring Boot 中有两种上下文，一种是 bootstrap, 另外一种是 application, bootstrap 是应用程序的父上下文，也就是说 bootstrap 加载优先于 applicaton。bootstrap 主要用于从额外的资源来加载配置信息，还可以在本地外部配置文件中解密属性。这两个上下文共用一个环境，它是任何Spring应用程序的外部属性的来源。bootstrap 里面的属性会优先加载，它们默认也不能被本地相同配置覆盖。</p>
+<p>\n\n\n\n</p>
+<p><strong>因此，对比 application 配置文件，bootstrap 配置文件具有以下几个特性。</strong></p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>boostrap 由父 ApplicationContext 加载，比 applicaton 优先加载
+\n\n\n\n</li>
+<li>boostrap 里面的属性不能被覆盖
+\n
+\n\n\n\n</li>
+</ul>
+<p>我们先来回顾一下<strong>springboot应用的启动流程：</strong></p>
+<p>\n\n\n\n</p>
+<p>第一步：准备环境<code>Environment</code>。此时会发送一个<code>ApplicationEnvironmentPreparedEvent</code>事件（应用环境准备事件），事件是同步消费的。当事件监听器都被调用完后，<code>Spring Boot</code>继续完成环境<code>Environment</code>的准备工作，加载<code>application.yaml</code>以及所有的<code>ActiveProfiles</code>对应的<code>application-[activeProfile].yaml</code>配置文件。</p>
+<p>\n\n\n\n</p>
+<p>第二步：准备<code>ApplicationContext</code>容器。我们在<code>spring.factories</code>文件中配置的<code>EnableAutoConfiguration</code>就是在此时被读取的，并且根据配置的类名加载类，为类生成<code>BeanDefinition</code>注册到<code>bean</code>工厂中。</p>
+<p>\n\n\n\n</p>
+<p>第三步：一切准备就绪后再刷新<code>ApplicationContext</code>。</p>
+<p>\n\n\n\n</p>
+<p><strong>对于SpringCloud 而言，启动顺序是近似的</strong></p>
+<p>\n\n\n\n</p>
+<p><code>Spring Cloud</code>项目可以在<code>spring.factories</code>配置文件中配置一种<code>BootstrapConfiguration</code>类，这与<code>Spring Boot</code>提供的<code>EnableAutoConfiguration</code>类并没有什么区别，只是它们作用在不同的<code>ApplicationContext</code>容器中。</p>
+<p>\n\n\n\n</p>
+<p>当项目中添加<code>Spring Cloud</code>的依赖时，<code>SpringApplication</code>的<code>run</code>方法启动的就会是两个容器，即两个<code>ApplicationContext</code>。原本的应用启动流程也有所变化。</p>
+<p>\n\n\n\n</p>
+<p><code>Spring Cloud</code>的<code>BootstrapApplicationListener</code>监听<code>ApplicationEnvironmentPreparedEvent</code>事件，在监听到事件时开启一个新的<code>ApplicationContext</code>容器，我们可以称这个<code>ApplicationContext</code>容器为<code>Spring Cloud</code>的<code>Bootstrap</code>容器。</p>
+<p>\n\n\n\n</p>
+<p><code>Bootstrap</code>容器被用来注册<code>spring.factories</code>配置文件中配置的所有<code>BootstrapConfiguration</code>，并在<code>Bootstrap</code>容器初始化完成后将其<code>Bean</code>工厂作为原本<code>Spring Boot</code>启动的<code>ApplicationContext</code>容器的<code>Bean</code>工厂的父工厂。</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/05/image.png" alt="">\n\n\n\n</p>
+<p>在stackoverflow上也有这样的回答：</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/05/image-1.png" alt="">\n\n\n\n</p>
+<p>下面是一个例子： <strong>bootstrap.yml</strong></p>
+<p>\n\n\n\n</p>
+<pre><code>spring:\n　application:\n　　name: foo\n　　cloud:\n　　config:\n　　uri: ${SPRING_CONFIG_URI:http://localhost:8888}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>推荐在<code>bootstrap.yml</code> or <code>application.yml</code>里面配置<code>spring.application.name</code>. 你可以通过设置<code>spring.cloud.bootstrap.enabled=false</code>来禁用<code>bootstrap</code>。</p>
+<p>\n\n\n\n</p>
+<p><a href="https://www.cnblogs.com/cy0628/p/15193872.html">https://www.cnblogs.com/cy0628/p/15193872.html</a></p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

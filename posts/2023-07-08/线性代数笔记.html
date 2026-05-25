@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>线性代数笔记 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2023-07-08</p>
+        <h1>线性代数笔记</h1>
+        <div class="post-meta">
+          <span>2023-07-08</span>
+          <span class="tag">Windows相关</span>
+        </div>
+        <p>\n</p>
+<p>基于期末卷子</p>
+<p>\n\n\n\n</p>
+<h2 id="章节整理"><strong>章节整理</strong></h2>
+<p>\n\n\n\n</p>
+<p>一、线性方程组解的结构</p>
+<p>\n\n\n\n<img src="../../assets/images/2023/07/image.png" alt="">\n\n\n\n</p>
+<p>1.高斯消元法</p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>高斯消元（阶梯形式EF）</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<p>使用表示成AX=b的矩阵</p>
+<p>\n\n\n\n</p>
+<p>其中A表示的是对应的系数矩阵，b是解的线性组合<br>将系数矩阵和右端向量合在一起构成的矩阵B=(A b)称为增广矩阵</p>
+<p>\n\n\n\n</p>
+<p>通过一系列的行初等变换把这个增广矩阵转换为“简化阶梯矩阵”，就可以得出对应的解了。  </p>
+<p>\n\n\n\n</p>
+<p>2.线性方程组的可解性</p>
+<p>\n\n\n\n</p>
+<p>线性方程组有解的充要条件是系数矩阵的秩等于增广矩阵的秩，且当两个矩阵的秩均为n有唯一解，&lt;n则有无穷多解</p>
+<p>\n\n\n\n<img src="../../assets/images/2023/07/image-1.png" alt="">\n\n\n\n<img src="../../assets/images/2023/07/image-2.png" alt="">\n\n\n\n</p>
+<p>然后根据列出的关系式，实现最后的基础解系</p>
+<p>\n\n\n\n</p>
+<p>非齐次线性方程组解的结构：特解+齐次方程通解</p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>线性无关</p>
+<p>by examples</p>
+</blockquote>
+<p>\n\n\n\n<img src="../../assets/images/2023/08/image-2.png" alt="">\n\n\n\n</p>
+<p>线性相关的核心要求，就是一组向量，其中任意一个向量都能通过其他向量的线性组合表示，或者采用方程的视角</p>
+<p>\n\n\n\n</p>
+<p>线性无关的定义如下：</p>
+<p>\n\n\n\n</p>
+<p>一组向量 {v₁, v₂, …, vₙ} 在线性空间中是线性无关的，如果不存在非零标量 {c₁, c₂, …, cₙ} 使得以下方程成立：</p>
+<p>\n\n\n\n</p>
+<p><strong>c₁v₁ + c₂v₂ + … + cₙvₙ = 0</strong></p>
+<p>\n\n\n\n</p>
+<p>其中，0 是零向量。如果上述方程的唯一解是所有系数 c₁, c₂, …, cₙ 都等于零，则这组向量是线性无关的。这可以写成数学表达式的形式如下：</p>
+<p>\n\n\n\n</p>
+<p><strong>如果方程 c₁v₁ + c₂v₂ + … + cₙvₙ = 0 有唯一解 c₁ = c₂ = … = cₙ = 0，则向量集合 {v₁, v₂, …, vₙ} 是线性无关的。</strong></p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>矩阵的秩</p>
+<p>与基础解系的关系</p>
+</blockquote>
+<p>\n\n\n\n<img src="../../assets/images/2023/08/image-3.png" alt="">\n\n\n\n<img src="../../assets/images/2023/08/image-5.png" alt="">\n\n\n\n</p>
+<p>与基础解系相关的内容总结：</p>
+<p>\n\n\n\n</p>
+<p>基础解系是指<a href="https://link.zhihu.com/?target=https%3A//baike.baidu.com/item/%25E6%2596%25B9%25E7%25A8%258B%25E7%25BB%2584/5695032">方程组</a>的<a href="https://link.zhihu.com/?target=https%3A//baike.baidu.com/item/%25E8%25A7%25A3%25E9%259B%2586/8743555">解集</a>的<a href="https://link.zhihu.com/?target=https%3A//baike.baidu.com/item/%25E6%259E%2581%25E5%25A4%25A7%25E7%25BA%25BF%25E6%2580%25A7%25E6%2597%25A0%25E5%2585%25B3%25E7%25BB%2584/11035667">极大线性无关组</a>，即若干个无关的解构成的能够表示任意解的组合。基础解系需要满足三个条件：(1)基础解系中所有量均是方程组的解；(2)基础解系<a href="https://link.zhihu.com/?target=https%3A//baike.baidu.com/item/%25E7%25BA%25BF%25E6%2580%25A7%25E6%2597%25A0%25E5%2585%25B3/4705660">线性无关</a>,即基础解系中任何一个量都不能被其余量表示；(3)方程组的任意解均可由基础解系<a href="https://link.zhihu.com/?target=https%3A//baike.baidu.com/item/%25E7%25BA%25BF%25E6%2580%25A7%25E8%25A1%25A8%25E5%2587%25BA/19679901">线性表出</a>，即方程组的所有解都可以用基础解系的量来表示。</p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>\n</p>
+<p>“秩r=极大线性无关组中向量的个数,”</p>
+<p>\n\n\n\n</p>
+<p>AX＝0，作用对象是A，求的是A的秩，求的是线性方程组里“有效”的方程的个数。（线性相关的视为重复无效）</p>
+<p>\n\n\n\n</p>
+<p>“基础解系本身又是一个极大线性无关组,”</p>
+<p>\n\n\n\n</p>
+<p>一组基础解系，是指AX＝0求X时，能用最“简洁”的一组解表达出所有的解（就是所谓的通解），作用对象是X。为了最“简洁”，它们就得线性无关；为了能表达出“所有”，它们就得“极大”涵盖所有情况。</p>
+<p>\n\n\n\n</p>
+<p>“但其所含向量个数为n-r,”</p>
+<p>\n\n\n\n</p>
+<p>这种求AX＝0的X的通解的情况（A不满秩时多解），是用自由变量表示出所有的变量。n-r正是自由变量的个数。这里的向量个数与A的秩挂钩，等于A满秩情况的秩-A实际情况的秩。</p>
+<p>\n\n\n\n</p>
+<p>“那极大线无关组所含向量个数到底是r还是n-r?”</p>
+<p>\n\n\n\n</p>
+<p>其实就是，极大线性无关描述的是方程个数还是解向量（的基础解系）个数，如果是方程是r（A）＝r，如果是解向量（的基础解系）是n-r。</p>
+<p>\n作者：不知名小动物<br>来源：知乎<br>著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</p>
+</blockquote>
+<p>\n\n\n\n<img src="../../assets/images/2023/08/image-6.png" alt="">\n\n\n\n</p>
+<p>注：一个矩阵假如行列式为零则不满秩</p>
+<p>\n\n\n\n<img src="../../assets/images/2023/08/image-7.png" alt="">\n\n\n\n<img src="../../assets/images/2023/08/image-8.png" alt="">\n\n\n\n<img src="../../assets/images/2023/08/image-13.png" alt="">\n\n\n\n<img src="../../assets/images/2023/08/image-14.png" alt="">\n\n\n\n<img src="../../assets/images/2023/08/image-15.png" alt="">\n\n\n\n</p>
+<p>关于一些秩的性质的具体证明</p>
+<p>\n\n\n\n<img src="../../assets/images/2023/08/image-16.png" alt="">\n\n\n\n<img src="../../assets/images/2023/08/image-17.png" alt="">\n\n\n\n</p>
+<p>特征值与特征向量（以及相似矩阵）</p>
+<p>\n\n\n\n<img src="../../assets/images/2023/08/image-18.png" alt="">\n\n\n\n<img src="../../assets/images/2023/08/image-25.png" alt="">\n\n\n\n</p>
+<blockquote>
+<p>行列式的计算及技巧</p>
+<p>以题代学</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<p><a href="https://zhuanlan.zhihu.com/p/346885185">https://zhuanlan.zhihu.com/p/346885185</a></p>
+<p>\n\n\n\n<img src="../../assets/images/2023/08/image-26.png" alt="">\n\n\n\n<img src="../../assets/images/2023/08/image-27.png" alt="">\n\n\n\n</p>
+<p>或者采取数学归纳和分拆并举的方式执行</p>
+<p>\n\n\n\n<img src="../../assets/images/2023/08/image-29.png" alt="">\n\n\n\n</p>
+<p>重要定理：</p>
+<p>\n\n\n\n<img src="../../assets/images/2023/08/image-30.png" alt="">\n\n\n\n</p>
+<blockquote>
+<p>把第i行的元素加到第j行元素上（<a href="https://www.zhihu.com/search?q=%E8%A1%8C%E5%88%97%E5%BC%8F%E5%80%BC&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra=%7B%22sourceType%22%3A%22answer%22%2C%22sourceId%22%3A1124739747%7D">行列式值</a>不变），再将行列式按第j行展开，得<br>D = （aj1 + ai1）Aj1 + （aj2 + ai2）Aj2 + …… + （ajn + ain）Ajn<br>= D + （ai1Aj1 + ai2Aj2 + …… + ainAjn）<br>所以上式后面部分为0</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<p>克莱默法则</p>
+<p>\n\n\n\n<img src="../../assets/images/2023/09/image-18.png" alt="">\n\n\n\n<img src="../../assets/images/2023/09/image-19.png" alt="">\n\n\n\n<img src="../../assets/images/2023/09/image-20.png" alt="">\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

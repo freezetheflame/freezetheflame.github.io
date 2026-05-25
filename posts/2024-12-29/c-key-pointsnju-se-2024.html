@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C++ KEY POINTS(NJU SE 2024) | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2024-12-29</p>
+        <h1>C++ KEY POINTS(NJU SE 2024)</h1>
+        <div class="post-meta">
+          <span>2024-12-29</span>
+          <span class="tag">C++</span>
+        </div>
+        <p>\n</p>
+<h2 id="主题一：资源管理释放与构造析构">主题一：资源管理释放与构造析构</h2>
+<p>\n\n\n\n</p>
+<h3 id="new-delete">new delete</h3>
+<p>\n\n\n\n</p>
+<p>频繁调用系统的存储管理，会影响效率<br>交由程序自身管理内存，提高效率</p>
+<p>\n\n\n\n</p>
+<p>方法：<br>调用系统存储分配，申请一块较大的内存，针对该内存，自己管理存储分配、去配（类似一种内存池的方法）<br>通过重载 new 与 delete 来实现<br>重载的 new 和 delete 是静态成员<br>重载的 new 和 delete 遵循类的访问控制，可继承</p>
+<p>\n\n\n\n</p>
+<p>重载new：</p>
+<p>\n\n\n\n</p>
+<pre><code>void *operator new (size_t size, …)
+</code></pre>
+<p>\n\n\n\n</p>
+<p>new的重载可以有多个<br>如果重载了new，那么通过new动态创建该类的对象时将不再调用内置的（预定义的）new<br>重载delete：</p>
+<p>\n\n\n\n</p>
+<pre><code>void operator delete(void *p, size_t size)
+</code></pre>
+<p>\n\n\n\n</p>
+<p>第一个参数是被撤销对象的地址，第二个参数是大小<br>delete的重载只能有一个</p>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n#include &lt;cstdlib&gt;\n\n// 全局重载 new\nvoid* operator new(size_t size) {\n    std::cout &lt;&lt; &quot;Custom new: Allocating &quot; &lt;&lt; size &lt;&lt; &quot; bytes\\n&quot;;\n    void* ptr = std::malloc(size);\n    if (!ptr) throw std::bad_alloc();\n    return ptr;\n}\n\n// 全局重载 delete\nvoid operator delete(void* ptr) noexcept {\n    std::cout &lt;&lt; &quot;Custom delete: Freeing memory\\n&quot;;\n    std::free(ptr);\n}\n\nint main() {\n    int* p = new int(42); // 调用自定义 new\n    delete p;             // 调用自定义 delete\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>注意，new int[size]这样的应该针对new[]进行重载才有效</p>
+<p>\n\n\n\n</p>
+<h3 id="动态变量（from结构化编程--co-rricula）">动态变量（from<a href="https://xjynotes.top/C++%E9%AB%98%E7%BA%A7%E7%A8%8B%E5%BA%8F%E8%AE%BE%E8%AE%A1/%E7%BB%93%E6%9E%84%E5%8C%96%E7%BC%96%E7%A8%8B.html">结构化编程 | Co-rricula</a>）</h3>
+<p>\n\n\n\n</p>
+<p>在 <code>C++</code> 中，除了从 <code>C</code> 继承过来的 <code>malloc</code> 和 <code>free</code>，还可以用 <code>new</code> 和 <code>delete</code> 来生成和回收动态变量。</p>
+<p>\n\n\n\n</p>
+<pre><code>int *p = new int[8]; // int *p = (int *)malloc(sizeof(int) * 8)\ndelete[] p; //free(p)
+</code></pre>
+<p>\n\n\n\n</p>
+<p>当 <code>new</code> 时使用了 <code>[]</code>，那么需要在释放时也应当使用。对于申请得来的指针，<strong>切勿轻易移动它</strong> ，防止在 <code>delete</code> 时出现问题。(比如此时delete[] p是OK的，但是p++之后，就是错误的）</p>
+<p>\n\n\n\n</p>
+<p><code>new</code> 和 <code>malloc</code> 最大的区别是，当生成的是类的实例时，<code>new</code> 会自动调用类的构造函数（如果生成的是数组，则逐个调用）；<code>delete</code> 也同理，它会自动调用类的析构函数，而 <code>delete []</code> 则可以逐个调用数组的析构函数。</p>
+<p>\n\n\n\n</p>
+<p>使用指针需要时刻注意<strong>严禁出现空闲指针</strong> ，并<strong>谨防内存泄露</strong> ；</p>
+<p>\n\n\n\n</p>
+<h3 id="智能指针">智能指针</h3>
+<p>\n\n\n\n</p>
+<p>（原理实现）</p>
+<p>\n\n\n\n</p>
+<pre><code>temple&lt;typename T&gt;\nclass SharedPtr {\npublic:\n   SharedPtr() : _ptr((T *)0), _refCount(0){}\n\n   SharedPtr(T *obj) : _ptr(obj), _refCount(new int(1)){} \n\n   SharedPtr(SharedPtr &amp;other) : _ptr(other._ptr), _refCount(&amp;(++*other._refCount)){}\n\n   ~SharedPtr(){\n    if (_ptr &amp;&amp; --*_refCount == 0) {\n        delete _ptr;\n        delete _refCount;\n    }\n   }\n\n   SharedPtr &amp;operator=(SharedPtr &amp;other){\n    if(this==&amp;other)\n        return *this;\n    \n    //新指针引用计数要++  \n    ++*other._refCount;\n\n\t//原指针引用计数要--，如果为0，则释放空间\n    if (--*_refCount == 0) {\n        delete _ptr;\n        delete _refCount;\n    }\n       \n    //重新进行指向 \n    _ptr = other._ptr;\n    _refCount = other._refCount;\n    return *this;\n}\n\n    T &amp;operator*(){\n      if (_refCount == 0)\n          return (T*)0;\n        \n    return *_ptr;\n    }\n\n    T *operator-&gt;(){\n       if(_refCount == 0)\n           return 0;   \n    return _ptr;\n}\n\n\nprivate:\n    T *_ptr;\n    int *_refCount;     //这里使用int型指针是为了保证拷贝构造时同一个地址空间的引用计数增加\n};\n
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="构造函数">构造函数</h3>
+<p>\n\n\n\n</p>
+<p>与类同名、无返回类型<br>自动调用，不可直接调用<br>可重载（创建类时如无重载，则有默认构造函数）</p>
+<p>\n\n\n\n</p>
+<pre><code>class MyClass {\npublic:\n    MyClass(int x) { // 带参数的构造函数\n        // 构造函数实现\n    }\n};\n\nint main() {\n    MyClass obj(10); // 正确，调用带参数的构造函数\n    MyClass obj2;    // 错误，默认构造函数不存在\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>默认构造函数</strong></p>
+<p>\n\n\n\n</p>
+<p>无参数<br>无参数的默认构造函数意味着它不需要任何额外的信息就能创建对象。这使得它在很多情况下<br>都能被自动调用<br>当类中未提供构造函数时，编译系统提供<br>一旦自定义构造函数，不再提供默认构造函数<br>可用=default启用</p>
+<p>\n\n\n\n</p>
+<pre><code>class MyClass {\npublic:\n    MyClass() = default; // 让编译器生成默认构造函数\n\n    MyClass(int x) { // 带参数的构造函数\n        // 构造函数实现\n    }\n};\n\nint main() {\n    MyClass obj1;    // 正确，调用默认构造函数\n    MyClass obj2(10); // 正确，调用带参数的构造函数\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>常为public，也可定义为private，用于以下情况：<br>单例模式 (为了防止外部直接创建类的实例)<br>工厂模式 (必须通过工厂方法来创建实例)<br>有时，一个类可能不打算被直接实例化，而是作为基类或用于其他目的<br>实现不可变类<br>控制对象生命周期：在某些情况下，对象的创建和销毁需要特定的控制。通过将构造函<br>数设为私有，类可以控制其对象的创建</p>
+<p>\n\n\n\n</p>
+<p><strong>重载构造</strong></p>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-57.png" alt="">\n\n\n\n</p>
+<p><strong>初始化表</strong></p>
+<p>\n\n\n\n</p>
+<p>即：方式的语法糖，先于构造函数体执行——减轻compiler负担<br>按类数据成员申明次序：初始化顺序是按照<strong>成员变量在类中声明的顺序</strong> ，而不是按照初始化表中的顺序<br>就是你自己写的初始化顺序是没用的，不要用后声明的成员变量赋值先声明的在构造函数中尽量使用成员初始化表取代赋值动作<br>const 成员/reference 成员/对象成员 (常量成员或引用成员必须在声明时或在构造函数的成员初始化表中初始化)<br>效率高<br>数据成员太多是不采用本条原则（降低可维护性）</p>
+<p>\n\n\n\n</p>
+<pre><code>ClassName::ClassName(参数列表) : 成员变量1(初始值1), 成员变量2(初始值2), ... {\n    // 构造函数体\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="析构函数">析构函数</h3>
+<p>\n\n\n\n</p>
+<p>对象消亡时,系统自动调用<br>什么情况定义为private：阻止外部销毁，如单例模式<br>资源管理类：例如智能指针，确保资源只能通过特定的接口释放（强制自主控制对象存储分配）</p>
+<p>\n\n\n\n</p>
+<p>基类析构函数：如果基类不应该是可实例化的，可以将其析构函数设为private</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-58.png" alt="">\n\n\n\n</p>
+<p>对于父类子类的析构函数，需要使用虚析构函数，并在子类重写。如果有需要析构的动态数组，请重写实现。</p>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nclass Base {\npublic:\n    virtual ~Base() { // 虚析构函数\n        std::cout &lt;&lt; &quot;Base destructor\\n&quot;;\n    }\n};\n\nclass Derived : public Base {\npublic:\n    ~Derived() {\n        std::cout &lt;&lt; &quot;Derived destructor\\n&quot;;\n    }\n};\n\nint main() {\n    Base* ptr = new Derived(); // 基类指针指向派生类对象\n    delete ptr; // 调用 Derived 和 Base 的析构函数\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>如果不这样，如下</p>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nclass Base {\npublic:\n    ~Base() { // 基类析构函数不是虚函数\n        std::cout &lt;&lt; &quot;Base destructor\\n&quot;;\n    }\n};\n\nclass Derived : public Base {\npublic:\n    Derived() {\n        data = new int[100]; // 动态分配内存\n        std::cout &lt;&lt; &quot;Derived constructor\\n&quot;;\n    }\n\n    ~Derived() {\n        delete[] data; // 释放内存\n        std::cout &lt;&lt; &quot;Derived destructor\\n&quot;;\n    }\n\nprivate:\n    int* data;\n};\n\nint main() {\n    Base* ptr = new Derived(); // 基类指针指向派生类对象\n    delete ptr; // 只调用 Base 的析构函数\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code>Derived constructor\nBase destructor
+</code></pre>
+<p>\n\n\n\n</p>
+<p>这样会导致内存泄漏</p>
+<p>\n\n\n\n</p>
+<p><strong>拷贝构造函数</strong></p>
+<p>\n\n\n\n</p>
+<pre><code>A(const A &amp;a);
+</code></pre>
+<p>\n\n\n\n</p>
+<p>创建对象时，用一同类的对象对其初始化<br>自动调用<br>注：如果此处不使用<strong>引用</strong> ，就对参数<strong>进行了一次值拷贝</strong> ，就循环调用了具体一些可以这么讲：一个对象需要以值方式传递时，编译器会生成代码调用它的拷贝构造函数以<strong>生成一个副本</strong> 。如果类A的拷贝构造函数是以值方式传递的话，当需要调用类A的拷贝构造函数时，需要以值方式传进一个A的对象作为实参；而以值方式传递需要调用类A的拷贝构造函数；结果就是调用类A的拷贝构造函数导致又一次调用类A的拷贝构造函数，这就是一个无限递归。</p>
+<p>\n\n\n\n</p>
+<p><strong>默认拷贝构造函数</strong></p>
+<p>\n\n\n\n</p>
+<p>逐个成员初始化，对于对象成员则是递归进行，重载将取消默认拷贝，或者使用=delete取消默认拷贝构造函数</p>
+<p>\n\n\n\n</p>
+<p><strong>必要性</strong></p>
+<p>\n\n\n\n</p>
+<p>如果我们不自定义拷贝构造函数，很容易导致不同对象指向相同的一块内存，不便于内存管理<br>需要自定义拷贝函数，完成深拷贝<br>除此以外，还有静态成员的问题</p>
+<p>\n\n\n\n</p>
+<pre><code>class MyClass {\nprivate:\n    int* data;\n\npublic:\n    MyClass(int size) {\n        data = new int[size]; // 动态分配内存\n    }\n\n    ~MyClass() {\n        delete[] data; // 释放内存\n    }\n};\n\nint main() {\n    MyClass obj1(10);\n    MyClass obj2 = obj1; // 默认拷贝构造函数，浅拷贝\n    // obj1 和 obj2 的 data 指针指向同一块内存\n    // 程序结束时，obj1 和 obj2 都会尝试释放同一块内存，导致崩溃\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>自定义拷贝构造函数<br>对于没有定义拷贝行为的成员，调用成员对象的默认构造函数，而不会调用成员对象的默认拷<br>贝函数<br>(这一行为是由于，C希望程序员自定义拷贝构造函数后，完全接管对象的构造)</p>
+<p>\n\n\n\n</p>
+<p><strong>如果自定义构造函数或者拷贝构造函数，要记得处理每个成员，不然编译器会认为你不想管理</strong></p>
+<p>\n\n\n\n</p>
+<p>解释：</p>
+<p>\n\n\n\n</p>
+<pre><code>class Member {\npublic:\n    Member() {\n        std::cout &lt;&lt; &quot;Member默认构造函数\\n&quot;;\n    }\n    Member(const Member&amp;) {\n        std::cout &lt;&lt; &quot;Member拷贝构造函数\\n&quot;;\n    }\n};\n\nclass MyClass {\nprivate:\n    Member mem;\n\npublic:\n    MyClass() {\n        std::cout &lt;&lt; &quot;MyClass默认构造函数\\n&quot;;\n    }\n\n    // 自定义拷贝构造函数\n    MyClass(const MyClass&amp; other) {\n        std::cout &lt;&lt; &quot;MyClass自定义拷贝构造函数\\n&quot;;\n    }\n};\n\nint main() {\n    MyClass obj1;          // 调用 MyClass 的默认构造函数\n    MyClass obj2 = obj1;   // 调用 MyClass 的自定义拷贝构造函数\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>输出：</p>
+<p>\n\n\n\n</p>
+<pre><code>Member默认构造函数\nMyClass默认构造函数\nMember默认构造函数\nMyClass自定义拷贝构造函数
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code>class Member {\npublic:\n    Member() {\n        std::cout &lt;&lt; &quot;Member默认构造函数\\n&quot;;\n    }\n    Member(const Member&amp;) {\n        std::cout &lt;&lt; &quot;Member拷贝构造函数\\n&quot;;\n    }\n};\n\nclass MyClass {\nprivate:\n    Member mem;\n\npublic:\n    MyClass() {\n        std::cout &lt;&lt; &quot;MyClass默认构造函数\\n&quot;;\n    }\n\n    // 自定义拷贝构造函数，显式调用 Member 的拷贝构造函数\n    MyClass(const MyClass&amp; other) : mem(other.mem) {\n        std::cout &lt;&lt; &quot;MyClass自定义拷贝构造函数\\n&quot;;\n    }\n};\n\nint main() {\n    MyClass obj1;          // 调用 MyClass 的默认构造函数\n    MyClass obj2 = obj1;   // 调用 MyClass 的自定义拷贝构造函数\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>输出：</p>
+<p>\n\n\n\n</p>
+<pre><code>Member默认构造函数\nMyClass默认构造函数\nMember拷贝构造函数\nMyClass自定义拷贝构造函数
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="总结">总结</h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>如果你<strong>自定义了拷贝构造函数</strong> ，编译器会认为你希望<strong>完全接管对象的构造过程</strong> 。
+\n\n\n\n</li>
+<li>对于类中的成员变量，如果你没有在自定义拷贝构造函数中显式地指定它们的拷贝行为，编译器会调用它们的<strong>默认构造函数</strong> ，而不是拷贝构造函数。
+\n\n\n\n</li>
+<li>如果你希望调用成员变量的拷贝构造函数，需要在自定义拷贝构造函数的<strong>初始化列表</strong> 中显式指定。
+\n
+\n\n\n\n</li>
+</ul>
+<h3 id="移动构造函数">移动构造函数</h3>
+<p>\n\n\n\n</p>
+<p>A(A a);<br>只接受右值<br>直接把一个临时的右值交给一个左值管理(记得把原来的置为空)<br>由于这个右值马上就要消亡了(不过事实上不止是那么简单)，所以直接将引用交给左值就<br>行，不需要再进行深拷贝，优化大对象的拷贝问题(例如vector扩容时可以直接移动，不需<br>要重新赋值)<br>注意，一个右值引用作为参数传进后，<strong>此时的右值就成了一个左值，不能继续作为右值引用</strong> ，<br>传递给参数中含右值引用的函数<br>左值要作为右值使用: std move</p>
+<p>\n\n\n\n</p>
+<p>当右值引用作为参数传递到函数中时，<strong>它本身是一个左值</strong> 。这是因为右值引用是一个具名的变量，而具名的变量是左值。</p>
+<p>\n\n\n\n</p>
+<pre><code>class A {\nprivate:\n    int* data;\n\npublic:\n    // 默认构造函数\n    A() : data(new int[100]) {\n        std::cout &lt;&lt; &quot;默认构造函数\\n&quot;;\n    }\n\n    // 移动构造函数\n    A(A&amp;&amp; other) noexcept : data(other.data) {\n        std::cout &lt;&lt; &quot;移动构造函数\\n&quot;;\n        other.data = nullptr; // 将原对象的指针置为空\n    }\n\n    // 析构函数\n    ~A() {\n        delete[] data;\n    }\n};
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code>std::vector&lt;std::string&gt; vec1 = {&quot;a&quot;, &quot;b&quot;, &quot;c&quot;};\nstd::vector&lt;std::string&gt; vec2 = std::move(vec1); // 移动语义，避免复制
+</code></pre>
+<p>\n\n\n\n</p>
+<p>移动语义特别适合优化大对象的拷贝问题，例如 <code>std::vector</code> 扩容时直接移动数据，而不是复制。</p>
+<p>\n\n\n\n</p>
+<p>因此实现移动构造函数时候需要注意将原资源的对象置为空，否则会出现以下问题：</p>
+<p>\n\n\n\n</p>
+<pre><code>class A {\nprivate:\n    int* data;\n\npublic:\n    A() : data(new int[100]) {}\n\n    // 移动构造函数（未将原对象的指针置为空）\n    A(A&amp;&amp; other) noexcept : data(other.data) {}\n\n    ~A() {\n        delete[] data;\n    }\n};\n\nint main() {\n    A a1;\n    A a2 = std::move(a1); // 移动语义\n\n    // a1 和 a2 共享同一块内存\n    // 程序结束时，a1 和 a2 都会尝试释放同一块内存，导致崩溃\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>只有以下操作才是符合移动语义的：</p>
+<p>\n\n\n\n</p>
+<pre><code>class A {\nprivate:\n    int* data;\n\npublic:\n    A() : data(new int[100]) {}\n\n    // 移动构造函数\n    A(A&amp;&amp; other) noexcept : data(other.data) {\n        other.data = nullptr; // 将原对象的指针置为空\n    }\n\n    ~A() {\n        delete[] data;\n    }\n\n    void useData() {\n        if (data) {\n            std::cout &lt;&lt; &quot;Using data\\n&quot;;\n        } else {\n            std::cout &lt;&lt; &quot;Data is nullptr\\n&quot;;\n        }\n    }\n};\n\nint main() {\n    A a1;\n    A a2 = std::move(a1); // 移动语义\n\n    a1.useData(); // 输出：Data is nullptr\n    a2.useData(); // 输出：Using data\n\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>为什么要引入new/delete操作符</strong><br>使得constructor和destructor可以被正确调用<br>malloc不调用构造函数，free不调用析构函数</p>
+<p>\n\n\n\n</p>
+<p><strong>动态对象数组</strong></p>
+<p>\n\n\n\n</p>
+<pre><code>A *p;\n p = new A[100];\n delete []p;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>delete []p ([]不能省) (原理是使用了额外的四个字节来确定数组长度)<br>注意: 不能显式初始化，相应的类必须有默认构造函数</p>
+<p>\n\n\n\n</p>
+<p><strong>成员函数</strong></p>
+<p>\n\n\n\n</p>
+<pre><code>class A\n {\n int x,y;\n public:\nvoid show() const;\n }
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>const成员函数可以被对应的具有相同形参列表的非const成员函数重载</strong></p>
+<p>\n\n\n\n</p>
+<p>在这种情况下，类对象的常量性决定调用哪一个函数：<br>const成员函数可以访问非const对象的非const数据成员，const数据成员，也可以访问const对象内的所有数据成员；<br>非const成员函数只可以访问非const对象的任意的数据成员，不能访问const对象的任意数据成员</p>
+<p>\n\n\n\n</p>
+<pre><code>class MyClass {\npublic:\n    void func() {\n        std::cout &lt;&lt; &quot;非 const 成员函数\\n&quot;;\n    }\n\n    void func() const {\n        std::cout &lt;&lt; &quot;const 成员函数\\n&quot;;\n    }\n};\n\nint main() {\n    MyClass obj1;\n    const MyClass obj2;\n\n    obj1.func(); // 调用非 const 成员函数\n    obj2.func(); // 调用 const 成员函数\n\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>void show() const 其实是 void show(const A* const this)<br><strong>即const修饰的其实是类的this指针</strong></p>
+<p>\n\n\n\n</p>
+<p>注意：如果类中存在指针类型的数据成员即便是const函数只能保证不修改该指针的值，并不<br>能保证不修改指针指向的对象</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-60.png" alt="">\n\n\n\n</p>
+<h3 id="静态成员">静态成员</h3>
+<p>\n\n\n\n</p>
+<p>同一个类的不同对象如何共享变量？<br>放在全局数据区可以共享，但缺乏数据保护，同时会导致名污染 How to do?<br>静态成员其实就是全局变量和全局函数，但带有访问控制</p>
+<p>\n\n\n\n</p>
+<p>遵循类访问控制<br><strong>一定要在类外进行定义</strong></p>
+<p>\n\n\n\n</p>
+<p>静态成员函数：只能存取静态成员变量，调用静态成员函数，遵循类访问控制</p>
+<p>\n\n\n\n</p>
+<pre><code>class MyClass {\npublic:\n    static int count; // 静态数据成员\n    static void printCount() { // 静态成员函数\n        std::cout &lt;&lt; &quot;Count: &quot; &lt;&lt; count &lt;&lt; &quot;\\n&quot;;\n    }\n};\n\nint MyClass::count = 0; // 静态数据成员初始化\n\nint main() {\n    MyClass obj1;\n    MyClass obj2;\n    MyClass::printCount(); // 通过类名调用静态成员函数\n    obj1.printCount();     // 通过对象调用静态成员函数\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="友元">友元</h3>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-61.png" alt="">\n\n\n\n</p>
+<p>注意：友元不具有传递性<br>如果一个函数是多个类的友元，这些类之间并不会互相成为对方的友元。每个类的友元关系都<br>是独立声明的，不会自动扩展到其他类。</p>
+<p>\n\n\n\n</p>
+<p><strong>友元函数</strong></p>
+<p>\n\n\n\n</p>
+<p>友元类是一个类，其所有成员函数都可以访问另一个类的私有和保护成员</p>
+<p>\n\n\n\n</p>
+<h3 id="友元函数的特点"><strong>友元函数的特点</strong></h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><p><strong>非成员函数</strong> ：友元函数不是类的成员函数，但它可以访问类的私有和保护成员。
+\n\n\n\n</p>
+</li>
+<li><p><strong>声明方式</strong> ：在类中使用 <code>friend</code> 关键字声明友元函数。
+\n\n\n\n</p>
+</li>
+<li><p><strong>访问权限</strong> ：友元函数可以访问类的所有成员，包括私有和保护成员。
+\n\n\n\n</p>
+</li>
+<li><p><strong>调用方式</strong> ：友元函数与普通函数一样调用，不需要通过对象或类名。
+\n
+\n\n\n\n</p>
+<p>class ClassName {\n    friend ReturnType FunctionName(Parameters); // 友元函数声明\n};</p>
+</li>
+</ul>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nclass MyClass {\nprivate:\n    int x;\n\npublic:\n    MyClass(int value) : x(value) {}\n\n    // 声明友元函数\n    friend void printX(const MyClass&amp; obj);\n};\n\n// 定义友元函数\nvoid printX(const MyClass&amp; obj) {\n    std::cout &lt;&lt; &quot;x: &quot; &lt;&lt; obj.x &lt;&lt; &quot;\\n&quot;; // 访问私有成员 x\n}\n\nint main() {\n    MyClass obj(10);\n    printX(obj); // 调用友元函数\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><p><strong>操作符重载</strong> ：友元函数常用于重载操作符，特别是当操作符的左操作数不是类的对象时。
+\n\n\n\n</p>
+</li>
+<li><p><strong>工具函数</strong> ：当某个函数需要访问类的私有成员，但不适合作为类的成员函数时，可以使用友元函数。
+\n\n\n\n</p>
+</li>
+<li><p><strong>跨类访问</strong> ：友元函数可以访问多个类的私有成员，用于实现类之间的协作。
+\n
+\n\n\n\n</p>
+<p>#include <iostream>\n\nclass Point {\nprivate:\n    int x, y;\n\npublic:\n    Point(int x, int y) : x(x), y(y) {}\n\n    // 声明友元函数，用于重载 &lt;&lt; 操作符\n    friend std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const Point&amp; p);\n};\n\n// 定义友元函数\nstd::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const Point&amp; p) {\n    os &lt;&lt; &quot;(&quot; &lt;&lt; p.x &lt;&lt; &quot;, &quot; &lt;&lt; p.y &lt;&lt; &quot;)&quot;;\n    return os;\n}\n\nint main() {\n    Point p(3, 4);\n    std::cout &lt;&lt; p &lt;&lt; &quot;\n&quot;; // 输出：(3, 4)\n    return 0;\n}</p>
+</li>
+</ul>
+<p>\n\n\n\n</p>
+<h3 id="构造顺序">构造顺序</h3>
+<p>\n\n\n\n</p>
+<p>单个对象创建时构造函数的调用顺序：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>调用父类的构造函数。
+\n\n\n\n</li>
+<li>调用成员变量的构造函数（调用顺序与声明顺序相同）。
+\n\n\n\n</li>
+<li>调用自身的构造函数。
+\n
+\n\n\n\n</li>
+</ol>
+<p><strong>析构函数与对应构造函数的调用顺序相反。</strong></p>
+<p>\n\n\n\n</p>
+<p><strong>多个对象析构时，析构顺序与构造顺序相反。</strong></p>
+<p>\n\n\n\n</p>
+<p>对于析构总结如下：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>对于栈对象和全局对象，类似于入栈与出栈的顺序，最后构造的对象最先被析构。
+\n\n\n\n</li>
+<li>堆对象的析构发生在使用delete的时候，与delete的使用顺序相关。
+\n
+\n\n\n\n</li>
+</ul>
+<p>\n\n\n\n</p>
+<h2 id="主题二：c史学">主题二：C++史学</h2>
+<p>\n\n\n\n</p>
+<h3 id="c-vs-c">C VS C++</h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>超集
+\n
+\n\n\n\n\n</li>
+<li><strong>C++支持 C 所支持的全部编程技巧</strong>
+\n
+\n\n\n\n\n</li>
+<li>任何 C 程序都能被 C++ 用基本相同的方法编写，并具备同等开销（时间、空间）
+\n
+\n\n\n\n</li>
+</ul>
+<p>Bjarne Stroustrup在 1979 年开始开发 C++，最初称为“C with Classes”。C++ 是一种面向对象的编程语言，结合了 C 语言的高效性和面向对象编程的灵活性。再后来他也积极参与 C++ 的 ANSI/ISO 标准化工作</p>
+<p>\n\n\n\n</p>
+<p><strong>John Backus</strong> 是FORTRAN的发明人，创建出函数式编程的范式以及BNF范式</p>
+<p>\n\n\n\n</p>
+<p>设计理念：效率、实用性优于艺术性严谨性、相信程序员</p>
+<p>\n\n\n\n</p>
+<h3 id="演化历程：">演化历程：</h3>
+<p>\n\n\n\n</p>
+<p>Father of Simular67：Kristen Nygaard</p>
+<p>\n\n\n\n</p>
+<p>Father of OO：Ole-Johan Dahl</p>
+<p>\n\n\n\n</p>
+<p>C语言之父：Dennis Ritchie、Ken Thompson</p>
+<p>\n\n\n\n</p>
+<p>1980形成 C with class：Bjarne Stroustrup</p>
+<p>\n\n\n\n</p>
+<p>1983年，Rick Mascitti正式命名C++。</p>
+<p>\n\n\n\n</p>
+<p>结构化编程：Dijkstra 1994制定ANSI C++标准草案</p>
+<p>\n\n\n\n</p>
+<h3 id="simula-67-的主要贡献">Simula 67 的主要贡献</h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li><strong>类和对象</strong> ：Simula 67 引入了类和对象的概念，使得程序可以通过对象来建模和模拟现实世界中的事物。这一概念成为后续面向对象编程语言的基础。
+\n\n\n\n</li>
+<li><strong>继承</strong> ：Simula 67 支持继承机制，允许类之间共享和重用代码。这一特性极大地提高了代码的可维护性和可扩展性。
+\n\n\n\n</li>
+<li><strong>虚拟过程</strong> ：Simula 67 引入了虚拟过程（virtual procedures），允许子类重写父类的方法，从而实现多态性。
+\n\n\n\n</li>
+<li><strong>协程</strong> ：Simula 67 支持协程（coroutines），使得程序可以在多个执行点之间切换，从而实现更复杂的控制流。
+\n\n\n\n</li>
+<li><strong>垃圾回收</strong> ：Simula 67 包含垃圾回收机制，自动管理内存分配和释放，减少了内存泄漏的风险。
+\n
+\n\n\n\n</li>
+</ol>
+<h3 id="programming-paradigm编程方法">Programming Paradigm(编程方法)</h3>
+<p>\n\n\n\n</p>
+<p><strong>Functional</strong></p>
+<p>\n\n\n\n</p>
+<p>assume you have l<strong>ots of little helper functions</strong> that interests in synthesizing one large result</p>
+<p>\n\n\n\n</p>
+<p>Lisp/Scheme/Erlang/Haskell</p>
+<p>\n\n\n\n</p>
+<p><strong>Logical</strong></p>
+<p>\n\n\n\n</p>
+<p><strong>Automatic proofs</strong> within artificial intelligence</p>
+<p>\n\n\n\n</p>
+<p>Based on axioms, inference rules, and queries</p>
+<p>\n\n\n\n</p>
+<p>prolog</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-8.png" alt="">\n\n\n\n<img src="../../assets/images/2024/12/image-9.png" alt="">\n\n\n\n</p>
+<p><strong>C 和 C++混合编程应该注意的问题</strong><br>（1）名变换:若要调⽤C语⾔库中的函数，要附加关键字“extern &quot;C&quot; ”；按照 C 语⾔⽅式编译和连接，限制<br>C++编译器做 name mangling(名变换)，确保 C++和 C 编译器产⽣兼容的 obj ⽂件;<br>（2）静态初始化:C++静态的类对象和定义在全局的、命名空间中的或⽂件体中 的类对象的构造函数通常<br>在 main 被执⾏前就被调⽤，只要可能，⽤ C++写 main()，即使要⽤ C 写 Main 也⽤ C++写;<br>（3）内存动态分配:new/delete 调⽤ C++的函数库，malloc/free 调⽤ C 的函数 库，⼆者要匹配，防⽌内存<br>泄露;<br>（4） 数据结构兼容:将在两种语⾔间传递的东西限制在⽤ C 编译的数据结构的范 围内;这些结构的 C++版<br>本可以包含⾮虚成员函数，不能有虚函数。<br>（5）因为C++是C的超集，且C是结构化编程语⾔，⽽C++⽀持⾯向对象编程语⾔，所以在混合编程时，<br>不应当出现class等⾯向对象的关键字；</p>
+<p>\n\n\n\n</p>
+<h2 id="主题三：类型体操（类型转换与继承）">主题三：类型体操（类型转换与继承）</h2>
+<p>\n\n\n\n</p>
+<h3 id="类型转换">类型转换</h3>
+<p>\n\n\n\n</p>
+<p>implicit conversion</p>
+<p>\n\n\n\n</p>
+<p>类似于int值赋给double时，编译器会自动帮你转换对应的类型</p>
+<p>\n\n\n\n</p>
+<p>explicit conversion</p>
+<p>\n\n\n\n</p>
+<p>当我们在变量前加上 <code>(type)</code> 或者使用下文的 <code>cast</code> 时，我们就主动施加了<strong>强制转换</strong> 。</p>
+<p>\n\n\n\n</p>
+<p>cast（其实是显式转换的一种）</p>
+<p>\n\n\n\n</p>
+<p>一般使用四种cast方式，</p>
+<p>\n\n\n\n</p>
+<p>static_cast可以完成类似于c中的强制转换，</p>
+<p>\n\n\n\n</p>
+<p>**<code>static_cast</code> **可以在指向相关类的指针之间执行转换，不仅可以执行上行转换（从指针到派生到指针到基），还可以执行下转换（从指针到基到指针到派生）。在运行时不执行任何检查来保证正在转换的对象实际上是目标类型的完整对象。因此，由程序员来确保转换是安全的。另一方面，它不会产生 的 <code>dynamic_cast</code> 类型安全检查的开销。</p>
+<p>\n\n\n\n</p>
+<p>Additionally, <code>static_cast</code> can also perform the following:<br>此外， <code>static_cast</code> 还可以执行以下操作：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>Explicitly call a single-argument constructor or a conversion operator.<br>显式调用单参数构造函数或转换运算符。
+\n\n\n\n</li>
+<li>Convert to <em>rvalue references</em>.<br>转换为右值引用。
+\n\n\n\n</li>
+<li>Convert <code>enum class</code> values into integers or floating-point values.<br>将值转换为 <code>enum class</code> 整数或浮点值。
+\n\n\n\n</li>
+<li>Convert any type to <code>void</code>, evaluating and discarding the value.<br>将任意类型转换为 <code>void</code> ，计算并放弃该值。
+\n
+\n\n\n\n\n</li>
+<li>用于类层次结构中基类和派生类之间引用或指针的转换。<br>进行上行转换（把派生类的指针或引用转换成基类表示）是安全的。<br>进行下行转换（把基类的指针或引用转换成派生类表示），由于没有动态类型检查，不安全。
+\n\n\n\n</li>
+<li>用于基本数据类型之间的转换
+\n\n\n\n</li>
+<li>把空指针转换成目标类型的空指针
+\n\n\n\n</li>
+<li>把任何类型的表达式转换成void类型
+\n
+\n\n\n\n</li>
+</ul>
+<p><strong>dynamic_cast</strong> （主要就是父类转为子类带检查）</p>
+<p>\n\n\n\n</p>
+<p><code>dynamic_cast</code> can only be used with <strong>pointers</strong>  and**  references to classes (or with <code>void*</code>)**. Its purpose is to ensure that the result of the type conversion points to a valid complete object of the destination pointer type.</p>
+<p>\n\n\n\n</p>
+<p>This naturally includes <em>pointer upcast</em>  (converting from pointer-to-derived to pointer-to-base), in the same way as allowed as an <em>implicit conversion</em>.</p>
+<p>\n\n\n\n</p>
+<p>But <code>dynamic_cast</code> can also <em>downcast</em>  (convert from pointer-to-base to pointer-to-derived) polymorphic classes (those with virtual members) if -and only if- the pointed object is a valid complete object of the target type. 适用于多态类的上转和下转</p>
+<p>\n\n\n\n</p>
+<p>注：<strong>Compatibility note:</strong>  This type of <code>dynamic_cast</code> requires <em>Run-Time Type Information (RTTI)</em>  to keep track of dynamic types. Some compilers support this feature as an option which is disabled by default. This needs to be enabled for runtime type checking using <code>dynamic_cast</code> to work properly with these types.<br>兼容性说明：此类型 <code>dynamic_cast</code> 需要运行时类型信息 （RTTI） 来跟踪动态类型。某些编译器支持此功能作为默认禁用的选项。需要启用此功能才能用于运行时类型检查 <code>dynamic_cast</code> ，以便正确处理这些类型。当转换不成立时会返回NULL，如果是指针则返回null_ptr，引用则会报告bad_alloc错误</p>
+<p>\n\n\n\n</p>
+<p>const_cast则是用于去除常量或者voliate修饰符等的cast方式，可以把常量调整为可修改的类型</p>
+<p>\n\n\n\n</p>
+<p>reinterpret_cast&lt;&gt;()则是可以对于一段内存区域进行不同的解释的方法，<strong>它保持位的二进制序列不变，只是以新的类型解释变量</strong> 。这是一种<strong>非常危险</strong> 的转换，它允许几乎任意类型之间的强制转换，甚至可以将指针转换为整数，或者将整数转换为指针。它不会执行任何类型检查或安全保证，适用于底层操作和低级别编程。——from xjy<a href="https://xjynotes.top/C++%E9%AB%98%E7%BA%A7%E7%A8%8B%E5%BA%8F%E8%AE%BE%E8%AE%A1/%E7%BB%93%E6%9E%84%E5%8C%96%E7%BC%96%E7%A8%8B.html">结构化编程 | Co-rricula</a></p>
+<p>\n\n\n\n</p>
+<h3 id="基本类型推导">基本类型推导</h3>
+<p>\n\n\n\n</p>
+<p>auto</p>
+<p>\n\n\n\n</p>
+<p>可以使用 <code>auto</code> 关键字来避免冗余的类型定义。<strong>但一定要时刻检测推导出的类型，防止出现隐式转换</strong> 。</p>
+<p>\n\n\n\n</p>
+<p>decltype</p>
+<p>\n\n\n\n</p>
+<p><code>decltype (实体或表达式)</code>，推导出一个与括号中实体相同的类型，并将该类型作用于后面的对象。例如</p>
+<p>\n\n\n\n</p>
+<pre><code>int i = 33;\ndecltype(i) j = i * 2;\t//Type of j is int
+</code></pre>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<h2 id="主题四：作用域与生命周期（namespace-and-static）">主题四：作用域与生命周期（namespace and static）</h2>
+<p>\n\n\n\n</p>
+<pre><code>// in namespace or global scope\nint i;                 // extern by default\nconst int ci;          // static by default\nextern const int eci;  // explicitly extern\nstatic int si;         // explicitly static\n// same goes for functions (but there are no global const functions)\nint foo();             // extern by default\nstatic int bar();      // explicitly static
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="namespace">namespace</h3>
+<p>\n\n\n\n</p>
+<p>在约束作用域方面，替代static</p>
+<p>\n\n\n\n</p>
+<p>有两种使用方式</p>
+<p>\n\n\n\n</p>
+<p>declaration<br><strong>using L::k; using L::f;</strong></p>
+<p>\n\n\n\n</p>
+<p>directive<br><strong>using namespace L;</strong></p>
+<p>\n\n\n\n</p>
+<p>别名方式： namespace a = c；</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<h3 id="static">static</h3>
+<p>\n\n\n\n</p>
+<p>The <strong>static</strong>  keyword can be used to declare variables and functions at -</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>global scope — variables and functions
+\n\n\n\n</li>
+<li>namespace scope — variables and functions
+\n\n\n\n</li>
+<li>class scope — variables and functions
+\n\n\n\n</li>
+<li>local scope — variables
+\n
+\n\n\n\n</li>
+</ol>
+<p><code>static</code> 关键字可以用于<strong>函数</strong> 和<strong>变量</strong> ，它的作用是<strong>限制函数和变量的作用域</strong> ，使得它们只能在<strong>当前文件</strong> 中使用。对于当前文件，<code>static</code> 关键字作用的变量还会将作用域扩大到全局，相当于在 <code>main</code> 函数外定义。</p>
+<p>\n\n\n\n</p>
+<p>在函数内部使用 <code>static</code> 关键字定义的变量具有静态存储持续时间。这意味着变量在函数的多次调用之间保持其值，而不是每次调用时重新初始化。</p>
+<p>\n\n\n\n</p>
+<p>static 初始化的原理</p>
+<p>\n\n\n\n</p>
+<pre><code>例1：\nint main()\n{\n    for(int x = 5; x &lt; 10; x++)\n    {\n        static int y = x;\t//第一次被引用时初始化，并且只初始化一次\n        cout &lt;&lt; &quot;x = &quot; &lt;&lt; x &lt;&lt; &quot;, y = &quot; &lt;&lt; y &lt;&lt; endl;\n    }\n    return 0;\n}\n\n输出结果：\nx = 5, y = 5\nx = 6, y = 5\nx = 7, y = 5\nx = 8, y = 5\nx = 9, y = 5\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>但实际上存在一些情况</p>
+<p>\n\n\n\n</p>
+<pre><code>例2：\nint main()\n{\n    for(int x = 5; x &lt; 10; x++)\n    {\n        static int y = x;\n        cout &lt;&lt; &quot;x = &quot; &lt;&lt; x &lt;&lt; &quot;, y = &quot; &lt;&lt; y &lt;&lt; endl;\n\n        int *p = &amp;y;\n        p++;\n        *p = 0;\n    }\n    return 0;\n}\n\n输出结果：\nx = 5, y = 5\nx = 6, y = 6\nx = 7, y = 7\nx = 8, y = 8\nx = 9, y = 9\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>通过两个例子的结果我们可以知道，静态变量的初始化就是通过静态变量后面的一个32位内存位来做记录，以标识这个静态变量是否已经初始化。每次运行到当前位置，会先去判断这个地址：<br>如果不是1，就给它赋值1，然后给变量赋值；<br>如果是1，直接跳过赋值代码块这样它就做到了只赋值一次的效果；</p>
+<p>\n\n\n\n</p>
+<pre><code>void foo() {\n    static int count = 0; // 只初始化一次\n    count++;\n    std::cout &lt;&lt; count &lt;&lt; std::endl;\n}\n\nint main() {\n    foo(); // 输出 1\n    foo(); // 输出 2\n    foo(); // 输出 3\n    return 0;\n}\n
+</code></pre>
+<p>\n\n\n\n</p>
+<h4 id="类作用域"><strong>类作用域</strong></h4>
+<p>\n\n\n\n</p>
+<p>在类中使用 <code>static</code> 关键字定义的成员变量和成员函数属于类本身，而不是类的某个对象。静态成员变量在所有对象之间共享，静态成员函数可以在没有对象实例的情况下调用。</p>
+<p>\n\n\n\n</p>
+<pre><code>class MyClass {\npublic:\n    static int count; // 静态成员变量\n    static void increment();\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<h3 id="extern">extern</h3>
+<p>\n\n\n\n</p>
+<h3 id="函数执行机制">函数执行机制</h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>建立被调用函数的栈空间
+\n\n\n\n</li>
+<li>参数传递\n\n<ul>
+<li>值传递
+\n\n\n\n</li>
+<li>引用传递
+\n\n
+\n\n\n\n</li>
+</ul>
+</li>
+<li>保存调用函数的运行状态
+\n\n\n\n</li>
+<li>将控制转交被调函数
+\n
+\n\n\n\n</li>
+</ul>
+<p>Function call<br>Base stack pointer -&gt;ebp<br>Top of stack -&gt;esp</p>
+<p>\n\n\n\n</p>
+<p><strong>Summary</strong></p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>压入参数
+\n\n\n\n</li>
+<li>保存上下文\n\n<ul>
+<li>保存返回地址
+\n\n\n\n</li>
+<li>保存调用者的base pointer
+\n\n
+\n\n\n\n</li>
+</ul>
+</li>
+<li>执行函数\n\n<ul>
+<li>设置新的base pointer
+\n\n\n\n</li>
+<li>分配空间
+\n\n\n\n</li>
+<li>执行任务
+\n\n\n\n</li>
+<li>释放空间
+\n\n
+\n\n\n\n</li>
+</ul>
+</li>
+<li>恢复上下文\n\n<ul>
+<li>加载调用者的base pointer
+\n\n\n\n</li>
+<li>加载返回地址
+\n\n
+\n\n\n\n</li>
+</ul>
+</li>
+<li>继续执行调用者
+\n
+\n\n\n\n</li>
+</ol>
+<p>\n\n\n\n</p>
+<h2 id="主题五：重要关键字集合">主题五：重要关键字集合</h2>
+<p>\n\n\n\n</p>
+<h3 id="inline函数的优缺点和适用场景">inline函数的优缺点和适用场景</h3>
+<p>\n\n\n\n</p>
+<p>定义：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>实际调用的时候，把inline函数放回原来的位置，不会产生参数的传递，在汇编上也不会有其<br>他的冗余操作，编译系统将为inline函数创建一段代码，在调用点，以相应的代码替换
+\n
+\n\n\n\n</li>
+</ol>
+<p>作用：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>增加程序的可读性
+\n\n\n\n</li>
+<li>提高程序的运行效率
+\n\n\n\n</li>
+<li>弥补宏定义不能及进行类型检查的缺陷
+\n\n\n\n</li>
+<li>问题：
+\n\n\n\n</li>
+<li>增大目标代码， 调用时必须在调用该函数的每一个文本文件中定义
+\n\n\n\n</li>
+<li>病态换页(内存抖动)
+\n\n\n\n</li>
+<li>降低指令快取装置的命中率
+\n
+\n\n\n\n</li>
+</ol>
+<p>建议：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>使用频率高的小代码使用内联
+\n\n\n\n</li>
+<li>内联函数定义放在头文件中
+\n\n\n\n</li>
+<li>不能含有复杂的结构控制
+\n\n\n\n</li>
+<li>递归不能做内联函数
+\n\n\n\n</li>
+<li>限制：
+\n\n\n\n</li>
+<li>非递归
+\n\n\n\n</li>
+<li>由编译系统控制
+\n\n\n\n</li>
+<li>没有函数指针（无法写泛型、framework，表达能力降低）
+\n
+\n\n\n\n</li>
+</ol>
+<p>Inline function</p>
+<p>\n\n\n\n</p>
+<p>用于替代C的宏函数<br>提高效率<br>实现：编译系统将为 inline 函数创建一段代码，在调用点，以相应的代码替换（inline<br>只是对编译器的提示，能不能真的换要看编译器）<br>因此，关键字 inline 必须与函数定义体放在一起才能使函数成为内联，仅将 inline 放<br>在函数声明前面不起任何作用。<br>建议：inline函数的定义放在头文件中（而非只是声明）<br>类中的成员默认都是内联的<br>限制：</p>
+<p>\n\n\n\n</p>
+<pre><code>递归\n函数指针\n常用：小型、频繁调用的函数，避免在构造和析构函数中调用\n缺点：\n增大object code\n病态的换页\n降低指令快取装置的命中率
+</code></pre>
+<p>\n\n\n\n</p>
+<p>define 的定义函数的能力比 inline 强<br>但是define 又缺少类型检查<br>template (虽然define还是更强)</p>
+<p>\n\n\n\n</p>
+<h3 id="optional">optional</h3>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;optional&gt;\nstd::optional&lt;string&gt;\ngetNameByID(\n\tconst vector&lt;std::pair&lt;int, string&gt;&gt;&amp; v, \n\tint id)\n{   \tfor (auto e : v) {\n\t\tif (e.first == id)\n\t\t\treturn e.second;\n\t}\n\treturn std::nullopt;\n}\n
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="variant">variant</h3>
+<p>\n\n\n\n</p>
+<p>即 type-safe <code>union</code>。<code>union</code> 的问题是可能当中的内容与解释的类型是不相符的，这会导致一系列安全性问题。而 <code>variant</code> 可以提供更严格的类型检查，在编译时或运行中阻止不正确的访问。</p>
+<p>\n\n\n\n</p>
+<pre><code>std::variant&lt;int, float, string&gt; v;\nv = &quot;abc&quot;;\ncout &lt;&lt; v.index() &lt;&lt; &quot; &quot; &lt;&lt; std::get&lt;string&gt;(v) &lt;&lt; endl; // string, OK\nv = 100;\ncout &lt;&lt; v.index() &lt;&lt; &quot; &quot; &lt;&lt; std::get&lt;0&gt;(v) &lt;&lt; endl; // int, OK\nv = 2.3f;\ncout &lt;&lt; v.index() &lt;&lt; &quot; &quot; &lt;&lt; std::get&lt;float&gt;(v) &lt;&lt; endl; // float, OK\ncout &lt;&lt; v.index() &lt;&lt; &quot; &quot; &lt;&lt; std::get&lt;double&gt;(v) &lt;&lt; endl; // double, not found in type list, compile ERROR\n\ncout &lt;&lt; v.index() &lt;&lt; &quot; &quot; &lt;&lt; std::get&lt;int&gt;(v) &lt;&lt; endl; // int, not the corresponding type, runtime exception\n\nfloat* pf = std::get_if&lt;float&gt;(&amp;v); // we can use guard pointer to judge.\nif(pf != nullptr){ // float, OK\n  \tcout &lt;&lt; v.index() &lt;&lt; &quot; &quot; &lt;&lt; std::get&lt;float&gt;(v) &lt;&lt; endl;\n}else{ // not float, invalid!\n  \tcout &lt;&lt; &quot;Invalid&quot; &lt;&lt; endl;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="any">any</h3>
+<p>\n\n\n\n</p>
+<p>如果不能将返回值显式地表现出来，可以直接用 <code>any</code> 来进行封装。<code>any</code> 相当于是一个篮子，它可以接受任何类型的返回值。它相当于是更安全的 <code>void*</code></p>
+<p>\n\n\n\n</p>
+<pre><code>any input(){\n  \tint i;\n  \tcin &gt;&gt; i;\n  \tswitch(i){\n\t      case 0: \n        \t\treturn 11;\n        \t\tbreak;\n\t      case 1:\n  \t\t\t\t\treturn 3.14;\n        \t\tbreak;\n      \tdefault:\n        \t\treturn string(&quot;Hello, world!&quot;);\n        \t\tbreak;\n    }\n}\n\nint main(){\n  \tany aa;\n  \taa = input();\n  \tif(aa.type() == typeid(int)){//using typeid to judge its type\n      \t// do something...\n    }else if(aa.type() == typeid(double)){\n      \t// do something...\n    }else{\n      \t// do something...\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="const">const</h3>
+<p>\n\n\n\n</p>
+<p>1.正常const常量定义：</p>
+<p>\n\n\n\n</p>
+<pre><code>const int a = 10;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>2.含const的指针</p>
+<p>\n\n\n\n</p>
+<pre><code>const double pi = 3.1415;\nconst double *cptr = &amp; pi;\n*cptr = 42; //错误：常量指针不能修改对应的值\nconst double *coll;\nconst double c = 0.0;\ncoll = &amp;c;\ncptr = coll;//允许更换指针\n\n\nconst double pi = 3.14;\nconst double *const pip = π //从右向左依次解修饰符，首先pip是一个常量，然后是*说明pip是一个常量指针，\n//再然后是double说明是指向double的指针，最后是const说明这个double不能变，即指向的对象是一个常量的double
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="final">final</h3>
+<p>\n\n\n\n</p>
+<p>当用于类时，final 关键字表明这个类不能被继承。这意味着没有任何其他类可以继承<br>这个被标记为final 的类。<br>当用于成员函数时，final 关键字表明这个成员函数不能被任何派生类重写。也就是说，这个函数的实现是最终的，不允许在派生类中被覆盖</p>
+<p>\n\n\n\n</p>
+<p>final 关键字可以与virtual 关键字一起使用，以阻止派生类重写特定的虚函数</p>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nclass Base {\npublic:\n    virtual void print() final { // 标记为 final，禁止重写\n        std::cout &lt;&lt; &quot;Base::print\\n&quot;;\n    }\n};\n\nclass Derived : public Base {\npublic:\n    // 错误：不能重写 final 函数\n    void print() override {\n        std::cout &lt;&lt; &quot;Derived::print\\n&quot;;\n    }\n};\n\nint main() {\n    Derived obj;\n    obj.print();\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="override">override</h3>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-65.png" alt="">\n\n\n\n</p>
+<p>纯虚函数：纯虚函数是声明时在函数原型后加上=0 (往往只声明，不实现)</p>
+<p>\n\n\n\n</p>
+<p>纯虚函数：只有函数接口会被继承<br>只有函数接口会被继承<br>子类必须继承函数接口，<strong>必须提供实现代码</strong><br>一般虚函数：函数的接口及缺省实现代码都会被继承<br>子类必须继承函数接口<br>可以继承缺省实现代码<br>非虚函数：函数的接口和其实现代码都会被继承<br>会同时继承接口和实现代码</p>
+<p>\n\n\n\n</p>
+<pre><code>class Base {\npublic:\n    void print() { // 非虚函数\n        std::cout &lt;&lt; &quot;Base::print\\n&quot;;\n    }\n};\n\nclass Derived : public Base {\npublic:\n    void print() { // 隐藏基类的非虚函数\n        std::cout &lt;&lt; &quot;Derived::print\\n&quot;;\n    }\n};\n\nint main() {\n    Base* obj = new Derived();\n    obj-&gt;print(); // 调用 Base::print（静态绑定）\n    delete obj;\n    return 0;\n}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>\n\n\n\n特性</th>
+<th>纯虚函数</th>
+<th>一般虚函数</th>
+<th>非虚函数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>定义</strong></td>
+<td><code>virtual void func() = 0;</code></td>
+<td><code>virtual void func();</code></td>
+<td><code>void func();</code></td>
+</tr>
+<tr>
+<td><strong>接口继承</strong></td>
+<td>是</td>
+<td>是</td>
+<td>是</td>
+</tr>
+<tr>
+<td><strong>实现继承</strong></td>
+<td>否</td>
+<td>是（默认实现）</td>
+<td>是</td>
+</tr>
+<tr>
+<td><strong>子类必须实现</strong></td>
+<td>是</td>
+<td>否（可重写）</td>
+<td>否（不能重写）</td>
+</tr>
+<tr>
+<td><strong>多态性</strong></td>
+<td>是（动态绑定）</td>
+<td>是（动态绑定）</td>
+<td>否（静态绑定）</td>
+</tr>
+<tr>
+<td><strong>用途</strong></td>
+<td>定义接口</td>
+<td>提供默认行为，允许重写</td>
+<td>实现不需要多态的行为</td>
+</tr>
+<tr>
+<td>\n\n\n\n</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<h3 id="多继承">多继承</h3>
+<p>\n\n\n\n</p>
+<p>如果直接基类有公共的基类，则该公共基类中的成员变量在多继承的派生类中有多个副本</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-66.png" alt="">\n\n\n\n</p>
+<p>C如何解决名冲突问题?<br>设计理念: (Base-Class Decomposition)将共同的属性抽象出一个父类<br>实现机制: 虚继承</p>
+<p>\n\n\n\n</p>
+<pre><code>class A;\n class B: virtual public A;\n class C: virtual public A;\n class D: B,C
+</code></pre>
+<p>\n\n\n\n</p>
+<p>最新的派生类（即多重继承链中最后的类）负责构造虚基类<br>虚基类的构造函数<strong>优先非虚基类</strong> 的构造函数执行（先调A再调BC最后是D本身）</p>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nclass Base {\npublic:\n    Base(int value) {\n        std::cout &lt;&lt; &quot;Base constructor, value: &quot; &lt;&lt; value &lt;&lt; &quot;\\n&quot;;\n    }\n};\n\nclass Derived1 : virtual public Base {\npublic:\n    Derived1(int value) : Base(value) {\n        std::cout &lt;&lt; &quot;Derived1 constructor\\n&quot;;\n    }\n};\n\nclass Derived2 : virtual public Base {\npublic:\n    Derived2(int value) : Base(value) {\n        std::cout &lt;&lt; &quot;Derived2 constructor\\n&quot;;\n    }\n};\n\nclass Final : public Derived1, public Derived2 {\npublic:\n    // 最派生类直接调用虚基类的构造函数\n    Final(int value1, int value2) : Base(value1), Derived1(value1), Derived2(value2) {\n        std::cout &lt;&lt; &quot;Final constructor\\n&quot;;\n    }\n};\n\nint main() {\n    Final obj(10, 20);\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>赋值操作符重载不能继承</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>每一个类对象实例在创建的时候，如果用户没有定义“赋值运算符重载函数”，那么，编<br>译器会自动生成一个隐含和默认的“赋值运算符重载函数” （即默认拷贝赋值函数）
+\n\n\n\n</li>
+<li>如果派生类中声明的成员与基类的成员同名，那么，基类的成员会被覆盖，哪怕基类的<br>成员与派生类的成员的数据类型和参数个数都完全不同，所以派生类的拷贝赋值函数覆<br>盖了基类的赋值操作符重载
+\n
+\n\n\n\n</li>
+</ol>
+<h2 id="主题六：模板元编程与非oop的多态">主题六：模板元编程与非OOP的多态</h2>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-10.png" alt="">\n\n\n\n</p>
+<p>在编译期这个代码就可以使用模板实例化展开计算得到对应结果</p>
+<p>\n\n\n\n</p>
+<h3 id="constexpr">constexpr</h3>
+<p>\n\n\n\n</p>
+<p><code>constexpr</code> 是 C++11 引入的一个关键字，用于指示表达式或函数在编译时求值。它允许编译器在编译时计算常量值，从而提高程序的性能和安全性。以下是 <code>constexpr</code> 的主要特点和在模板元编程中的作用：</p>
+<p>\n\n\n\n</p>
+<h4 id="constexpr-的主要特点"><code>constexpr</code> 的主要特点</h4>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li><strong>编译时求值</strong> ：<code>constexpr</code> 函数和变量在编译时求值，减少了运行时的计算开销。
+\n\n\n\n</li>
+<li><strong>常量表达式</strong> ：<code>constexpr</code> 函数可以返回常量表达式，允许在编译时进行更复杂的计算。
+\n\n\n\n</li>
+<li><strong>类型安全</strong> ：<code>constexpr</code> 提供了类型安全的编译时计算，避免了宏定义带来的潜在问题。
+\n
+\n\n\n\n</li>
+</ol>
+<h4 id="constexpr-在模板元编程中的作用"><code>constexpr</code> 在模板元编程中的作用</h4>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li><strong>编译时计算</strong> ：在模板元编程中，<code>constexpr</code> 可以用于编译时计算常量值，从而生成更高效的代码。例如，可以使用 <code>constexpr</code> 函数计算数组的大小或初始化常量数组。
+\n\n\n\n</li>
+<li><strong>类型特征检测</strong> ：<code>constexpr</code> 可以用于编写类型特征检测函数，在编译时确定类型的特性。例如，可以使用 <code>constexpr</code> 函数检测类型是否具有特定的成员函数或类型定义。
+\n\n\n\n</li>
+<li><strong>递归计算</strong> ：<code>constexpr</code> 函数支持递归调用，可以在编译时进行复杂的递归计算。例如，可以使用 <code>constexpr</code> 函数计算斐波那契数列或阶乘。
+\n\n\n\n</li>
+<li><strong>编译时断言</strong> ：<code>constexpr</code> 可以用于编写编译时断言，确保模板参数满足某些条件。例如，可以使用 <code>constexpr</code> 函数在编译时检查模板参数的范围或类型。
+\n
+\n\n\n\n</li>
+</ol>
+<h3 id="函数模板">函数模板</h3>
+<p>\n\n\n\n</p>
+<p>C中模板的完整定义通常出现在头文件</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<h2 id="主题七：纯血oop">主题七：纯血OOP</h2>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;stdio.h&gt;\n#include &lt;stdlib.h&gt;\n\ntemplate&lt;typename T&gt;\nstruct Stack {\n    T* array;\n    int capacity;\n    int top;\n    void _init(int capacity) {\n        array = (T*)malloc(sizeof(T) * capacity);\n        this-&gt;capacity = capacity;\n        this-&gt;top = -1;\n    }\n\n    void _push(T data) {\n        if (top + 1 &gt;= capacity) {\n            printf(&quot;Stack is full\\n&quot;);\n            return;\n        }\n        array[++top] = data;\n    }\n\n    T _pop() {\n        if (top &lt; 0) {\n            printf(&quot;Stack is empty\\n&quot;);\n            return 0;\n        }\n        return array[top--];\n    }\n\n    void _release() {\n        free(array);\n        capacity = 0;\n        top = -1;\n    }\n};
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\nusing namespace std;\n\ntemplate&lt;typename T&gt;\nclass Stack {\nprivate:\n    T* array;\n    int capacity;\n    int top;\npublic:\n    Stack(int capacity) {\n        array = new T[capacity];\n        this-&gt;capacity = capacity;\n        this-&gt;top = -1;\n    }\n\n    void _push(T data) {\n        if (top + 1 &gt;= capacity) {\n            printf(&quot;Stack is full\\n&quot;);\n            return;\n        }\n        array[++top] = data;\n    }\n\n    T _pop() {\n        if (top &lt; 0) {\n            printf(&quot;Stack is empty\\n&quot;);\n            return 0;\n        }\n        return array[top--];\n    }\n\n    ~Stack() {\n        delete[] array;\n        capacity = 0;\n        top = -1;\n    }\n};
+</code></pre>
+<p>\n\n\n\n</p>
+<p>请注意比较两者的差异</p>
+<p>\n\n\n\n</p>
+<h3 id="类的继承">类的继承</h3>
+<p>\n\n\n\n</p>
+<p>基于目标代码的复用<br>对事物进行分类<br>增量开发</p>
+<p>\n\n\n\n</p>
+<p>继承是有权限控制的(不写是默认private的，基类中的任何元素都访问不到)</p>
+<p>\n\n\n\n</p>
+<p>class Student{ };<br>class Undergraduate_Student : public Student{ };</p>
+<p>\n\n\n\n</p>
+<p><strong>注意友元是不被继承的</strong></p>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-62.png" alt="">\n\n\n\n</p>
+<p>编译器会把ptr作为B类使用（除非使用dynamic_cast）</p>
+<p>\n\n\n\n</p>
+<p>派生类的友元函数不能访问基类的protected成员（派生类可以访问），private当然更不行了</p>
+<p>\n\n\n\n</p>
+<p><strong>派生类对象初始化</strong><br>基类和派生类共同完成</p>
+<p>\n\n\n\n</p>
+<p><strong>构造函数的执行次序</strong><br>基类的构造函数<br>派生类对象成员类的构造函数<br>派生类的构造函数</p>
+<p>\n\n\n\n</p>
+<p>缺省执行基类默认构造函数<br>要执行基类非默认构造函数，必须在派生类构造函数的初始化列表中指出</p>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nclass Base {\npublic:\n    Base(int value) {\n        std::cout &lt;&lt; &quot;Base构造函数，value: &quot; &lt;&lt; value &lt;&lt; &quot;\\n&quot;;\n    }\n};\n\nclass Derived : public Base {\npublic:\n    // 在初始化列表中显式调用基类的非默认构造函数\n    Derived(int value) : Base(value) {\n        std::cout &lt;&lt; &quot;Derived构造函数\\n&quot;;\n    }\n};\n\nint main() {\n    Derived obj(10); // 创建派生类对象\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nclass Base {\npublic:\n    Base(int value) {\n        std::cout &lt;&lt; &quot;Base构造函数，value: &quot; &lt;&lt; value &lt;&lt; &quot;\\n&quot;;\n    }\n};\n\nclass Derived : public Base {\npublic:\n    Derived() { // 错误：没有显式调用基类的构造函数\n        std::cout &lt;&lt; &quot;Derived构造函数\\n&quot;;\n    }\n};\n\nint main() {\n    Derived obj; // 编译错误\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>修复</p>
+<p>\n\n\n\n</p>
+<pre><code>class Derived : public Base {\npublic:\n    Derived() : Base(0) { // 显式调用基类的构造函数\n        std::cout &lt;&lt; &quot;Derived构造函数\\n&quot;;\n    }\n};
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="虚函数">虚函数</h3>
+<p>\n\n\n\n</p>
+<p>类型相容-&gt;赋值相容<br>类型相容x&lt;-赋值相容</p>
+<p>\n\n\n\n</p>
+<pre><code>class A{};\n class B: public A{};\n A a;   B b;\n a=b;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>a=b实际调用了一个拷贝函数<br>对象的身份发生变化，属于派生类的属性不再存在(对象切片——对象身份发生了变化)<br>使用多态写程序时，要避免将栈上的对象赋值给另一个对象</p>
+<p>\n\n\n\n</p>
+<p><strong>虚函数的来历</strong><br>C中的对象都是前期绑定的</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>编译时
+\n\n\n\n</li>
+<li>依据对象静态类型
+\n\n\n\n</li>
+<li>效率高、灵活性差
+\n\n\n\n</li>
+<li>难以实现多态 动态绑定
+\n\n\n\n</li>
+<li>但又要注重效率
+\n\n\n\n</li>
+<li>默认前期绑定
+\n\n\n\n</li>
+<li>动态绑定需显式指出(virtual)
+\n
+\n\n\n\n</li>
+</ul>
+<p>为类的成员方法声明virtual<br>根据实际引用和指向的对象类型动态绑定<br>如在基类中被定义为虚成员函数，则派生类中对其重定义的成员函数均为虚函数</p>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nclass Base {\npublic:\n    virtual void print() { // 声明虚函数\n        std::cout &lt;&lt; &quot;Base::print\\n&quot;;\n    }\n};\n\nclass Derived : public Base {\npublic:\n    void print() override { // 重写虚函数\n        std::cout &lt;&lt; &quot;Derived::print\\n&quot;;\n    }\n};\n\nint main() {\n    Base* obj = new Derived(); // 基类指针指向派生类对象\n    obj-&gt;print(); // 调用 Derived::print\n    delete obj;\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>limit:</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>只有类的成员函数才可以是
+\n\n\n\n</li>
+<li>静态函数、内联函数不能
+\n\n\n\n</li>
+<li>构造函数不能是虚函数
+\n\n\n\n</li>
+<li>在构造函数完成之前，无法找到作为虚函数的构造函数所在的代码区，所以构造函数只能作为
+\n\n\n\n</li>
+<li>普通函数存放在类所指定的代码区中
+\n\n\n\n</li>
+<li>析构函数可以是虚函数(往往是)
+\n\n\n\n</li>
+<li>如果析构函数不是虚函数，那么调用的将会是基类的析构函数。我们更希望可以调用派生类的
+\n\n\n\n</li>
+<li>析构函数对新定义的成员也进行析构
+\n
+\n\n\n\n</li>
+</ul>
+<p>需要<strong>额外的内存空间存储对象可以调用的相应虚函数</strong><br>对象的内存空间中含有指针，指向其<strong>虚函数表</strong><br>每个对象有多少虚函数是不确定的<br>编译时获得虚函数表，这样就知道如何确定应调用的函数<br>实例化一个类的对象的时候, 会使用一个指针记录这个类的虚函数表的首地址</p>
+<p>\n\n\n\n</p>
+<p>一些重要例子：（必须掌握）</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-63.png" alt="">\n\n\n\n<img src="../../assets/images/2024/12/image-64.png" alt="">\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>此时的A f是A的构造函数中调用的，此时<strong>还没进行B的构造</strong> ，所以即使f是虚函数，也<br>不会调用B中的 (直到构造函数返回后，对象方可正常使用)
+\n\n\n\n</li>
+<li>f是虚函数，调用B的
+\n\n\n\n</li>
+<li>g不是虚函数，调用基类的
+\n\n\n\n</li>
+<li>h不是虚函数，调用基类中的，接着根据虚函数表去调用f，由于此时环境中的this是在<br>A中的，调用A的g
+\n
+\n\n\n\n</li>
+</ol>
+<p>tip：</p>
+<p>\n\n\n\n</p>
+<p>避免在构造函数中调用虚函数(<strong>直到构造函数返回后，对象方可正常使用</strong>)<br>进入虚函数后，都是根据<strong>当前类型</strong> 确定(切换了上下文)<br>不要定义与继承来的非虚函数同名的成员函数<br>绝对不要重新定义继承来的缺省参数值(静态绑定，如果使用的是父类的指针指向子类，子类<br>覆盖的缺省参数值是无效的)</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<h2 id="主题八：重载函数总结">主题八：重载函数总结</h2>
+<p>\n\n\n\n</p>
+<p>双目操作符重载：<refType> operator #(args)</p>
+<p>\n\n\n\n</p>
+<p>隐含this<br>a#b 实际表现为<br>a.operator#(b)</p>
+<p>\n\n\n\n</p>
+<pre><code> Complex {};\n Complex operator+(Complex&amp; x1,Complex&amp; x2){ }\n c=a+b
+</code></pre>
+<p>\n\n\n\n</p>
+<p>operator&lt;&lt;只能作为全局函数重载</p>
+<p>\n\n\n\n</p>
+<pre><code>ostream&amp; operator&lt;&lt;(ostream&amp; o,Day d){ }
+</code></pre>
+<p>\n\n\n\n</p>
+<p>= () [] -&gt;不能作为全局函数重载</p>
+<p>\n\n\n\n</p>
+<p>不可被重载的操作符: . .* :: ?:</p>
+<p>\n\n\n\n</p>
+<p>永远不要重载 &amp;&amp;和 | | =&gt;破坏了短路机制</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-59.png" alt="">\n\n\n\n</p>
+<pre><code>#include &lt;functional&gt;\n#include &lt;iostream&gt;\n#include &lt;limits&gt;\n#include &lt;string&gt;\n#include &lt;unordered_map&gt;\n\nclass IntStream {\n public:\n  explicit IntStream(int first) : first_(first), current_(first), last_(std::numeric_limits&lt;int&gt;::max()), stride_(1) {}\n\n  IntStream(int first, int last) : first_(first), current_(first), last_(last), stride_(1) {}\n\n  IntStream(int first, int last, int stride) : first_(first), current_(first), last_(last), stride_(stride) {}\n\n  IntStream &amp;operator++() {\n    if (!finished()) {\n      current_ += stride_;\n    }\n    return *this;\n  }\n\n  IntStream operator++(int) {\n    IntStream temp = *this;\n    ++(*this);\n    return temp;\n  }\n\n  int operator*() const {\n    return current_;\n  }\n\n  operator bool() const {\n    return !finished();\n  }\n\n private:\n  bool finished() const {\n    if (stride_ &gt; 0) {\n      return current_ &gt;= last_;\n    } else if (stride_ &lt; 0) {\n      return current_ &lt;= last_;\n    } else {\n      return false; // Infinite loop if stride is 0\n    }\n  }\n\n  int first_;\n  int current_;\n  int last_;\n  int stride_;\n};\n\nvoid print_answer(const IntStream &amp;s, int expect) {\n  std::cout &lt;&lt; std::boolalpha;\n  if (s) {\n    std::cout &lt;&lt; (*s == expect) &lt;&lt; &#x27; &#x27; &lt;&lt; *s &lt;&lt; std::endl;\n  } else {\n    std::cout &lt;&lt; false &lt;&lt; std::endl;\n  }\n}\n\n/**\n * @brief 测试 IntStream(int)\n */\nvoid test_1() {\n  IntStream s(0);\n  for (size_t i = 0; i &lt; 10; i++) {\n    ++s;\n  }\n  print_answer(s, 10);\n}\n/**\n * @brief 测试范围 [first, last) 非常大的情况\n */\nvoid test_8() {\n  IntStream s(std::numeric_limits&lt;int&gt;::min(), std::numeric_limits&lt;int&gt;::max());\n  for (size_t i = 0; i &lt; 10000; i++) {\n    s++;\n  }\n  print_answer(s, std::numeric_limits&lt;int&gt;::min() + 10000);\n}\n\nint main() {\n  std::unordered_map&lt;std::string, std::function&lt;void()&gt;&gt; test_cases_by_name = {\n      {&quot;test_1&quot;, test_1}, {&quot;test_2&quot;, test_2}, {&quot;test_3&quot;, test_3},\n      {&quot;test_4&quot;, test_4}, {&quot;test_5&quot;, test_5}, {&quot;test_6&quot;, test_6},\n      {&quot;test_7&quot;, test_7}, {&quot;test_8&quot;, test_8},\n  };\n  std::string tname;\n  std::cin &gt;&gt; tname;\n  auto it = test_cases_by_name.find(tname);\n  if (it == test_cases_by_name.end()) {\n    std::cout &lt;&lt; &quot;输入只能是 test_&lt;N&gt;，其中 &lt;N&gt; 可取整数 1 到 8.&quot; &lt;&lt; std::endl;\n    return 1;\n  }\n  (it-&gt;second)();\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nusing namespace std;\nclass temp{\n    int a;\n    int b;\n\n    public:\n        temp(){\n            a = 1;\n            b = 2;\n        }\n    friend ostream&amp; operator&lt;&lt;(ostream&amp; os, const temp&amp; t);\n};\n\nostream&amp; operator&lt;&lt;(ostream&amp; os, const temp&amp; t){\n    os&lt;&lt;t.a&lt;&lt;&quot; &quot;&lt;&lt;t.b;\n    return os;\n}\n\nint main(){\n    temp t;\n    cout&lt;&lt;t&lt;&lt;endl;\n    return 0;\n}\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>=重载（需要避免自赋值）</p>
+<p>\n\n\n\n</p>
+<pre><code>Base&amp; operator=(const Base&amp; other) {\n        if (this != &amp;other) {\n            value = other.value;\n        }\n        return *this;\n    }
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code> class A{\n int x,y;\n char *p;\n A&amp; operator=(A&amp; a){\n if(this &amp;rhs) return *this   \n}\n }
+</code></pre>
+<p>\n\n\n\n</p>
+<p>下标操作</p>
+<p>\n\n\n\n</p>
+<pre><code>class string{\n char *p;\n public:\n string(char *p1){\n p = new char[strlen(p1)+1];\n strcpy(p,p1);\n }\n char &amp;operator [](int i) const { return p[i]; }\n const char operator [](int i) const { return p[i]; }\n }
+</code></pre>
+<p>\n\n\n\n</p>
+<p>为了避免对下标操作符取的值修改，再次重载<br>为什么返回值不同的函数能重载成功? 加上const后，this的类型不同，非常量的版本和常<br>量版本调用的不同</p>
+<p>\n\n\n\n</p>
+<p>对于下标操作符的重载，要重载常量和非常量两个版本</p>
+<p>\n\n\n\n</p>
+<h3 id="括号操作符"><strong>括号操作符</strong></h3>
+<p>\n\n\n\n</p>
+<p>仿函数使用<br>策略模式<br>代理/智能指针</p>
+<p>\n\n\n\n</p>
+<p>减少混合计算中需要定义的操作符重载函数的数量</p>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nclass Multiplier {\nprivate:\n    int factor;\n\npublic:\n    Multiplier(int f) : factor(f) {}\n\n    // 重载括号操作符\n    int operator()(int x) {\n        return x * factor;\n    }\n};\n\nint main() {\n    Multiplier multiplyBy2(2); // 创建仿函数对象，factor = 2\n    Multiplier multiplyBy3(3); // 创建仿函数对象，factor = 3\n\n    std::cout &lt;&lt; &quot;2 * 5 = &quot; &lt;&lt; multiplyBy2(5) &lt;&lt; &quot;\\n&quot;; // 输出：10\n    std::cout &lt;&lt; &quot;3 * 5 = &quot; &lt;&lt; multiplyBy3(5) &lt;&lt; &quot;\\n&quot;; // 输出：15\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>-&gt;操作符</p>
+<p>\n\n\n\n</p>
+<p>是二元运算符，重载时按一元操作符描述 返回指针类型或者自定义操作符的类型</p>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n\nclass MyClass {\npublic:\n    void print() {\n        std::cout &lt;&lt; &quot;Hello, World!\\n&quot;;\n    }\n};\n\nclass Wrapper {\nprivate:\n    MyClass* ptr;\n\npublic:\n    Wrapper(MyClass* p) : ptr(p) {}\n\n    // 重载 -&gt; 操作符\n    MyClass* operator-&gt;() {\n        return ptr;\n    }\n};\n\nint main() {\n    MyClass obj;\n    Wrapper wrapper(&amp;obj);\n    wrapper-&gt;print(); // 通过重载的 -&gt; 操作符访问成员函数\n    return 0;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>还有new和delete的重载见上文（第一章）</p>
+<p>\n\n\n\n</p>
+<h2 id="主题九：异常处理">主题九：异常处理</h2>
+<p>\n\n\n\n</p>
+<p>异常——Exception</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>运行环境造成
+\n\n\n\n</li>
+<li>内存不足，文件操作失败</li>
+</ul>
+<p>\n\n\n\n</p>
+<ul>
+<li>异常处理
+\n\n\n\n</li>
+<li>当发生异常，程序无法沿着正常的顺序执行下去的时候，立即结束程序可能并不妥<br>当。我们需要给程序提供另外一条可以安全退出的路径<br>特征：可以预见，无法避免
+\n
+\n\n\n\n</li>
+</ul>
+<h3 id="异常处理机制">异常处理机制</h3>
+<p>\n\n\n\n</p>
+<p>try 监控<br>throw 抛掷异常对象</p>
+<p>\n\n\n\n</p>
+<p>throw 抛出异常时，将暂停当前函数的执行，开始查找匹配的catch子句。沿着函数的嵌套调用链向 上查找，直到找到一个匹配的catch子句，或者找不到匹配的catch子句(调用abort终 止)。</p>
+<p>\n\n\n\n</p>
+<p>无参数throw<br>将捕获到的异常对象重新抛出</p>
+<p>\n\n\n\n</p>
+<p>析构函数不应抛出异常（noexcept）<br>如果析构函数中出现异常，那么就应该在析构函数内部将这个异常进行处理，而不是将异常抛出去。<br>为什么不应该？抛出异常的就是栈展开的过程，而栈展开会调用<strong>析构函数销毁局部对象</strong> ，这样多次调用析构函数会导致程序崩溃(内存泄漏)</p>
+<p>\n\n\n\n</p>
+<p>构造函数可以抛出异常<br>当构造函数内出现异常，可以选择将异常抛出，在栈展开的过程调用析构函数释放已申请的内<br>存，也可以在内部将异常处理，手动调用delete释放</p>
+<p>\n\n\n\n</p>
+<h3 id="catch">catch</h3>
+<p>\n\n\n\n</p>
+<p>catch( var ) {&lt;语句序列&gt;} </p>
+<p>\n\n\n\n</p>
+<p>类型：异常类型，匹配规则同函数重载 catch的异常类型是严格匹配的 </p>
+<p>\n\n\n\n</p>
+<p>变量：存储异常对象，可省略 try后可以跟多个catch语句块</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/12/image-67.png" alt="">\n\n\n\n</p>
+<h2 id="主题十：一些初始化">主题十：一些初始化</h2>
+<p>\n\n\n\n</p>
+<h3 id="函数参数列表初始化">函数参数列表初始化</h3>
+<p>\n\n\n\n</p>
+<p>形似这样：</p>
+<p>\n\n\n\n</p>
+<pre><code>int function(int a, int b = 10, int c = 11); // 正确
+</code></pre>
+<p>\n\n\n\n</p>
+<p>默认参数必须从<strong>右到左</strong> 依次设置。也就是说，如果一个参数有默认值，那么它右边的所有参数也必须具有默认值。</p>
+<p>\n\n\n\n</p>
+<p>int function(int a = 1, int b, int c = 11); // 错误：b 没有默认值<br>int function(int a = 1, int b = 10, int c); // 错误：c 没有默认值</p>
+<p>\n\n\n\n</p>
+<pre><code>int result1 = function(1);       // a=1, b=10, c=11\nint result2 = function(1, 20);   // a=1, b=20, c=11\nint result3 = function(1, 20, 30); // a=1, b=20, c=30
+</code></pre>
+<p>\n\n\n\n</p>
+<p>这样的调用方式是正确的</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

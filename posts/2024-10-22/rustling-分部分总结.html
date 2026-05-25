@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>rustling 分部分总结 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2024-10-22</p>
+        <h1>rustling 分部分总结</h1>
+        <div class="post-meta">
+          <span>2024-10-22</span>
+          <span class="tag">RUST</span>
+        </div>
+        <p>\n</p>
+<h2 id="primitives">Primitives</h2>
+<p>\n\n\n\n</p>
+<p>在rust中有以下基本类型，很神奇的是rust乐意声明出一个类型的宽度，以更方便进行维护</p>
+<p>\n\n\n\n</p>
+<h3 id="scalar-types"><a href="https://doc.rust-lang.org/rust-by-example/primitives.html#scalar-types">Scalar Types</a></h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>Signed integers: <code>i8</code>, <code>i16</code>, <code>i32</code>, <code>i64</code>, <code>i128</code> and <code>isize</code> (pointer size)
+\n\n\n\n</li>
+<li>Unsigned integers: <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>u64</code>, <code>u128</code> and <code>usize</code> (pointer size)
+\n\n\n\n</li>
+<li>Floating point: <code>f32</code>, <code>f64</code>
+\n\n\n\n</li>
+<li><code>char</code> Unicode scalar values like <code>&#39;a&#39;</code>, <code>&#39;α&#39;</code> and <code>&#39;∞&#39;</code> (4 bytes each)
+\n\n\n\n</li>
+<li><code>bool</code> either <code>true</code> or <code>false</code>
+\n\n\n\n</li>
+<li>The unit type <code>()</code>, whose only possible value is an empty tuple: <code>()</code>
+\n
+\n\n\n\n</li>
+</ul>
+<p>Despite the value of a unit type being a tuple, it is not considered a compound type because it does not contain multiple values.</p>
+<p>\n\n\n\n</p>
+<h3 id="compound-types"><a href="https://doc.rust-lang.org/rust-by-example/primitives.html#compound-types">Compound Types</a></h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>Arrays like <code>[1, 2, 3]</code>
+\n\n\n\n</li>
+<li>Tuples like <code>(1, true)</code>
+\n
+\n\n\n\n</li>
+</ul>
+<p>Variables can always be <em>type annotated</em>. Numbers may additionally be annotated via a <em>suffix</em>  or <em>by default</em>. Integers default to <code>i32</code> and floats to <code>f64</code>. Note that Rust can also infer types from context.</p>
+<p>\n\n\n\n</p>
+<p>简单来讲就是rust既可以进行类型推断，也可以通过后缀进行注释，整数默认i32，浮点默认f64</p>
+<p>\n\n\n\n</p>
+<h2 id="custom-types"><a href="https://doc.rust-lang.org/stable/rust-by-example/custom_types.html#custom-types">Custom Types</a></h2>
+<p>\n\n\n\n</p>
+<p>Rust custom data types are formed mainly through the two keywords:</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><code>struct</code>: define a structure
+\n\n\n\n</li>
+<li><code>enum</code>: define an enumeration
+\n
+\n\n\n\n</li>
+</ul>
+<p>rust并非java和c++意义上的OOP语言，因此所有的封装其实也是一种custom types,基本都围绕着以上两种类型进行，并且辅助以methods，traits等特性实现这样一个内容，并且rust的动态派发特性使得rust可以在运行时选择合适的实现</p>
+<p>\n\n\n\n</p>
+<p>让我们具体来看一下在rust中的struct以及enum的特点：</p>
+<p>\n\n\n\n</p>
+<h3 id="struct">Struct</h3>
+<p>\n\n\n\n</p>
+<p>There are three types of structures (&quot;structs&quot;) that can be created using the <code>struct</code> keyword:</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><p>Tuple structs, which are, basically, named tuples.
+\n\n\n\n</p>
+</li>
+<li><p>The classic <a href="https://en.wikipedia.org/wiki/Struct_(C_programming_language)">C structs</a>
+\n\n\n\n</p>
+</li>
+<li><p>Unit structs, which are field-less, are useful for generics.
+\n
+\n\n\n\n</p>
+<p>struct Rectangle {\n    // A rectangle can be specified by where the top left and bottom right\n    // corners are in space.\n    top_left: Point,\n    bottom_right: Point,\n}</p>
+</li>
+</ul>
+<p>\n\n\n\n</p>
+<p>这样定义之后，在使用时候，我们可以建立类似于下文这样的struct</p>
+<p>\n\n\n\n</p>
+<pre><code>let another_point: Point = Point { x: 5.2, y: 0.2 };
+</code></pre>
+<p>\n\n\n\n</p>
+<p>并且为了方便初始化并且使用update语法更新部分，可以这样去定义struct</p>
+<p>\n\n\n\n</p>
+<pre><code>fn create_order_template() -&gt; Order {\n    Order {\n        name: String::from(&quot;Bob&quot;),\n        year: 2019,\n        made_by_phone: false,\n        made_by_mobile: false,\n        made_by_email: true,\n        item_number: 123,\n        count: 0,\n    }\n}\n\nlet order_template = create_order_template();\n        // TODO: Create your own order using the update syntax and template above!\n        let your_order = Order{\n            count: 1,\n            item_number: 1,\n            name: &quot;Hacker in Rust&quot;.to_string(),\n            ..order_template\n        };
+</code></pre>
+<p>\n\n\n\n</p>
+<p>最重要的特征之一，我们可以给这样一般的c structs添加实例方法，如下：</p>
+<p>\n\n\n\n</p>
+<pre><code>struct Package {\n    sender_country: String,\n    recipient_country: String,\n    weight_in_grams: i32,\n}\n\nimpl Package {\n    fn new(sender_country: String, recipient_country: String, weight_in_grams: i32) -&gt; Package {\n        if weight_in_grams &lt;= 0 {\n            panic!(&quot;Can not ship a weightless package.&quot;)\n        } else {\n            Package {\n                sender_country,\n                recipient_country,\n                weight_in_grams,\n            }\n        }\n    }\n\n    fn is_international(&amp;self) -&gt; bool {\n        if self.sender_country != self.recipient_country {\n            true\n        } else {\n            false\n        }\n    }\n\n    fn get_fees(&amp;self, cents_per_gram: i32) -&gt; i32 {\n        self.weight_in_grams * cents_per_gram\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="enums"><a href="https://doc.rust-lang.org/stable/rust-by-example/custom_types/enum.html#enums">Enums</a></h3>
+<p>\n\n\n\n</p>
+<p>The <code>enum</code> keyword allows the creation of a type which may be one of a few different variants. Any variant which is valid as a <code>struct</code> is also valid in an <code>enum</code>.</p>
+<p>\n\n\n\n</p>
+<pre><code>enum Message {\n    Quit,\n    Echo,\n    Move,\n    ChangeColor\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>这是一个最简单的enum类型，也是类似于其他语言的enum设计类型，但是实际上rust 的enum类型支持更加丰富的扩展，在enum中可以存储其他类型的数据：  </p>
+<p>\n\n\n\n</p>
+<pre><code>enum Message {\n    Move{x: i32, y: i32},\n    Echo(String),\n    ChangeColor(i32, i32, i32),\n    Quit\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>并且和rust一样支持实例化的方法</p>
+<p>\n\n\n\n</p>
+<pre><code>impl Message {\n    fn call(&amp;self) {\n        println!(&quot;{:?}&quot;, self);\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>并且结合match可以做到简单的“多态”</p>
+<p>\n\n\n\n</p>
+<pre><code>enum Message {\n    // TODO: implement the message variant types based on their usage below\n    Quit,\n    Echo(String),\n    Move(Point),\n    ChangeColor(u8, u8, u8)\n}\n\nstruct Point {\n    x: u8,\n    y: u8,\n}\n\nstruct State {\n    color: (u8, u8, u8),\n    position: Point,\n    quit: bool,\n    message: String\n}\n\nimpl State {\n    fn change_color(&amp;mut self, color: (u8, u8, u8)) {\n        self.color = color;\n    }\n\n    fn quit(&amp;mut self) {\n        self.quit = true;\n    }\n\n    fn echo(&amp;mut self, s: String) { self.message = s }\n\n    fn move_position(&amp;mut self, p: Point) {\n        self.position = p;\n    }\n\n    fn process(&amp;mut self, message: Message) {\n        // TODO: create a match expression to process the different message\n        // variants\n        // Remember: When passing a tuple as a function argument, you&#x27;ll need\n        // extra parentheses: fn function((t, u, p, l, e))\n        match message {\n            Message::Quit =&gt; self.quit(),\n            Message::Echo(s) =&gt; self.echo(s),\n            Message::Move(p) =&gt; self.move_position(p),\n            Message::ChangeColor(r, g, b) =&gt; self.change_color((r, g, b))\n        }\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="variable-bindings"><a href="https://doc.rust-lang.org/rust-by-example/variable_bindings.html#variable-bindings">Variable Bindings</a></h2>
+<p>\n\n\n\n</p>
+<pre><code>    let an_integer = 1u32;\n    let a_boolean = true;\n    let unit = ();\n\n    // copy `an_integer` into `copied_integer`\n    let copied_integer = an_integer;\n\n    println!(&quot;An integer: {:?}&quot;, copied_integer);\n    println!(&quot;A boolean: {:?}&quot;, a_boolean);\n    println!(&quot;Meet the unit value: {:?}&quot;, unit);
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="mutability"><a href="https://doc.rust-lang.org/stable/rust-by-example/variable_bindings/mut.html#mutability">Mutability</a></h3>
+<p>\n\n\n\n</p>
+<p>Variable bindings are immutable by default, but this can be overridden using the <code>mut</code> modifier.</p>
+<p>\n\n\n\n</p>
+<p>在默认情况下这里的变量绑定之后都是不能更改的</p>
+<p>\n\n\n\n</p>
+<p>Variable bindings have a scope, and are constrained to live in a  <em>block</em>. A block is a collection of statements enclosed by braces <code>{}</code> 即有关域的内容，允许shadowing的行为（即小定义域内的变量&gt;大定义域）</p>
+<p>\n\n\n\n</p>
+<p>It&#39;s possible to declare variable bindings first, and initialize them later. However, this form is seldom used, as it may lead to the use of uninitialized variables.（只声明不初始化不是好习惯）</p>
+<p>\n\n\n\n</p>
+<h2 id="types"><a href="https://doc.rust-lang.org/stable/rust-by-example/types.html#types">Types</a></h2>
+<p>\n\n\n\n</p>
+<p>Rust provides several mechanisms to change or define the type of primitive and user defined types. The following sections cover:</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><a href="https://doc.rust-lang.org/stable/rust-by-example/types/cast.html">Casting</a> between primitive types
+\n\n\n\n</li>
+<li>Specifying the desired type of <a href="https://doc.rust-lang.org/stable/rust-by-example/types/literals.html">literals</a>
+\n\n\n\n</li>
+<li>Using <a href="https://doc.rust-lang.org/stable/rust-by-example/types/inference.html">type inference</a>
+\n\n\n\n</li>
+<li><a href="https://doc.rust-lang.org/stable/rust-by-example/types/alias.html">Aliasing</a> types
+\n
+\n\n\n\n</li>
+</ul>
+<p>Rust provides no implicit type conversion (coercion) between primitive types. But, explicit type conversion (casting) can be performed using the <code>as</code> keyword.</p>
+<p>\n\n\n\n</p>
+<p>虽然不允许隐式转换，但是使用as作为关键字是可以进行显式转换的。</p>
+<p>\n\n\n\n</p>
+<pre><code>// Suppress all warnings from casts which overflow.\n#![allow(overflowing_literals)]\n\nfn main() {\n    let decimal = 65.4321_f32;\n\n    // Error! No implicit conversion\n    let integer: u8 = decimal;\n    // FIXME ^ Comment out this line\n\n    // Explicit conversion\n    let integer = decimal as u8;\n    let character = integer as char;\n\n    // Error! There are limitations in conversion rules.\n    // A float cannot be directly converted to a char.\n    let character = decimal as char;\n    // FIXME ^ Comment out this line\n\n    println!(&quot;Casting: {} -&gt; {} -&gt; {}&quot;, decimal, integer, character);\n\n    // when casting any value to an unsigned type, T,\n    // T::MAX + 1 is added or subtracted until the value\n    // fits into the new type\n\n    // 1000 already fits in a u16\n    println!(&quot;1000 as a u16 is: {}&quot;, 1000 as u16);\n\n    // 1000 - 256 - 256 - 256 = 232\n    // Under the hood, the first 8 least significant bits (LSB) are kept,\n    // while the rest towards the most significant bit (MSB) get truncated.\n    println!(&quot;1000 as a u8 is : {}&quot;, 1000 as u8);\n    // -1 + 256 = 255\n    println!(&quot;  -1 as a u8 is : {}&quot;, (-1i8) as u8);\n\n    // For positive numbers, this is the same as the modulus\n    println!(&quot;1000 mod 256 is : {}&quot;, 1000 % 256);\n\n    // When casting to a signed type, the (bitwise) result is the same as\n    // first casting to the corresponding unsigned type. If the most significant\n    // bit of that value is 1, then the value is negative.\n\n    // Unless it already fits, of course.\n    println!(&quot; 128 as a i16 is: {}&quot;, 128 as i16);\n\n    // In boundary case 128 value in 8-bit two&#x27;s complement representation is -128\n    println!(&quot; 128 as a i8 is : {}&quot;, 128 as i8);\n\n    // repeating the example above\n    // 1000 as u8 -&gt; 232\n    println!(&quot;1000 as a u8 is : {}&quot;, 1000 as u8);\n    // and the value of 232 in 8-bit two&#x27;s complement representation is -24\n    println!(&quot; 232 as a i8 is : {}&quot;, 232 as i8);\n\n    // Since Rust 1.45, the `as` keyword performs a *saturating cast*\n    // when casting from float to int. If the floating point value exceeds\n    // the upper bound or is less than the lower bound, the returned value\n    // will be equal to the bound crossed.\n\n    // 300.0 as u8 is 255\n    println!(&quot; 300.0 as u8 is : {}&quot;, 300.0_f32 as u8);\n    // -100.0 as u8 is 0\n    println!(&quot;-100.0 as u8 is : {}&quot;, -100.0_f32 as u8);\n    // nan as u8 is 0\n    println!(&quot;   nan as u8 is : {}&quot;, f32::NAN as u8);\n\n    // This behavior incurs a small runtime cost and can be avoided\n    // with unsafe methods, however the results might overflow and\n    // return **unsound values**. Use these methods wisely:\n    unsafe {\n        // 300.0 as u8 is 44\n        println!(&quot; 300.0 as u8 is : {}&quot;, 300.0_f32.to_int_unchecked::&lt;u8&gt;());\n        // -100.0 as u8 is 156\n        println!(&quot;-100.0 as u8 is : {}&quot;, (-100.0_f32).to_int_unchecked::&lt;u8&gt;());\n        // nan as u8 is 0\n        println!(&quot;   nan as u8 is : {}&quot;, f32::NAN.to_int_unchecked::&lt;u8&gt;());\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>The type inference engine is pretty smart. It does more than looking at the type of the value expression during an initialization. It also looks at how the variable is used afterwards to infer its type. Here&#39;s an advanced example of type inference:rust实际上的类型推断有如下的实现</p>
+<p>\n\n\n\n</p>
+<pre><code>fn main() {\n    // Because of the annotation, the compiler knows that `elem` has type u8.\n    let elem = 5u8;\n\n    // Create an empty vector (a growable array).\n    let mut vec = Vec::new();\n    // At this point the compiler doesn&#x27;t know the exact type of `vec`, it\n    // just knows that it&#x27;s a vector of something (`Vec&lt;_&gt;`).\n\n    // Insert `elem` in the vector.\n    vec.push(elem);\n    // Aha! Now the compiler knows that `vec` is a vector of `u8`s (`Vec&lt;u8&gt;`)\n    // TODO ^ Try commenting out the `vec.push(elem)` line\n    \n    println!(&quot;{:?}&quot;, vec);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>The <code>type</code> statement can be used to give a new name to an existing type. Types must have <code>**UpperCamelCase**</code> names, or the compiler will raise a warning</p>
+<p>\n\n\n\n</p>
+<p>可以使用type NewType = existingtype这样的语法来给类型赋予新名字（alias）</p>
+<p>\n\n\n\n</p>
+<h3 id="from">From</h3>
+<p>\n\n\n\n</p>
+<h2 id="from-1"><a href="https://doc.rust-lang.org/stable/rust-by-example/conversion/from_into.html#from"><code>From</code></a></h2>
+<p>\n\n\n\n</p>
+<p>The <a href="https://doc.rust-lang.org/std/convert/trait.From.html"><code>From</code></a> trait allows for a type to define how to create itself from another type, hence providing a very simple mechanism for converting between several types. There are numerous implementations of this trait within the standard library for conversion of primitive and common types.</p>
+<p>\n\n\n\n</p>
+<p>For example we can easily convert a <code>str</code> into a <code>String</code></p>
+<p>\n\n\n\n</p>
+<pre><code>let my_str = &quot;hello&quot;;\nlet my_string = String::from(my_str);
+</code></pre>
+<p>\n\n\n\n</p>
+<p>对于没有默认实现的，我们可以通过如下方式声明这样的from转换</p>
+<p>\n\n\n\n</p>
+<pre><code>use std::convert::From;\n\n#[derive(Debug)]\nstruct Number {\n    value: i32,\n}\n\nimpl From&lt;i32&gt; for Number {\n    fn from(item: i32) -&gt; Self {\n        Number { value: item }\n    }\n}\n\nfn main() {\n    let num = Number::from(30);\n    println!(&quot;My number is {:?}&quot;, num);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="into"><a href="https://doc.rust-lang.org/stable/rust-by-example/conversion/from_into.html#into"><code>Into</code></a></h2>
+<p>\n\n\n\n</p>
+<p>The <a href="https://doc.rust-lang.org/std/convert/trait.Into.html"><code>Into</code></a> trait is simply the reciprocal of the <code>From</code> trait. It defines how to convert a type into another type.</p>
+<p>\n\n\n\n</p>
+<p>Calling <code>into()</code> typically requires us to specify the result type as the compiler is unable to determine this most of the time.</p>
+<p>\n\n\n\n</p>
+<p><code>From</code> and <code>Into</code> are designed to be complementary</p>
+<p>\n\n\n\n</p>
+<pre><code>use std::convert::Into;\n\n#[derive(Debug)]\nstruct Number {\n    value: i32,\n}\n\nimpl Into&lt;Number&gt; for i32 {\n    fn into(self) -&gt; Number {\n        Number { value: self }\n    }\n}\n\nfn main() {\n    let int = 5;\n    // Try removing the type annotation\n    let num: Number = int.into();//we should declare the annotation\n    println!(&quot;My number is {:?}&quot;, num);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="converting-to-string"><a href="https://doc.rust-lang.org/stable/rust-by-example/conversion/string.html#converting-to-string">Converting to String</a></h3>
+<p>\n\n\n\n</p>
+<p>To convert any type to a <code>String</code> is as simple as implementing the <a href="https://doc.rust-lang.org/std/string/trait.ToString.html"><code>ToString</code></a> trait for the type. Rather than doing so directly, you should<strong>implement the<a href="https://doc.rust-lang.org/std/fmt/trait.Display.html"><code>fmt::Display</code></a> trait</strong> which automagically provides <a href="https://doc.rust-lang.org/std/string/trait.ToString.html"><code>ToString</code></a> and also allows printing the type as discussed in the section on <a href="https://doc.rust-lang.org/stable/rust-by-example/hello/print.html"><code>print!</code></a>.</p>
+<p>\n\n\n\n</p>
+<pre><code>use std::fmt;\n\nstruct Circle {\n    radius: i32\n}\n\nimpl fmt::Display for Circle {\n    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {\n        write!(f, &quot;Circle of radius {}&quot;, self.radius)\n    }\n}\n\nfn main() {\n    let circle = Circle { radius: 6 };\n    println!(&quot;{}&quot;, circle.to_string());\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="expressions">Expressions</h3>
+<p>\n\n\n\n</p>
+<p>关于rust的表达式，其实只要下面的例子就能略知一二</p>
+<p>\n\n\n\n</p>
+<pre><code>fn main() {\n    let x = 5u32;\n\n    let y = {\n        let x_squared = x * x;\n        let x_cube = x_squared * x;\n\n        // This expression will be assigned to `y`\n        x_cube + x_squared + x\n    };\n\n    let z = {\n        // The semicolon suppresses this expression and `()` is assigned to `z`\n        2 * x;\n    };\n\n    println!(&quot;x is {:?}&quot;, x);\n    println!(&quot;y is {:?}&quot;, y);\n    println!(&quot;z is {:?}&quot;, z);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="flow-of-control">Flow of Control</h2>
+<p>\n\n\n\n</p>
+<h3 id="if-else">if-else</h3>
+<p>\n\n\n\n</p>
+<p>Branching with <code>if</code>-<code>else</code> is similar to other languages. Unlike many of them, the boolean condition doesn&#39;t need to be surrounded by parentheses, and each condition is followed by a block. <code>if</code>-<code>else</code> conditionals are expressions, and, all branches must return the same type.</p>
+<p>\n\n\n\n</p>
+<p>在rust中万物皆expr,所以对于一个ifelse语句来讲也可以这样</p>
+<p>\n\n\n\n</p>
+<pre><code>fn main() {\n    let n = 5;\n\n    if n &lt; 0 {\n        print!(&quot;{} is negative&quot;, n);\n    } else if n &gt; 0 {\n        print!(&quot;{} is positive&quot;, n);\n    } else {\n        print!(&quot;{} is zero&quot;, n);\n    }\n\n    let big_n =\n        if n &lt; 10 &amp;&amp; n &gt; -10 {\n            println!(&quot;, and is a small number, increase ten-fold&quot;);\n\n            // This expression returns an `i32`.\n            10 * n\n        } else {\n            println!(&quot;, and is a big number, halve the number&quot;);\n\n            // This expression must return an `i32` as well.\n            n / 2\n            // TODO ^ Try suppressing this expression with a semicolon.\n        };\n    //   ^ Don&#x27;t forget to put a semicolon here! All `let` bindings need it.\n\n    println!(&quot;{} -&gt; {}&quot;, n, big_n);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>Rust provides a <code>loop</code> keyword to indicate an infinite loop.</p>
+<p>\n\n\n\n</p>
+<p>The <code>break</code> statement can be used to exit a loop at anytime, whereas the <code>continue</code> statement can be used to skip the rest of the iteration and start a new one.</p>
+<p>\n\n\n\n</p>
+<p>可以把loop视作提供的语法糖，就是一个只能break跳出的循环</p>
+<p>\n\n\n\n</p>
+<p>而且loop循环可以嵌套，并且要求进行annotation来决定跳出哪个：</p>
+<p>\n\n\n\n</p>
+<p>It&#39;s possible to <code>break</code> or <code>continue</code> outer loops when dealing with nested loops. In these cases, the loops must be annotated with some <code>&#39;label</code>, and the label must be passed to the <code>break</code>/<code>continue</code> statement.</p>
+<p>\n\n\n\n</p>
+<pre><code>#![allow(unreachable_code, unused_labels)]\n\nfn main() {\n    &#x27;outer: loop {\n        println!(&quot;Entered the outer loop&quot;);\n\n        &#x27;inner: loop {\n            println!(&quot;Entered the inner loop&quot;);\n\n            // This would break only the inner loop\n            //break;\n\n            // This breaks the outer loop\n            break &#x27;outer;\n        }\n\n        println!(&quot;This point will never be reached&quot;);\n    }\n\n    println!(&quot;Exited the outer loop&quot;);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>假如把loop作为一个expr,他的返回值可以放在break后面</p>
+<p>\n\n\n\n</p>
+<pre><code>fn main() {\n    let mut counter = 0;\n\n    let result = loop {\n        counter += 1;\n\n        if counter == 10 {\n            break counter * 2;\n        }\n    };\n\n    assert_eq!(result, 20);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="while">while</h3>
+<p>\n\n\n\n</p>
+<pre><code>fn main() {\n    // A counter variable\n    let mut n = 1;\n\n    // Loop while `n` is less than 101\n    while n &lt; 101 {\n        if n % 15 == 0 {\n            println!(&quot;fizzbuzz&quot;);\n        } else if n % 3 == 0 {\n            println!(&quot;fizz&quot;);\n        } else if n % 5 == 0 {\n            println!(&quot;buzz&quot;);\n        } else {\n            println!(&quot;{}&quot;, n);\n        }\n\n        // Increment counter\n        n += 1;\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="forrange">for……range</h3>
+<p>\n\n\n\n</p>
+<pre><code>fn main() {\n    // `n` will take the values: 1, 2, ..., 100 in each iteration\n    for n in 1..101 {\n        if n % 15 == 0 {\n            println!(&quot;fizzbuzz&quot;);\n        } else if n % 3 == 0 {\n            println!(&quot;fizz&quot;);\n        } else if n % 5 == 0 {\n            println!(&quot;buzz&quot;);\n        } else {\n            println!(&quot;{}&quot;, n);\n        }\n    }\n}\n\nfn main() {\n    // `n` will take the values: 1, 2, ..., 100 in each iteration\n    for n in 1..=100 {\n        if n % 15 == 0 {\n            println!(&quot;fizzbuzz&quot;);\n        } else if n % 3 == 0 {\n            println!(&quot;fizz&quot;);\n        } else if n % 5 == 0 {\n            println!(&quot;buzz&quot;);\n        } else {\n            println!(&quot;{}&quot;, n);\n        }\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>以上两种是for的range结合用法，此外还有iter的标称代码，</p>
+<p>\n\n\n\n</p>
+<p>The <code>for in</code> construct is able to interact with an <code>Iterator</code> in several ways. As discussed in the section on the <a href="https://doc.rust-lang.org/stable/rust-by-example/trait/iter.html">Iterator</a> trait, by default the <code>for</code> loop will apply the <code>into_iter</code> function to the collection. However, this is not the only means of converting collections into iterators.</p>
+<p>\n\n\n\n</p>
+<p><code>into_iter</code>, <code>iter</code> and <code>iter_mut</code> all handle the conversion of a collection into an iterator in different ways, by providing different views on the data within.</p>
+<p>\n\n\n\n</p>
+<p><code>iter</code> - This <strong>borrows</strong> each element of the collection through each iteration. Thus leaving the collection untouched and available for reuse after the loop.</p>
+<p>\n\n\n\n</p>
+<pre><code>fn main() {\n    let names = vec![&quot;Bob&quot;, &quot;Frank&quot;, &quot;Ferris&quot;];\n\n    for name in names.iter() {\n        match name {\n            &amp;&quot;Ferris&quot; =&gt; println!(&quot;There is a rustacean among us!&quot;),\n            // TODO ^ Try deleting the &amp; and matching just &quot;Ferris&quot;\n            _ =&gt; println!(&quot;Hello {}&quot;, name),\n        }\n    }\n    \n    println!(&quot;names: {:?}&quot;, names);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><code>into_iter</code> - This consumes the collection so that on each iteration the exact data is provided. Once the collection has been consumed it is no longer available for reuse as it has been &#39;moved&#39; within the loop.</p>
+<p>\n\n\n\n</p>
+<pre><code>fn main() {\n    let names = vec![&quot;Bob&quot;, &quot;Frank&quot;, &quot;Ferris&quot;];\n\n    for name in names.into_iter() {\n        match name {\n            &quot;Ferris&quot; =&gt; println!(&quot;There is a rustacean among us!&quot;),\n            _ =&gt; println!(&quot;Hello {}&quot;, name),\n        }\n    }\n    \n    //println!(&quot;names: {:?}&quot;, names);\n    // FIXME ^ Comment out this line\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

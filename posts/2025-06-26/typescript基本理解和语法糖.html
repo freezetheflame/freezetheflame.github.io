@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TypeScript基本理解和语法糖 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-06-26</p>
+        <h1>TypeScript基本理解和语法糖</h1>
+        <div class="post-meta">
+          <span>2025-06-26</span>
+          <span class="tag">服务器后端内容</span><span class="tag">TypeScript/JavaScript</span>
+        </div>
+        <p>\n</p>
+<p>typescript是对于Javascript的一种安全封转，因此大部分对于typescript的操作都要转换成JavaScript进行处理，并且会多出一些d.ts的类型定义文件以保证类型安全性的扩展。</p>
+<p>\n\n\n\n</p>
+<p>对于ts来说，有如下这一些基本的结构会出现：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><strong>声明部分</strong> ：包括类型声明、接口声明等。
+\n\n\n\n</li>
+<li><strong>变量声明</strong> ：包括 <code>let</code>, <code>const</code> 和 <code>var</code> 的使用。
+\n\n\n\n</li>
+<li><strong>函数声明</strong> ：包括普通函数和箭头函数。
+\n\n\n\n</li>
+<li><strong>类声明</strong> ：用于定义类及其成员。
+\n\n\n\n</li>
+<li><strong>接口与类型别名</strong> ：描述类型的结构。
+\n\n\n\n</li>
+<li><strong>模块化</strong> ：通过 <code>import</code> 和 <code>export</code> 组织代码。
+\n\n\n\n</li>
+<li><strong>类型断言</strong> ：强制类型转换。
+\n\n\n\n</li>
+<li><strong>泛型</strong> ：使代码具备更多的复用性。
+\n\n\n\n</li>
+<li><strong>注释</strong> ：增加代码的可读性。
+\n\n\n\n</li>
+<li><strong>类型推断</strong> ：自动推断类型。
+\n\n\n\n</li>
+<li><strong>类型守卫</strong> ：缩小类型范围。
+\n\n\n\n</li>
+<li><strong>异步编程</strong> ：支持 <code>async/await</code>。
+\n\n\n\n</li>
+<li><strong>错误处理</strong> ：通过 <code>try/catch</code> 进行错误捕捉。
+\n
+\n\n\n\n</li>
+</ul>
+<p>我们按章节处理这些基本的定义，其实在Java这种更加OOP的语言中，以上情况也是常见的，不过作为多线程的语言，Java和js的核心理念还是有所区别的，并且js,ts在类型上是独特于Java的一种动态类型，ts在保证安全性的情况下有更安全的类型扩展，比Python的超级弱类型更加的容易管理一些，不过也会出现一些静态检查上的分析误差，这些都要在开发的时候要注意。</p>
+<p>\n\n\n\n</p>
+<h2 id="一、声明部分（declarations）">一、声明部分（Declarations）</h2>
+<p>\n\n\n\n</p>
+<p><strong>类型声明：</strong> TypeScript 是一种静态类型的语言，可以通过类型声明来定义变量、函数、类等的类型。类型声明可以帮助代码更具可维护性和可读性。</p>
+<p>\n\n\n\n</p>
+<p><strong>接口声明：</strong> 用于定义对象的结构，包括对象的属性和方法。</p>
+<p>\n\n\n\n</p>
+<pre><code>interface Person {\n    name: string;\n    age: number;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>变量声明：</strong> 可以使用let, const,var三种方式完成对变量的声明，各自有区分，具体的场景如下</p>
+<p>\n\n\n\n</p>
+<p>推荐使用 let 和 const，var 用法不再推荐。</p>
+<p>\n\n\n\n</p>
+<pre><code>let age: number = 25;\nconst pi: number = 3.14;
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>函数声明</strong> ：TypeScript 允许声明带有类型注解的函数，包括参数类型和返回值类型。</p>
+<p>\n\n\n\n</p>
+<pre><code>function greet(name: string): string {\n    return &quot;Hello, &quot; + name;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>箭头函数：</strong> TypeScript 同样支持 ES6 的箭头函数，使用简洁的语法来声明函数。</p>
+<p>\n\n\n\n</p>
+<pre><code>const greet = (name: string): string =&gt; &quot;Hello, &quot; + name;
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>类声明：</strong> TypeScript 提供对面向对象编程的支持，允许定义类和类的方法、属性。</p>
+<p>\n\n\n\n</p>
+<pre><code>class Person {\n    name: string;\n    age: number;\n    \n    constructor(name: string, age: number) {\n    this.name = name;\n    this.age = age;\n    }\n    \n    greet() {\n    return `Hello, my name is ${this.name}`;\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>接口</strong> （Interface）：用于描述对象的形状，接口可以继承和扩展。</p>
+<p>\n\n\n\n</p>
+<pre><code>interface Animal {\n    name: string;\n    sound: string;\n    makeSound(): void;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>类型别名（Type Alias）：</strong> 允许为对象类型、联合类型、交叉类型等定义别名。</p>
+<p>\n\n\n\n</p>
+<pre><code>type ID = string | number;
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>泛型：</strong> 泛型允许在定义函数、接口或类时不指定具体类型，而是使用占位符，让用户在使用时传入具体类型。泛型能够增加代码的复用性和类型安全性。</p>
+<p>\n\n\n\n</p>
+<pre><code>function identity&lt;T&gt;(arg: T): T {\n    return arg;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>类型推断：</strong> TypeScript 在某些情况下会自动推断变量的类型。例如，在声明变量并赋值时，TypeScript 会推断出该变量的类型。</p>
+<p>\n\n\n\n</p>
+<pre><code>let num = 10;  // TypeScript 推断 num 为 number 类型
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="类型守卫">类型守卫</h3>
+<p>\n\n\n\n</p>
+<p>TypeScript 提供了类型守卫（如 typeof 和 instanceof），用于在运行时缩小变量的类型范围</p>
+<p>\n\n\n\n</p>
+<pre><code>function isString(value: any): value is string {\n    return typeof value === &#x27;string&#x27;;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<h3 id="类型擦除">类型擦除</h3>
+<p>\n\n\n\n</p>
+<p>Javascript有非常变态的类型擦除，在 JavaScript/TypeScript 中，对象 <em>不是</em> 单一的精确类型。例如，如果我们构造一个满足接口的对象，我们可以在需要该接口的地方使用该对象，即使两者之间没有声明性关系。</p>
+<p>\n\n\n\n</p>
+<pre><code>interface Pointlike {\n  x: number;\n  y: number;\n}\ninterface Named {\n  name: string;\n}\n \nfunction logPoint(point: Pointlike) {\n  console.log(&quot;x = &quot; + point.x + &quot;, y = &quot; + point.y);\n}\n \nfunction logName(x: Named) {\n  console.log(&quot;Hello, &quot; + x.name);\n}\n \nconst obj = {\n  x: 0,\n  y: 0,\n  name: &quot;Origin&quot;,\n};\n \nlogPoint(obj);\nlogName(obj);
+</code></pre>
+<p>\n\n\n\n</p>
+<p>TypeScript 的类型系统是 <em>结构</em> 性的，而不是名义性的：我们可以将 <code>obj</code> 用作 <code>Pointlike</code>，因为它具有 <code>x</code> 和 <code>y</code> 属性，这两个属性都是数字。类型之间的关系由它们包含的属性决定，而不是由它们是否使用某种特定关系声明。</p>
+<p>\n\n\n\n</p>
+<p>因此，推荐我们用集合论的观点去看类型（types），我们可以将 <code>obj</code> 视为 <code>Pointlike</code> 值集和 <code>Named</code> 值集的成员。TypeScript 的类型系统也没有 _具体化  _：运行时没有任何东西可以告诉我们 <code>obj</code> 是 <code>Pointlike</code>。事实上，<code>Pointlike</code> 类型在运行时不 <em>以任何形式</em> 存在。</p>
+<p>\n\n\n\n</p>
+<p>BUT REMEMBER:</p>
+<p>\n\n\n\n</p>
+<p><strong>Remember</strong> : Type annotations never change the runtime behavior of your program.<br>**请记住  **：类型注释永远不会更改程序的运行时行为。</p>
+<p>\n\n\n\n</p>
+<h4 id="empty-types--空类型">Empty Types  空类型</h4>
+<p>\n\n\n\n</p>
+<p>The first is that the <em>empty type</em>  seems to defy expectation:<br>首先是 <em>empty 类型</em> 似乎出乎意料：</p>
+<p>\n\n\n\n</p>
+<pre><code>class Car {\n  drive() {\n    // hit the gas\n  }\n}\nclass Golfer {\n  drive() {\n    // hit the ball far\n  }\n}\n// No error?\nlet w: Car = new Golfer();
+</code></pre>
+<p>\n\n\n\n</p>
+<p>TypeScript 通过查看提供的参数是否为有效的 <code>Empty</code> 来确定此处对 <code>fn</code> 的调用是否有效。它通过检查 <code>{ k： 10 }</code> 和<code>类 Empty { }</code> <em>的结构来实现</em> 此目的。我们可以看到 <code>{ k： 10 }</code> _具有  _<code>Empty</code> 的所有属性，因为 <code>Empty</code> 没有属性。因此，这是一个有效的决定！<br>这可能看起来令人惊讶，但它最终与名义上的 OOP 语言中强制执行的关系非常相似。子类不能 <em>删除</em> 其基类的属性，因为这样做会破坏派生类与其基类之间的自然子类型关系。结构类型系统只是通过根据具有兼容类型的属性来描述子类型来隐式地标识这种关系。</p>
+<p>\n\n\n\n</p>
+<p>导致会有如下的糟糕情况出现（作为Java程序员的我认为糟糕）</p>
+<p>\n\n\n\n</p>
+<pre><code>class Car {\n  drive() {\n    // hit the gas\n  }\n}\nclass Golfer {\n  drive() {\n    // hit the ball far\n  }\n}\n// No error?\nlet w: Car = new Golfer();
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="反射（reflection）">反射（reflection）</h3>
+<p>\n\n\n\n</p>
+<p>OOP 程序员习惯于能够查询任何值的类型，甚至是通用值：</p>
+<p>\n\n\n\n</p>
+<pre><code>static void LogType&lt;T&gt;() {\n    Console.WriteLine(typeof(T).Name);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>因为 TypeScript 的类型系统被完全擦除，所以有关泛型类型参数的实例化等信息在运行时不可用。</p>
+<p>\n\n\n\n</p>
+<p>JavaScript 确实有一些有限的原语，如 <code>typeof</code> 和 <code>instanceof</code>，但请记住，这些运算符仍在处理类型擦除输出代码中存在的值。例如，<code>typeof （new Car（））</code> 将是 <code>“object”</code>，而不是 <code>Car</code> 或 <code>“Car”。</code></p>
+<table>
+<thead>
+<tr>
+<th>\n\n\n\n类型</th>
+<th>描述</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>string</code></td>
+<td>表示文本数据</td>
+<td><code>let name: string = &quot;Alice&quot;;</code></td>
+</tr>
+<tr>
+<td><code>number</code></td>
+<td>表示数字，包括整数和浮点数</td>
+<td><code>let age: number = 30;</code></td>
+</tr>
+<tr>
+<td><code>boolean</code></td>
+<td>表示布尔值 <code>true</code> 或 <code>false</code></td>
+<td><code>let isDone: boolean = true;</code></td>
+</tr>
+<tr>
+<td><code>array</code></td>
+<td>表示相同类型的元素数组</td>
+<td><code>let list: number[] = [1, 2, 3];</code></td>
+</tr>
+<tr>
+<td><code>tuple</code></td>
+<td>表示已知类型和长度的数组</td>
+<td><code>let person: [string, number] = [&quot;Alice&quot;, 30];</code></td>
+</tr>
+<tr>
+<td><code>enum</code></td>
+<td>定义一组命名常量</td>
+<td><code>enum Color { Red, Green, Blue };</code></td>
+</tr>
+<tr>
+<td><code>any</code></td>
+<td>任意类型，不进行类型检查</td>
+<td><code>let value: any = 42;</code></td>
+</tr>
+<tr>
+<td><code>void</code></td>
+<td>无返回值（常用于函数）</td>
+<td><code>function log(): void {}</code></td>
+</tr>
+<tr>
+<td><code>null</code></td>
+<td>表示空值</td>
+<td><code>let empty: null = null;</code></td>
+</tr>
+<tr>
+<td><code>undefined</code></td>
+<td>表示未定义</td>
+<td><code>let undef: undefined = undefined;</code></td>
+</tr>
+<tr>
+<td><code>never</code></td>
+<td>表示不会有返回值</td>
+<td><code>function error(): never { throw new Error(&quot;error&quot;); }</code></td>
+</tr>
+<tr>
+<td><code>object</code></td>
+<td>表示非原始类型</td>
+<td><code>let obj: object = { name: &quot;Alice&quot; };</code></td>
+</tr>
+<tr>
+<td><code>union</code></td>
+<td>联合类型，表示可以是多种类型之一</td>
+<td>`let id: string</td>
+</tr>
+<tr>
+<td><code>unknown</code></td>
+<td>不确定类型，需类型检查后再使用</td>
+<td><code>let value: unknown = &quot;Hello&quot;;</code></td>
+</tr>
+<tr>
+<td>\n\n\n\n</td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<h2 id="二、类型">二、类型</h2>
+<p>\n\n\n\n</p>
+<p>在声明一块中已经强调了大部分的类型相关的内容，JavaScript也是需要“先声明后使用”的，这点非常重要。</p>
+<p>\n\n\n\n</p>
+<h3 id="基元类型（primitives）">基元类型（PRIMITIVES）</h3>
+<p>\n\n\n\n</p>
+<p>JavaScript 有三个非常常用<a href="https://developer.mozilla.org/en-US/docs/Glossary/Primitive">的原语 </a>：<code>string</code>、<code>number</code> 和 <code>boolean</code>。每个在 TypeScript 中都有相应的类型。正如你所料，如果你对这些类型的值使用 JavaScript <code>typeof</code> 运算符，这些名称与你看到的名称相同：</p>
+<p>\n\n\n\n</p>
+<h3 id="array">Array</h3>
+<p>\n\n\n\n</p>
+<p>要指定数组的类型，如 <code>[1， 2， 3]</code>，你可以使用语法 <code>number[]</code>;此语法适用于任何类型（例如 <code>string[]</code> 是字符串数组，依此类推）。您可能还会看到它写成 <code>Array&lt;number&gt;</code>，这意味着相同的内容。在介绍 <em>泛型</em> 时，我们将了解有关语法 <code>T&lt;U&gt;</code> 的更多信息。</p>
+<p>\n\n\n\n</p>
+<p>Note that <code>[number]</code> is a different thing; refer to the section on <a href="https://www.typescriptlang.org/docs/handbook/2/objects.html#tuple-types">Tuples</a>.<br>请注意，<code>[number]</code> 是另一回事;请参阅 <a href="https://www.typescriptlang.org/docs/handbook/2/objects.html#tuple-types">Tuples</a> 部分。</p>
+<p>\n\n\n\n</p>
+<h3 id="any">any</h3>
+<p>\n\n\n\n</p>
+<p>TypeScript 还有一个特殊的类型 <code>any</code>，当你不希望特定值导致类型检查错误时，你可以使用它。</p>
+<p>\n\n\n\n</p>
+<p><a href="https://www.allthingstypescript.dev/p/why-avoid-the-any-type-in-typescript">https://www.allthingstypescript.dev/p/why-avoid-the-any-type-in-typescript</a></p>
+<p>\n\n\n\n</p>
+<h3 id="object-types对象类型">Object Types对象类型</h3>
+<p>\n\n\n\n</p>
+<p>除了基元之外，您遇到的最常见的类型是 _对象类型  _。这指的是任何具有属性的 JavaScript 值，这几乎是所有属性！要定义对象类型，我们只需列出其属性及其类型</p>
+<p>\n\n\n\n</p>
+<pre><code>function printCoord(pt: { x: number; y: number }) {\n  console.log(&quot;The coordinate&#x27;s x value is &quot; + pt.x);\n  console.log(&quot;The coordinate&#x27;s y value is &quot; + pt.y);\n}\nprintCoord({ x: 3, y: 7 });
+</code></pre>
+<p>\n\n\n\n</p>
+<p>在这里，我们使用具有两个属性（<code>x</code> 和 <code>y</code>）的类型对参数进行批注，这两个属性都是 <code>number</code> 类型。您可以使用 <code>，</code> 或 <code>;</code> 来分隔属性，并且最后一个分隔符是可选的。</p>
+<p>\n\n\n\n</p>
+<h4 id="optional-properties--可选属性">Optional Properties  可选属性</h4>
+<p>\n\n\n\n</p>
+<p>对象类型还可以指定其部分或全部属性 _是可选的  _。为此，请在属性名称后添加 <code>？</code>：</p>
+<p>\n\n\n\n</p>
+<pre><code>function printName(obj: { first: string; last?: string }) {\n  // ...\n}\n// Both OK\nprintName({ first: &quot;Bob&quot; });\nprintName({ first: &quot;Alice&quot;, last: &quot;Alisson&quot; });
+</code></pre>
+<p>\n\n\n\n</p>
+<p>在 JavaScript 中，如果你访问一个不存在的属性，你将得到值 <code>undefined</code>，而不是运行时错误。因此，当你从可选属性 <em>中读取</em> 时，你必须在使用它之前检查 <code>undefined</code>。</p>
+<p>\n\n\n\n</p>
+<pre><code>function printName(obj: { first: string; last?: string }) {\n  // Error - might crash if &#x27;obj.last&#x27; wasn&#x27;t provided!\n  console.log(obj.last.toUpperCase());\n              ！！！！！ &#x27;obj.last&#x27; is possibly &#x27;undefined&#x27;.\n  if (obj.last !== undefined) {\n    // OK\n    console.log(obj.last.toUpperCase());\n  }\n \n  // A safe alternative using modern JavaScript syntax:\n  console.log(obj.last?.toUpperCase());\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="union-types联合类型">Union Types联合类型</h3>
+<p>\n\n\n\n</p>
+<p>TypeScript 的类型系统允许您使用各种运算符从现有类型中构建新类型。现在我们已经知道如何编写一些类型，是时候开始以有趣的方式 <em>组合</em> 它们了。</p>
+<p>\n\n\n\n</p>
+<p>比如下面这个示例就又可以对字符串又可以对数字进行操作</p>
+<p>\n\n\n\n</p>
+<pre><code>function printId(id: number | string) {\n  console.log(&quot;Your ID is: &quot; + id);\n}\n// OK\nprintId(101);\n// OK\nprintId(&quot;202&quot;);\n// Error\nprintId({ myID: 22342 });
+</code></pre>
+<p>\n\n\n\n</p>
+<p>union 成员的分隔符允许在第一个元素之前使用，因此您也可以编写以下内容：</p>
+<p>\n\n\n\n</p>
+<pre><code>function printTextOrNumberOrBool(\n  textOrNumberOrBool:\n    | string\n    | number\n    | boolean\n) {\n  console.log(textOrNumberOrBool);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>但是务必注意：TypeScript <em>仅在对联合</em> 的每个成员都有效时才允许作。例如，如果你有 union <code>string | number</code>，则不能使用仅在 <code>string</code> 上可用的方法。</p>
+<p>\n\n\n\n</p>
+<p>所以这更像是一种语法层面的设计模式运用。给每个类型自动套上一层适配器，然后就可以一起使用了。</p>
+<p>\n\n\n\n</p>
+<p>解决方案是 <em>缩小</em> 与代码的联合，就像在没有类型注释的 JavaScript 中一样。 当 TypeScript 可以根据代码的结构为值推断出更具体的类型时，就会发生 _收缩  _。</p>
+<p>\n\n\n\n</p>
+<pre><code>function printId(id: number | string) {\n  if (typeof id === &quot;string&quot;) {\n    // In this branch, id is of type &#x27;string&#x27;\n    console.log(id.toUpperCase());\n  } else {\n    // Here, id is of type &#x27;number&#x27;\n    console.log(id);\n  }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>另一类则是使用类似类型库中函数来判断一样的：</p>
+<p>\n\n\n\n</p>
+<pre><code>function welcomePeople(x: string[] | string) {\n  if (Array.isArray(x)) {\n    // Here: &#x27;x&#x27; is &#x27;string[]&#x27;\n    console.log(&quot;Hello, &quot; + x.join(&quot; and &quot;));\n  } else {\n    // Here: &#x27;x&#x27; is &#x27;string&#x27;\n    console.log(&quot;Welcome lone traveler &quot; + x);\n  }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>所以理论上来说，JavaScript和typescript中的union类型是类型的交集，使用其共同的属性进行工作，并且在必要情况下对类型进行narrowing</p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p><a href="https://www.typescriptlang.org/docs/handbook/2/everyday-types.html">https://www.typescriptlang.org/docs/handbook/2/everyday-types.html</a></p>
+<p>类型 <em>联合</em> 似乎具有这些类型属性的 _交集  _，这可能会令人困惑。这不是偶然的 - <em>union</em>  这个名字来自类型理论。 <em>union</em><code>number | string</code> 是通过获取每种类型的 _值的  _union 组成的。请注意，给定两个集合，每个集合都有相应的事实，只有这些事实的 <em>交集</em> 适用于集合本身的 _并集  _。例如，如果我们有一个房间是戴帽子的高个子，另一个房间是戴着帽子的讲西班牙语的人，那么把这些房间合并后，我们对 <em>每个人</em> 的唯一了解就是他们一定戴着帽子。</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<h3 id="类型别名（type-aliases）">类型别名（Type Aliases）</h3>
+<p>\n\n\n\n</p>
+<p>其实很像是有名的union，或者把“像”去掉也对， <em>类型别名</em> 就是 _- 任何类型的名称  _。类型别名的语法为：</p>
+<p>\n\n\n\n</p>
+<pre><code>type Point = {\n  x: number;\n  y: number;\n};\n \n// Exactly the same as the earlier example\nfunction printCoord(pt: Point) {\n  console.log(&quot;The coordinate&#x27;s x value is &quot; + pt.x);\n  console.log(&quot;The coordinate&#x27;s y value is &quot; + pt.y);\n}\n \nprintCoord({ x: 100, y: 100 });
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="类型别名和接口（interface）的区别">类型别名和接口（Interface）的区别</h3>
+<table>
+<thead>
+<tr>
+<th>\n\n\n\n<code>Interface</code></th>
+<th><code>Type</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Extending an interface</td>
+<td></td>
+</tr>
+<tr>
+<td>`interface Animal { name: string; }</td>
+<td></td>
+</tr>
+<tr>
+<td>interface Bear extends Animal { honey: boolean; `</td>
+<td></td>
+</tr>
+<tr>
+<td>`}</td>
+<td></td>
+</tr>
+<tr>
+<td>const bear = getBear(); `</td>
+<td></td>
+</tr>
+<tr>
+<td><code>bear.name; </code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>bear.honey;</code></td>
+<td>Extending a type via intersections</td>
+</tr>
+<tr>
+<td>`type Animal = { name: string; }</td>
+<td></td>
+</tr>
+<tr>
+<td>type Bear = Animal &amp; { honey: boolean; `</td>
+<td></td>
+</tr>
+<tr>
+<td>`}</td>
+<td></td>
+</tr>
+<tr>
+<td>const bear = getBear(); `</td>
+<td></td>
+</tr>
+<tr>
+<td><code>bear.name; </code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>bear.honey;</code></td>
+<td></td>
+</tr>
+<tr>
+<td>\n\n\n\nAdding new fields to an existing interface</td>
+<td></td>
+</tr>
+<tr>
+<td>`interface Window { title: string; }</td>
+<td></td>
+</tr>
+<tr>
+<td>interface Window { ts: TypeScriptAPI; }</td>
+<td></td>
+</tr>
+<tr>
+<td>const src = &#39;const a = &quot;Hello World&quot;&#39;; window.ts.transpileModule(src, {});`</td>
+<td>A type cannot be changed after being created</td>
+</tr>
+<tr>
+<td>`type Window = { title: string; }</td>
+<td></td>
+</tr>
+<tr>
+<td>type Window = { ts: TypeScriptAPI; }</td>
+<td></td>
+</tr>
+<tr>
+<td>// Error: Duplicate identifier &#39;Window&#39;.`</td>
+<td></td>
+</tr>
+<tr>
+<td>---</td>
+<td>---</td>
+</tr>
+<tr>
+<td>\n\n\n\n</td>
+<td></td>
+</tr>
+</tbody></table>
+<h3 id="类型断言">类型断言</h3>
+<p>\n\n\n\n</p>
+<p>有时，你会知道typescript本身无法知道的有关值类型的信息，比如下面这个例子</p>
+<p>\n\n\n\n</p>
+<p>例如，如果你正在使用 <code>document.getElementById，TypeScript</code> 只知道这将返回 _某种  _<code>HTMLElement</code>，但你可能知道你的页面将始终具有具有给定 ID 的 <code>HTMLCanvasElement</code>。</p>
+<p>\n\n\n\n</p>
+<pre><code>const myCanvas = document.getElementById(&quot;main_canvas&quot;) as HTMLCanvasElement;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>与类型注释一样，类型断言由编译器删除，不会影响代码的运行时行为。</p>
+<p>\n\n\n\n</p>
+<p>并且下面这种尖括号语法也是被支持的</p>
+<p>\n\n\n\n</p>
+<pre><code>const myCanvas = &lt;HTMLCanvasElement&gt;document.getElementById(&quot;main_canvas&quot;);
+</code></pre>
+<p>\n\n\n\n</p>
+<p>TypeScript 只允许类型断言转换为 <em>更具体</em> 或 <em>不太具体的</em> 类型版本。此规则可防止“不可能的”强制行为，例如什么string转number的“不可能行为”是不被支持的</p>
+<p>\n\n\n\n</p>
+<h3 id="再叙类型守卫">再叙类型守卫</h3>
+<p>\n\n\n\n</p>
+<p>假设我们有这样一个padLeft函数</p>
+<p>\n\n\n\n</p>
+<pre><code>function padLeft(padding: number | string, input: string): string {\n  throw new Error(&quot;Not implemented yet!&quot;);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>如果 <code>padding</code> 是一个<code>数字 </code>，它会将其视为我们想要在 <code>input</code> 前面添加的空格数。如果 <code>padding</code> 是一个<code>字符串 </code>，它应该只在 <code>input</code> 前面加上 <code>padding</code>。让我们尝试实现 <code>padLeft</code> 何时传递<code>数字</code>进行<code>填充</code>的逻辑。</p>
+<p>\n\n\n\n</p>
+<pre><code>function padLeft(padding: number | string, input: string): string {\n  if (typeof padding === &quot;number&quot;) {\n    return &quot; &quot;.repeat(padding) + input;\n  }\n  return padding + input;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>在我们的 <code>if</code> 检查中，TypeScript 看到 <code>typeof padding === “number”</code> 并将其理解为一种称为 <em>类型守卫</em> 的特殊代码形式。TypeScript 遵循我们的程序可以采用的可能执行路径来分析给定位置最具体的可能值类型。它着眼于这些特殊检查（称为 _类型保护  _）和赋值，将类型细化为比声明的更具体的类型的过程称为 <em>narrowing</em> 。在许多编辑器中，我们可以观察这些类型的变化，我们甚至会在示例中这样做。</p>
+<p>\n\n\n\n</p>
+<p>但比如说有时候我们会写出typeof B === &quot;string&quot; ,但actually typeof null ===&quot;string&quot;</p>
+<p>\n\n\n\n</p>
+<p>具有足够经验的用户可能不会感到惊讶，但并不是每个人都在 JavaScript 中遇到过这种情况;幸运的是，TypeScript 让我们知道 <code>strs</code> 只缩小到 <code>string[] | null</code>，而不仅仅是 <code>string[]。</code></p>
+<p>\n\n\n\n</p>
+<p>因此在typescript中，缩小范围是一项极其重要的类型操作，好比cpp中习惯于手动垃圾管理、生命周期管理、类型体操等等，在typescript中，narrowing就是最重要的trick，其中无论是类型守卫narrowing，还是使用===，in等特殊运算符来narrowing，都是必要的操作以支持更加丰富的后续操作（太大的类型无法访问一些特定参数且越来越难控制）具体有哪些典型的narrowing手段可以看这里：</p>
+<p>\n\n\n\n</p>
+<p><a href="https://www.typescriptlang.org/docs/handbook/2/narrowing.html">https://www.typescriptlang.org/docs/handbook/2/narrowing.html</a></p>
+<p>\n\n\n\n</p>
+<h3 id="可区分联合">可区分联合</h3>
+<p>\n\n\n\n</p>
+<p>可能会遇到这样问题：</p>
+<p>\n\n\n\n</p>
+<pre><code>interface Shape {\n  kind: &quot;circle&quot; | &quot;square&quot;;\n  radius?: number;\n  sideLength?: number;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>请注意，我们使用字符串文本类型的联合：“<code>circle”</code> 和 <code>“square”</code> 来告诉我们应该将形状分别视为圆形还是方形。通过使用 <code>“circle” |“square”</code> 而不是 <code>string</code>，我们可以避免拼写错误的问题。</p>
+<p>\n\n\n\n</p>
+<pre><code>function getArea(shape: Shape) {\n  return Math.PI * shape.radius ** 2;\n&#x27;shape.radius&#x27; is possibly &#x27;undefined&#x27;.\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>在 <a href="https://www.typescriptlang.org/tsconfig#strictNullChecks"><code>strictNullChecks</code></a> 下，这给我们带来了一个错误 - 这很合适，因为可能没有定义 <code>radius</code>。但是，如果我们对 <code>kind</code> 属性执行适当的检查呢？</p>
+<p>\n\n\n\n</p>
+<pre><code>function getArea(shape: Shape) {\n  if (shape.kind === &quot;circle&quot;) {\n    return Math.PI * shape.radius ** 2;\n&#x27;shape.radius&#x27; is possibly &#x27;undefined&#x27;.\n  }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>嗯，TypeScript 仍然不知道在这里做什么。我们已经达到了一个点，<strong>我们比类型检查器更了解我们的值</strong> 。我们可以尝试使用非 null 断言（<code>shape.radius</code> 后面的 <code>！</code>）来表示 <code>radius</code> 肯定存在。</p>
+<p>\n\n\n\n</p>
+<p><code>这种 Shape</code> 编码的问题在于，类型检查器无法根据 <code>kind</code> 属性知道 <code>radius</code> 或 <code>sideLength</code> 是否存在。我们需要将 <em>我们</em> 所知道的传达给类型检查器。考虑到这一点，让我们再来定义<code>一下 Shape</code>。</p>
+<p>\n\n\n\n</p>
+<pre><code>interface Circle {\n  kind: &quot;circle&quot;;\n  radius: number;\n}\n \ninterface Square {\n  kind: &quot;square&quot;;\n  sideLength: number;\n}\n \ntype Shape = Circle | Square;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>我们再次尝试检查 <code>kind</code> 属性</p>
+<p>\n\n\n\n</p>
+<pre><code>function getArea(shape: Shape) {\n  if (shape.kind === &quot;circle&quot;) {\n    return Math.PI * shape.radius ** 2;\n                      \n(parameter) shape: Circle\n  }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>这样就消除了错误！当联合中的每个类型都包含具有 Literal 类型的公共属性时，TypeScript 会将其视为 _可区分联合  _，并且可以缩小联合的成员范围。</p>
+<p>\n\n\n\n</p>
+<h2 id="函数functions">函数Functions</h2>
+<p>\n\n\n\n</p>
+<p>描述函数的最简单方法是使用 _函数类型表达式  _。这些类型在语法上类似于箭头函数：</p>
+<p>\n\n\n\n</p>
+<pre><code>function greeter(fn: (a: string) =&gt; void) {\n  fn(&quot;Hello, World&quot;);\n}\n \nfunction printToConsole(s: string) {\n  console.log(s);\n}\n \ngreeter(printToConsole);
+</code></pre>
+<p>\n\n\n\n</p>
+<p>当然，我们可以使用 type alias 来命名一个函数类型：</p>
+<p>\n\n\n\n</p>
+<pre><code>type GreetFunction = (a: string) =&gt; void;\nfunction greeter(fn: GreetFunction) {\n  // ...\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="调用签名（call-signatures）">调用签名（Call Signatures）</h3>
+<p>\n\n\n\n</p>
+<p>作为一门类型语言，typescript中的函数还有一个神奇特性，你可以把函数概括出一种类型，函数可以有其属性，并且此时函数的参数也是属性的一部分。但是，函数类型表达式语法不允许声明属性。如果我们想用属性来描述可调用的东西，我们可以在对象类型中编写 _一个调用签名  _：</p>
+<p>\n\n\n\n</p>
+<pre><code>type DescribableFunction = {\n  description: string;\n  (someArg: number): boolean;\n};\nfunction doSomething(fn: DescribableFunction) {\n  console.log(fn.description + &quot; returned &quot; + fn(6));\n}\n \nfunction myFunc(someArg: number) {\n  return someArg &gt; 3;\n}\nmyFunc.description = &quot;default description&quot;;\n \ndoSomething(myFunc);
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="构造签名（construct-signature）">构造签名（Construct Signature）</h3>
+<p>\n\n\n\n</p>
+<p>typescript函数特别的另一点是可以使用new运算符调用，也被称为构造函数，通常会创建一个新对象</p>
+<p>\n\n\n\n</p>
+<pre><code>type SomeConstructor = {\n  new (s: string): SomeObject;\n};\nfunction fn(ctor: SomeConstructor) {\n  return new ctor(&quot;hello&quot;);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>某些对象（如 JavaScript 的 <code>Date</code> 对象）可以在有或没有 <code>new</code> 的情况下调用。您可以任意组合同一类型的 call 和 construct 签名：</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/06/image-12.png" alt="">\n\n\n\n</p>
+<h3 id="泛型函数">泛型函数</h3>
+<p>\n\n\n\n</p>
+<p>在 TypeScript 中，当我们想要描述两个值之间的对应关系时，会使用 <em>泛型</em> 。我们通过在函数签名中声明一个 <em>类型参数</em> 来实现这一点：</p>
+<p>\n\n\n\n</p>
+<pre><code>function firstElement&lt;Type&gt;(arr: Type[]): Type | undefined {\n  return arr[0];\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>通过向此函数添加类型参数 <code>Type</code> 并在两个位置使用它，我们在函数的输入 （数组） 和输出 （返回值） 之间创建了一个链接。现在，当我们调用它时，会出现一个更具体的类型：</p>
+<p>\n\n\n\n</p>
+<pre><code>// s is of type &#x27;string&#x27;\nconst s = firstElement([&quot;a&quot;, &quot;b&quot;, &quot;c&quot;]);\n// n is of type &#x27;number&#x27;\nconst n = firstElement([1, 2, 3]);\n// u is of type undefined\nconst u = firstElement([]);
+</code></pre>
+<p>\n\n\n\n</p>
+<p>请注意，我们不必在此示例中指定 <code>Type</code>。类型是由 TypeScript  <em>推断</em> 的 - 自动选择的。</p>
+<p>\n\n\n\n</p>
+<h4 id="约束">约束</h4>
+<p>\n\n\n\n</p>
+<p>我们编写了一些可以处理 <em>任何类型的</em> 值的通用函数。有时我们想关联两个值，但只能对某个值的子集进行作。在这种情况下，我们可以使用  <em>constraint</em> 来限制类型参数可以接受的类型类型。</p>
+<p>\n\n\n\n</p>
+<pre><code>function longest&lt;Type extends { length: number }&gt;(a: Type, b: Type) {\n  if (a.length &gt;= b.length) {\n    return a;\n  } else {\n    return b;\n  }\n}\n \n// longerArray is of type &#x27;number[]&#x27;\nconst longerArray = longest([1, 2], [1, 2, 3]);\n// longerString is of type &#x27;alice&#x27; | &#x27;bob&#x27;\nconst longerString = longest(&quot;alice&quot;, &quot;bob&quot;);\n// Error! Numbers don&#x27;t have a &#x27;length&#x27; property\nconst notOK = longest(10, 100);\nArgument of type &#x27;number&#x27; is not assignable to parameter of type &#x27;{ length: number; }&#x27;.
+</code></pre>
+<p>\n\n\n\n</p>
+<h4 id="working-with-constrained-values">Working with Constrained Values</h4>
+<p>\n\n\n\n</p>
+<p>以下是使用泛型约束时的常见错误：</p>
+<p>\n\n\n\n</p>
+<pre><code>function minimumLength&lt;Type extends { length: number }&gt;(\n  obj: Type,\n  minimum: number\n): Type {\n  if (obj.length &gt;= minimum) {\n    return obj;\n  } else {\n    return { length: minimum };\nType &#x27;{ length: number; }&#x27; is not assignable to type &#x27;Type&#x27;.\n  &#x27;{ length: number; }&#x27; is assignable to the constraint of type &#x27;Type&#x27;, but &#x27;Type&#x27; could be instantiated with a different subtype of constraint &#x27;{ length: number; }&#x27;.\n  }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>此函数可能看起来没问题 - <code>Type</code> 被限制为 <code>{ length： number }</code>，并且该函数返回 <code>Type</code> 或与该约束匹配的值。问题在于该函数承诺返回<strong>与传入的 <em>相同</em> 类型</strong>的对象，而不仅仅是与约束匹配的 <em>某个</em> 对象。如果此代码是合法的，则可以编写绝对不起作用的代码.</p>
+<p>\n\n\n\n</p>
+<h3 id="specifying-type-arguments">Specifying Type Arguments</h3>
+<p>\n\n\n\n</p>
+<pre><code>function combine&lt;Type&gt;(arr1: Type[], arr2: Type[]): Type[] {\n  return arr1.concat(arr2);\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>如果使用不匹配的数组调用会出错</p>
+<p>\n\n\n\n</p>
+<pre><code>const arr = combine([1, 2, 3], [&quot;hello&quot;]);
+</code></pre>
+<p>\n\n\n\n</p>
+<p>但是，如果您打算执行此作，则可以手动指定 <code>Type</code>：</p>
+<p>\n\n\n\n</p>
+<pre><code>const arr = combine&lt;string | number&gt;([1, 2, 3], [&quot;hello&quot;]);
+</code></pre>
+<p>\n\n\n\n</p>
+<h4 id="泛型函数书写风格指导">泛型函数书写风格指导</h4>
+<p>\n\n\n\n</p>
+<pre><code>function firstElement1&lt;Type&gt;(arr: Type[]) {\n  return arr[0];\n}\n \nfunction firstElement2&lt;Type extends any[]&gt;(arr: Type) {\n  return arr[0];\n}\n \n// a: number (good)\nconst a = firstElement1([1, 2, 3]);\n// b: any (bad)\nconst b = firstElement2([1, 2, 3]);
+</code></pre>
+<p>\n\n\n\n</p>
+<p>乍一看，这些似乎是相同的，但 <code>firstElement1</code> 是编写此函数的更好方法。其推断的返回类型是 <code>Type</code>，但 <code>firstElement2</code> 推断的返回类型是 <code>any</code>，因为 TypeScript 必须使用约束类型解析 <code>arr[0]</code> 表达式，而不是在调用期间“等待”解析元素。</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

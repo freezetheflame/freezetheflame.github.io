@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nginx专栏 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2023-06-29</p>
+        <h1>Nginx专栏</h1>
+        <div class="post-meta">
+          <span>2023-06-29</span>
+          <span class="tag">服务器后端内容</span>
+        </div>
+        <p>\n</p>
+<p>stimulated by https setting</p>
+<p>\n\n\n\n</p>
+<p>What is Nginx?</p>
+<p>\n\n\n\n</p>
+<p>nginx [engine x] is an HTTP and reverse proxy server, a mail proxy server, and a generic TCP/UDP proxy server, originally written by <a href="http://sysoev.ru/en/">Igor Sysoev</a>. For a long time, it has been running on many heavily loaded Russian sites including <a href="http://www.yandex.ru/">Yandex</a>, <a href="http://mail.ru/">Mail.Ru</a>, <a href="http://vk.com/">VK</a>, and <a href="http://www.rambler.ru/">Rambler</a>. According to Netcraft, nginx served or proxied <a href="https://news.netcraft.com/archives/2023/05/26/may-2023-web-server-survey.html">21.18% busiest sites in May 2023</a>. Here are some of the success stories: <a href="https://blogs.dropbox.com/tech/2017/09/optimizing-web-servers-for-high-throughput-and-low-latency/">Dropbox</a>, <a href="https://openconnect.netflix.com/en/software/">Netflix</a>, <a href="https://www.nginx.com/case-studies/nginx-wordpress-com/">Wordpress.com</a>, <a href="http://blog.fastmail.fm/2007/01/04/webimappop-frontend-proxies-changed-to-nginx/">FastMail.FM</a>.</p>
+<p>\n\n\n\n\n<img src="../../assets/images/2023/06/v2-e1826bab1d07df8e97d61aa809b94a10_r.jpg" alt="">\n\n\n\n\n</p>
+<p>这是我在官网找到的定义，意思就是：就是个轻型的HTTP server罢了<br>所以问题回到一个很呆的位置：</p>
+<p>\n\n\n\n</p>
+<p><strong>HTTP server是什么？它是怎么工作的？</strong></p>
+<p>\n\n\n\n</p>
+<p>于是我去问了Claude</p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>\n</p>
+<p>GPT response</p>
+<p>\nHTTP服务器,即Web服务器,是处理HTTP请求和返回HTTP响应的软件。它的主要工作原理如下:<br>1. 监听客户端的HTTP请求。当有客户端(通常是浏览器)通过HTTP协议访问服务器,HTTP服务器会监听到客户端的请求。<br>2. 解析HTTP请求。服务器会解析客户端发送的HTTP请求,获取请求方法(GET、POST等)、URI、HTTP版本号、请求头等信息。<br>3. 根据请求URI定位资源。服务器会根据请求URI找到客户端所请求的资源,如HTML文件、图片、视频等。<br>4. 读取资源并生成HTTP响应。服务器会读取资源的内容,并根据资源生成对应的HTTP响应,包括状态码、响应头和响应体等。<br>5. 发送HTTP响应。服务器会将生成的HTTP响应发送会客户端,以完成一次HTTP请求和响应。<br>6. 管理HTTP会话和连接。HTTP是无状态协议,但服务器可以使用Cookie等方式管理会话和连接,用于实现一些特定的功能,如购物车、登录状态的维持等。<br>7. 处理HTTP方法。除常用的GET和POST方法外,HTTP还定义了多种方法,如PUT、DELETE等。服务器需要 able 处理不同的请求方法。<br>8. 鉴权和访问控制。服务器可以基于HTTP Basic Auth、Cookie等方式对用户进行认证和授权,控制对资源的访问。<br>9. 日志记录。服务器会记录每次HTTP访问的相关信息,用于分析网站访问情况和诊断问题。所以,HTTP服务器主要工作是接收和响应HTTP请求。<br>它解析请求,根据URI找到资源,生成并发送对应的响应,同时还处理会话、方法、鉴权等工作。HTTP服务器让WEB应用程序可以通过Internet将信息发布出去,为用户提供服务。</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<p>然后我turn to the Internet，MDN方面似乎没有http server的相关介绍，但是有对于HTTP的详细解释。既然我在HTTP理解上也不太行，所以顺便做了个学习。</p>
+<p>\n\n\n\n</p>
+<p>HTTP</p>
+<p>\n\n\n\n</p>
+<p><strong>HTTP</strong> 是一种用作获取诸如 HTML 文档这类资源的<a href="https://developer.mozilla.org/zh-CN/docs/Glossary/Protocol">协议</a>。它是 Web 上进行任何数据交换的基础，同时，也是一种客户端—服务器（client-server）协议，也就是说，请求是由接受方——通常是浏览器——发起的。一个完整网页文档是由获取到的不同文档组件——像是文本、布局描述、图片、视频、脚本等——重新构建出来的。（from MDN）</p>
+<p>\n\n\n\n</p>
+<p>客户端与服务端之间通过交换一个个独立的消息（而非数据流）进行通信。由客户端——通常是个浏览器——发出的消息被称作 <em>请求</em> （request），由服务端发出的应答消息被称作 <em>响应</em> （response）。</p>
+<p>\n\n\n\n<img src="../../assets/images/2023/06/image.png" alt="">\n\n\n\n</p>
+<p>HTTP 是一个客户端—服务器协议：请求由一个实体，即用户代理（user agent），或是一个可以代表它的代理方（proxy）发出。大多数情况下，这个用户代理都是一个网页浏览器，不过它也可能是任何东西，比如一个爬取网页来充实、维护搜索引擎索引的机器爬虫。</p>
+<p>\n\n\n\n</p>
+<p>每个请求都会被发送到一个服务端，它会处理这个请求并提供一个称作 <em>响应</em> 的回复。在客户端与服务端之间，还有许许多多的被称为<a href="https://developer.mozilla.org/zh-CN/docs/Glossary/Proxy_server">代理</a>的实体，履行不同的作用，例如充当网关或<a href="https://developer.mozilla.org/zh-CN/docs/Glossary/Cache">缓存</a>。</p>
+<p>\n\n\n\n<img src="../../assets/images/2023/06/image-1.png" alt="">\n\n\n\n</p>
+<p>客户端：用户代理</p>
+<p>\n\n\n\n</p>
+<p> <em>用户代理</em> 是任何能够代表用户行为的工具。这类工具以浏览器为主，不过，它也可能是工程师和 Web 开发人员调试应用所使用的那些程序。</p>
+<p>\n\n\n\n</p>
+<p>浏览器<strong>总是</strong> 首先发起请求的那个实体，永远不会是服务端（不过，后来已经加入了一些机制，能够模拟出由服务端发起的消息）。</p>
+<p>\n\n\n\n</p>
+<p>为了展现一个网页，浏览器需要发送最初的请求来获取描述这个页面的 HTML 文档。接着，解析文档，并发送数个其他请求，响应地获取可执行脚本、展示用的布局信息（CSS）以及其他页面内的资源（一般是图片和视频等）。然后，浏览器将这些资源整合到一起，展现出一个完整的文档，即 Web 页面。之后的阶段，浏览器中执行的脚本可以获取更多资源，同时浏览器相应地更新网页。</p>
+<p>\n\n\n\n</p>
+<p>Web服务端</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

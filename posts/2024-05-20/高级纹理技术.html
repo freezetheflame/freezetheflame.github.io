@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>高级纹理技术 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2024-05-20</p>
+        <h1>高级纹理技术</h1>
+        <div class="post-meta">
+          <span>2024-05-20</span>
+          <span class="tag">CG</span>
+        </div>
+        <p>\n</p>
+<h2 id="1光线微分">1.光线微分</h2>
+<p>\n\n\n\n</p>
+<p><strong>纹理过滤</strong> 是渲染中常用的方法，其在光栅化渲染和光线追踪渲染中都有应用，用于减少使用<br>低频信号对高频信息进行采样时出现的走样。<br>我们可以通过一个较为直观的方法理解为什么要做纹理过滤。在单向的光线追踪过程中，一<br>个像素的值是通过在这个像素中均匀采样光线，获取radiance 之后将其进行平均得到的。我们<br>假设整个场景由一个恒定的环境光源照亮，并且物体表面为均匀反射材质。在这个情况下，由于<br>光源或采样导致的噪点会消失，但是由纹理导致的噪点依然存在，这被称为纹理走样（Texture<br>Aliasing）。</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>计算几何 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2023-11-24</p>
+        <h1>计算几何</h1>
+        <div class="post-meta">
+          <span>2023-11-24</span>
+          <span class="tag">Windows相关</span>
+        </div>
+        <p>\n</p>
+<p><strong>1.Convex Hull</strong></p>
+<p>\n\n\n\n</p>
+<p><strong>def by princeton:</strong></p>
+<p>\n\n\n\n</p>
+<p>Given set of N points in the Euclidean plane, find minimum area convex region that contains every point.</p>
+<p>\n\n\n\n</p>
+<p>Intuition: points are nails perpendicular to plane, stretch an elastic rubber bound around all points; it will minimize length.</p>
+<p>\n\n\n\n</p>
+<p>there are some beneficial trials, like extreme points(which is O(n^4)), extreme edges(which is O(n^3)), because in these trials we have to wrap up some useful functions like To_Left, which is also used in better algorithms.</p>
+<p>\n\n\n\n</p>
+<p><strong>Applications.</strong>  Among oldest and most well-studied problems in computational geometry problems.</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>Robot motion planning.
+\n\n\n\n</li>
+<li>Shortest perimeter fence enclosing P.
+\n\n\n\n</li>
+<li>Smallest area polygon enclosing P.
+\n\n\n\n</li>
+<li>Unique convex polygon whose vertices are points in P that encloses P.
+\n\n\n\n</li>
+<li>Smallest convex set containing all N points (i.e., intersection of all convex sets containing the N points).
+\n
+\n\n\n\n</li>
+</ul>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

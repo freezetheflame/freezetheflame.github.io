@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MySQL basics operations | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-02-09</p>
+        <h1>MySQL basics operations</h1>
+        <div class="post-meta">
+          <span>2025-02-09</span>
+          <span class="tag">服务器后端内容</span><span class="tag">Java</span><span class="tag">MySQL</span><span class="tag">数据库</span><span class="tag">SQL</span><span class="tag">基础语法</span>
+        </div>
+        <p>\n</p>
+<h2 id="基础sql操作">基础SQL操作</h2>
+<p>\n\n\n\n</p>
+<h3 id="select">SELECT</h3>
+<p>\n\n\n\n</p>
+<pre><code>SELECT * FROM Customers;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>最基础的选择操作，从Customers表中选择所有列，没有其他条件</p>
+<p>\n\n\n\n</p>
+<pre><code>SELECT column1, column2, ...\nFROM table_name;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>这则是最全面的SELECT的参考指令</p>
+<p>\n\n\n\n</p>
+<pre><code>SELECT DISTINCT column1, column2, ...\nFROM table_name;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>DISTINCT可以选出无重复的内容</p>
+<p>\n\n\n\n</p>
+<h2 id="where">WHERE</h2>
+<p>\n\n\n\n</p>
+<pre><code>SELECT column1, column2, ...\nFROM table_name\nWHERE condition;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>作为SQL的conditions语句，可以附在很多句子的末尾。</p>
+<p>\n\n\n\n</p>
+<p>注意这里需要区分numeric和text两种主要field，注意引号的使用恰当。</p>
+<p>\n\n\n\n</p>
+<h2 id="and-or--not">AND OR &amp; NOT</h2>
+<p>\n\n\n\n</p>
+<pre><code>SELECT column1, column2, ...\nFROM table_name\nWHERE condition1 [AND] condition2 [AND] condition3 ...;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>使用方式很直白，用于连接where判断中的各个条件，注意NOT是单目即可</p>
+<p>\n\n\n\n</p>
+<h2 id="order-by">ORDER BY</h2>
+<p>\n\n\n\n</p>
+<pre><code>SELECT column1, column2, ...\nFROM table_name\nORDER BY column1, column2, ... ASC|DESC;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>ASC和DESC分别是升序降序的含义，是ASCENDING和DESCENDING的意思</p>
+<p>\n\n\n\n</p>
+<p>example</p>
+<p>\n\n\n\n</p>
+<pre><code>SELECT * FROM Customers\nORDER BY Country ASC, CustomerName DESC;
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="insert">INSERT</h2>
+<p>\n\n\n\n</p>
+<pre><code>INSERT INTO table_name (column1, column2, column3, ...)\nVALUES (value1, value2, value3, ...);
+</code></pre>
+<p>\n\n\n\n</p>
+<p>如果要为表的所有列添加值，则不需要在 SQL 查询中指定列名</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

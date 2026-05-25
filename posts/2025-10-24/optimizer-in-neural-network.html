@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Optimizer in Neural Network | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-10-24</p>
+        <h1>Optimizer in Neural Network</h1>
+        <div class="post-meta">
+          <span>2025-10-24</span>
+          <span class="tag">Windows相关</span><span class="tag">深度学习</span><span class="tag">LLM</span>
+        </div>
+        <p>\n</p>
+<p>参考文章：<a href="https://medium.com/@saneshashank/understanding-neural-network-optimizers-a-journey-from-gradients-to-adamw-eecf92d875a5">理解神经网络优化器：从梯度到 AdamW 之旅 | by Shashank Sane | Oct, 2025 | Medium --- Understanding Neural Network Optimizers: A Journey from Gradients to AdamW | by Shashank Sane | Oct, 2025 | Medium</a><br><a href="https://zhuanlan.zhihu.com/p/430735296">(99+ 封私信 / 81 条消息) 深度学习经典论文分析（八）-ADAM: A METHOD FOR STOCHASTIC OPTIMIZATION - 知乎</a>  </p>
+<p>首先我们借用一下medium这篇博客中关于training四个pillars的介绍：</p>
+<p>\n\n\n\n</p>
+<h2 id="the-four-pillars-of-training-a-mental-model">The Four Pillars of Training: A Mental Model</h2>
+<p>训练的四大支柱：一种心智模型</p>
+<p>\n\n\n\n</p>
+<p>Think of training a neural network as navigating through a vast, multidimensional landscape where you’re searching for the lowest valley (minimum loss). Four distinct mechanisms work together:<br>想象训练神经网络就像在广阔的多维景观中航行，你正在寻找最低的谷地（最小损失）。四种不同的机制协同工作：</p>
+<p>\n\n\n\n</p>
+<p><strong>1. Loss Function</strong> : <em>Where are we, and how bad is it?</em><br>1. 损失函数：我们现在在哪里？有多糟糕？<br>The loss function is your compass — it tells you how far you are from your goal. Mean Squared Error, Cross-Entropy Loss — these are measurement tools, nothing more. They don’t tell you <em>how</em>  to move, just how well (or poorly) you’re doing.<br>损失函数是你的指南针——它告诉你与目标的距离有多远。均方误差、交叉熵损失——这些都是测量工具，仅此而已。它们不会告诉你如何移动，只会告诉你做得有多好（或有多差）。</p>
+<p>\n\n\n\n</p>
+<p><strong>2. Backpropagation</strong> : <em>Which direction should we move?</em><br>2. 反向传播：我们应该朝哪个方向移动？<br>Backpropagation computes gradients — <strong>the slopes of the loss landscape with respect to each parameter</strong>. It answers: “If I nudge this weight slightly, does the loss go up or down, and by how much?” It’s pure calculus, a mechanical process of calculating derivatives through the chain rule.<br>反向传播计算梯度——损失函数相对于每个参数的斜率。它回答：“如果我稍微调整这个权重，损失会增加还是减少，以及增加或减少多少？”这是纯粹的微积分，通过链式法则计算导数的机械过程。</p>
+<p>\n\n\n\n</p>
+<p><strong>3. Optimizer</strong> : <em>How do we take the step?</em><br>3. 优化器：我们如何进行这一步？<br>Here’s where the magic happens. The optimizer takes those gradients and decides <em>how</em>  to update your parameters. Should you move directly opposite to the gradient? Should you remember previous directions? Should different parameters move at different speeds? SGD, Adam, RMSprop — these are different philosophies of movement.<br>这就是魔法发生的地方。优化器获取这些梯度并决定如何更新你的参数。你应该直接与梯度相反的方向移动吗？你应该记住之前的方向吗？不同的参数应该以不同的速度移动吗？SGD、Adam、RMSprop——这些都是不同的运动哲学。</p>
+<p>\n\n\n\n</p>
+<p><strong>4. Learning Rate Scheduler</strong> : <em>How big should our steps be over time?</em><br>4. 学习率调度器：我们的步长应该有多大？<br>Even with the best optimizer, the <em>size</em>  of your steps matters. Early in training, large steps might help you explore. Near convergence, tiny steps allow precision. Schedulers dynamically adjust this step size throughout training.<br>即使有最好的优化器，步长的大小也很重要。在训练初期，大步长可能有助于探索。在接近收敛时，小步长可以保证精度。调度器在整个训练过程中动态调整这个步长。</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/10/image-3.png" alt="">\n\n\n\n</p>
+<p>所以optimizer决定了参数更新的方式（方向，更新哪些），在neural network不断发展的过程中，出现了<strong>SGD</strong> （随机梯度下降），<strong>Momentum</strong> ，以及更智能的Adam,AdamW等，并且在最新的成果中，出现了muon这样的新星优化器。当然相比于Adam是否有更佳的使用尚需证明</p>
+<p>\n\n\n\n</p>
+<p>这篇文章将主要讲解这些历史上以及当今主流的优化器，主要从他的原理与优缺点进行介绍</p>
+<p>\n\n\n\n</p>
+<h2 id="sgd：随机梯度下降法，简单但极易掉坑">SGD：随机梯度下降法，简单但极易掉坑</h2>
+<p>\n\n\n\n</p>
+<p>SGD 体现了一种简单的哲学：朝着梯度相反的方向移动。如果梯度说“损失会沿着这个方向增加”，SGD 就会说“那我们就朝着相反的方向走。”</p>
+<p>\n\n\n\n</p>
+<p>甚至可以给你呈现一下SGD的实现：</p>
+<p>\n\n\n\n</p>
+<pre><code>class SGD:\n    def __init__(self, params, lr):\n        self.params = list(params)\n        self.lr = lr\n    \n    def step(self):\n        for param in self.params:\n            with torch.no_grad():\n                param.data -= self.lr * param.grad\n    \n    def zero_grad(self):\n        for param in self.params:\n            param.grad = None
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="sgd-with-momentum">SGD With Momentum</h2>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

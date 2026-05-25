@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C PLUS PLUS(OOP part) | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2023-08-14</p>
+        <h1>C PLUS PLUS(OOP part)</h1>
+        <div class="post-meta">
+          <span>2023-08-14</span>
+          <span class="tag">Windows相关</span>
+        </div>
+        <p>\n</p>
+<p>类的基本定义</p>
+<p>\n\n\n\n</p>
+<p>定义一个类，本质上是定义一个数据类型的蓝图。这实际上并没有定义任何数据，但它定义了类的名称意味着什么，也就是说，它定义了类的对象包括了什么，以及可以在这个对象上执行哪些操作。</p>
+<p>\n\n\n\n</p>
+<pre><code>class Box\n{\n   public:\n      double length;   // 盒子的长度\n      double breadth;  // 盒子的宽度\n      double height;   // 盒子的高度\n};
+</code></pre>
+<p>\n\n\n\n</p>
+<p>类提供了对象的蓝图，所以基本上，对象是根据类来创建的。声明类的对象，就像声明基本类型的变量一样。下面的语句声明了类 Box 的两个对象：</p>
+<p>\n\n\n\n</p>
+<p>Box Box1;          // 声明 Box1，类型为 Box</p>
+<p>\n\n\n\n</p>
+<p>Box Box2;          // 声明 Box2，类型为 Box</p>
+<p>\n\n\n\n</p>
+<p>类的对象的公共数据成员可以使用直接成员访问运算符 . 来访问。</p>
+<table>
+<thead>
+<tr>
+<th>\n\n\n\n<img src="../../assets/images/2023/08/image-19.png" alt="">\n\n\n\n<strong>概念</strong></th>
+<th><strong>描述</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>类成员函数</td>
+<td>类的成员函数是指那些把定义和原型写在类定义内部的函数，就像类定义中的其他变量一样。</td>
+</tr>
+<tr>
+<td>类访问修饰符</td>
+<td>类成员可以被定义为 public、private 或 protected。默认情况下是定义为 private。</td>
+</tr>
+<tr>
+<td>构造函数 &amp; 析构函数</td>
+<td>类的构造函数是一种特殊的函数，在创建一个新的对象时调用。类的析构函数也是一种特殊的函数，在删除所创建的对象时调用。</td>
+</tr>
+<tr>
+<td>C++ 拷贝构造函数</td>
+<td>拷贝构造函数，是一种特殊的构造函数，它在创建对象时，是使用同一类中之前创建的对象来初始化新创建的对象。</td>
+</tr>
+<tr>
+<td>C++ 友元函数</td>
+<td><strong>友元函数</strong> 可以访问类的 private 和 protected 成员。</td>
+</tr>
+<tr>
+<td>C++ 内联函数</td>
+<td>通过内联函数，编译器试图在调用函数的地方扩展函数体中的代码。</td>
+</tr>
+<tr>
+<td>C++ 中的 this 指针</td>
+<td>每个对象都有一个特殊的指针 <strong>this</strong> ，它指向对象本身。</td>
+</tr>
+<tr>
+<td>C++ 中指向类的指针</td>
+<td>指向类的指针方式如同指向结构的指针。实际上，类可以看成是一个带有函数的结构。</td>
+</tr>
+<tr>
+<td>C++ 类的静态成员</td>
+<td>类的数据成员和函数成员都可以被声明为静态的。</td>
+</tr>
+<tr>
+<td>\n\n\n\n</td>
+<td></td>
+</tr>
+</tbody></table>
+<p>类的成员函数是指那些把定义和原型写在类定义内部的函数，就像类定义中的其他变量一样。类成员函数是类的一个成员，它可以操作类的任意对象，可以访问对象中的所有成员。</p>
+<p>\n\n\n\n</p>
+<p>让我们看看之前定义的类 Box，现在我们要使用成员函数来访问类的成员，而不是直接访问这些类的成员：</p>
+<p>\n\n\n\n</p>
+<pre><code>class Box\n{\n   public:\n      double length;         // 长度\n      double breadth;        // 宽度\n      double height;         // 高度\n      double getVolume();// 返回体积\n};
+</code></pre>
+<p>\n\n\n\n</p>
+<p>成员函数可以定义在类定义内部，或者单独使用范围解析运算符 :: 来定义。在类定义中定义的成员函数把函数声明为内联的，即便没有使用 inline 标识符。所以您可以按照如下方式定义 getVolume() 函数：</p>
+<p>\n\n\n\n</p>
+<pre><code>class Box\n{\n   public:\n      double length;      // 长度\n      double breadth;     // 宽度\n      double height;      // 高度\n      double getVolume(void)\n      {\n         return length * breadth * height;\n      }\n};
+</code></pre>
+<p>\n\n\n\n</p>
+<p>您也可以在类的外部使用范围解析运算符 :: 定义该函数，如下所示：</p>
+<p>\n\n\n\n</p>
+<pre><code>double Box::getVolume(void)\n{\n    return length * breadth * height;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>数据封装是面向对象编程的一个重要特点，它防止函数直接访问类类型的内部成员。类成员的访问限制是通过在类主体内部对各个区域标记 public、private、protected 来指定的。关键字 public、private、protected 称为访问修饰符。</p>
+<p>\n\n\n\n</p>
+<p>一个类可以有多个 public、protected 或 private 标记区域。每个标记区域在下一个标记区域开始之前或者在遇到类主体结束右括号之前都是有效的。成员和类的默认访问修饰符是 private。</p>
+<p>\n\n\n\n</p>
+<p>class Base {</p>
+<p>\n\n\n\n</p>
+<p>   public:</p>
+<p>\n\n\n\n</p>
+<p>  // 公有成员</p>
+<p>\n\n\n\n</p>
+<p>   protected:</p>
+<p>\n\n\n\n</p>
+<p>  // 受保护成员</p>
+<p>\n\n\n\n</p>
+<p>   private:</p>
+<p>\n\n\n\n</p>
+<p>  // 私有成员</p>
+<p>\n\n\n\n</p>
+<p>};</p>
+<p>\n\n\n\n</p>
+<p><strong>公有（public）成员</strong><br>公有成员在程序中类的外部是可访问的。您可以不使用任何成员函数来设置和获取公有变量的值，如下所示</p>
+<p>\n\n\n\n</p>
+<p><strong>私有（private）成员</strong><br>私有成员变量或函数在类的外部是不可访问的，甚至是不可查看的。只有类和友元函数可以访问私有成员。</p>
+<p>\n\n\n\n</p>
+<p>默认情况下，类的所有成员都是私有的。这意味着，如果您没有使用任何访问修饰符，类的成员将被假定为私有成员：</p>
+<p>\n\n\n\n</p>
+<p>实际操作中，我们一般会在私有区域定义数据，在公有区域定义相关的函数，以便在类的外部也可以调用这些函数</p>
+<p>\n\n\n\n</p>
+<p><strong>protected（受保护）成员</strong></p>
+<p>\n\n\n\n</p>
+<p>protected（受保护）成员变量或函数与私有成员十分相似，但有一点不同，protected（受保护）成员在派生类（即子类）中是可访问的。</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>有关构造函数的一些解释与范例：  </p>
+<p>\n\n\n\n</p>
+<pre><code>class MyClass {\nprivate:\n  int num;\n\npublic:\n  // 构造函数使用成员初始化列表初始化 num 变量\n  explicit MyClass(int n) : num(n) {}\n};\n\n// 例子2: 初始化多个成员变量\nclass Point {\nprivate:\n  int x;\n  int y;\n\npublic:\n  // 构造函数使用成员初始化列表初始化 x 和 y 变量\n  Point(int xVal, int yVal) : x(xVal), y(yVal) {}\n};\n\n// 例子3: 初始化引用类型成员变量\nclass Container {\nprivate:\n  int&amp; ref;\n\npublic:\n  // 构造函数使用成员初始化列表初始化 ref 引用\n  // 注意：必须通过引用初始化列表来初始化引用类型成员变量\n  Container(int&amp; val) : ref(val) {}\n};\n\n// 例子4: 初始化基类成员变量\nclass Base {\nprotected:\n  int num;\n\npublic:\n  Base(int n) : num(n) {}\n};\n\nclass Derived : public Base {\nprivate:\n  int additionalNum;\n\npublic:\n  // 构造函数使用成员初始化列表初始化基类和派生类的成员变量\n  Derived(int n, int additional) : Base(n), additionalNum(additional) {}\n};
+</code></pre>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

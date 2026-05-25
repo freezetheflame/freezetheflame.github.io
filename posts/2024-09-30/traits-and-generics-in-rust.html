@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traits and Generics in RUST | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2024-09-30</p>
+        <h1>Traits and Generics in RUST</h1>
+        <div class="post-meta">
+          <span>2024-09-30</span>
+          <span class="tag">RUST</span>
+        </div>
+        <p>\n</p>
+<p>Every programming language has tools for effectively <strong>handling the duplication of concepts.</strong> In Rust, one such tool is  <em>generics</em> : abstract stand-ins for concrete types or other properties. We can express the behavior of generics or how they relate to other generics without knowing what will be in their place when compiling and running the code.</p>
+<p>\n\n\n\n</p>
+<p>Functions can take parameters of some generic type, instead of a concrete type like <code>i32</code> or <code>String</code>, in the same way they take parameters with unknown values to run the same code on multiple concrete values. In fact, we’ve already used generics in Chapter 6 with <code>Option&lt;T&gt;</code>, in Chapter 8 with <code>Vec&lt;T&gt;</code> and <code>HashMap&lt;K, V&gt;</code>, and in Chapter 9 with <code>Result&lt;T, E&gt;</code>. In this chapter, you’ll explore how to define your own types, functions, and methods with generics!</p>
+<p>\n\n\n\n</p>
+<h2 id="traits">Traits</h2>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><p><strong>定义</strong> : Trait 是 Rust 中的一种共享行为定义，可以看作是接口的实现。它定义了一组方法，可以被多个不同类型实现。
+\n\n\n\n</p>
+</li>
+<li><p><strong>用途</strong> : Trait 允许你定义通用行为，比如 <code>Clone</code>、<code>Debug</code> 等，类型可以通过实现这些 Trait 来具备特定的行为。
+\n\n\n\n</p>
+</li>
+<li><p><strong>实现</strong> : 使用 <code>impl</code> 关键字实现 Trait。例如：
+\n
+\n\n\n\n</p>
+<p>trait Speak {\n    fn speak(&amp;self);\n}\n\nstruct Dog;\n\nimpl Speak for Dog {\n    fn speak(&amp;self) {\n        println!(&quot;Woof!&quot;);\n    }\n}\n</p>
+</li>
+</ul>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MongoDB learning | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-06-27</p>
+        <h1>MongoDB learning</h1>
+        <div class="post-meta">
+          <span>2025-06-27</span>
+          <span class="tag">服务器后端内容</span>
+        </div>
+        <p>\n</p>
+<p>MongoDB是一个基于“分布式文件存储”的数据库，是典型的NoSQL。使用cpp编写，是一种高性能可扩展的数据存储解决方案，支持松散的数据结构（类似于json的一种bson格式）</p>
+<p>\n\n\n\n</p>
+<p><strong>具体应用场景</strong> ：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>社交场景，使用 MongoDB存储存储用户信息，以及用户发表的朋友圈信息，通过地理位置索引实现附近的人、地点等功能。
+\n\n\n\n</li>
+<li>游戏场景，使用 MongoDB存储游戏用户信息，用户的装备、积分等直接以内嵌文档的形式存储，方便查询、高效率存储和访问。
+\n\n\n\n</li>
+<li>物流场景，使用 MongoDB存储订单信息，订单状态在运送过程中会不断更新，以 MongoDB内嵌数组的形式来存储，一次查询就能将订单所有的变更读取出来
+\n\n\n\n</li>
+<li>物联网场景，使用 MongoDB存储所有接入的智能设备信息，以及设备汇报的日志信息，并对这些信息进行多维度的分析。
+\n\n\n\n</li>
+<li>视频直播，使用 MongoDB存储用户信息、点赞互动信息等。
+\n
+\n\n\n\n<img src="../../assets/images/2025/06/image-15.png" alt="">\n\n\n\n</li>
+</ol>
+<p>Mongo最大的特点是它支持的查询语言非常强大，其语法有点类似于面向对象的查询语言，几乎可以实现类似关系数据库单表查询的绝大部分功能，而且还支持对数据建立<code>索引</code>。首先我们从增删改查、索引、aggregate聚合三大方面来了解MongoDB的基础操作</p>
+<p>\n\n\n\n</p>
+<h2 id="crud（增删改查）">CRUD（增删改查）</h2>
+<p>\n\n\n\n</p>
+<h3 id="创建操作">创建操作</h3>
+<p>\n\n\n\n</p>
+<p>创建或插入操作用于将新<a href="https://www.mongodb.com/zh-cn/docs/manual/core/document/#std-label-bson-document-format">文档</a>添加到<a href="https://www.mongodb.com/zh-cn/docs/manual/core/databases-and-collections/#std-label-collections">集合</a>中。如果集合当前不存在，插入操作会创建集合。</p>
+<p>\n\n\n\n</p>
+<p>MongoDB 提供以下方法将文档插入到集合中：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><a href="https://www.mongodb.com/zh-cn/docs/manual/reference/method/db.collection.insertOne/#mongodb-method-db.collection.insertOne"><code>db.collection.insertOne()</code></a>
+\n\n\n\n</li>
+<li><a href="https://www.mongodb.com/zh-cn/docs/manual/reference/method/db.collection.insertMany/#mongodb-method-db.collection.insertMany"><code>db.collection.insertMany()</code></a>
+\n
+\n\n\n\n</li>
+</ul>
+<p><strong>MongoDB 中的所有写入操作在单个<a href="https://www.mongodb.com/zh-cn/docs/manual/core/write-operations-atomicity/">文档</a>级别都具有<a href="https://www.mongodb.com/zh-cn/docs/manual/core/document/#std-label-bson-document-format">原子性</a>。</strong></p>
+<p>\n\n\n\n<img src="../../assets/images/2025/06/image-13.png" alt="">\n\n\n\n</p>
+<h3 id="读取操作">读取操作</h3>
+<p>\n\n\n\n</p>
+<p>读取操作用于从<a href="https://www.mongodb.com/zh-cn/docs/manual/core/document/#std-label-bson-document-format">集合</a>中检索<a href="https://www.mongodb.com/zh-cn/docs/manual/core/databases-and-collections/#std-label-collections">文档</a>，即查询集合中的文档。MongoDB 提供以下方法来从集合中读取文档：</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/06/image-14.png" alt="">\n\n\n\n</p>
+<h3 id="插入行为">插入行为</h3>
+<p>\n\n\n\n</p>
+<p>如果该集合当前不存在，则插入操作将创建该集合。</p>
+<p>\n\n\n\n</p>
+<p>在MongoDB中，存储在标准集合中的每个文档都需要一个唯一的_id字段作为主键。<a href="https://www.mongodb.com/zh-cn/docs/manual/reference/glossary/#std-term-_id"></a><a href="https://www.mongodb.com/zh-cn/docs/manual/reference/glossary/#std-term-primary-key"></a>如果插入的文档省略了<code>_id</code> 字段，则MongoDB驾驶员会自动为<a href="https://www.mongodb.com/zh-cn/docs/manual/reference/bson-types/#std-label-objectid"> </a><code>_id</code>字段生成 ObjectId。</p>
+<p>\n\n\n\n</p>
+<p>这也适用于通过执行 <a href="https://www.mongodb.com/zh-cn/docs/manual/reference/method/db.collection.update/#std-label-upsert-parameter">upsert: true</a> 的更新操作插入的文档。</p>
+<p>\n\n\n\n</p>
+<h3 id="更新操作">更新操作</h3>
+<p>\n\n\n\n</p>
+<p>更新操作用于修改<a href="https://www.mongodb.com/zh-cn/docs/manual/core/document/#std-label-bson-document-format">集合</a>中的现有<a href="https://www.mongodb.com/zh-cn/docs/manual/core/databases-and-collections/#std-label-collections">文档</a> 。MongoDB 提供以下方法来更新集合中的文档：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><a href="https://www.mongodb.com/zh-cn/docs/manual/reference/method/db.collection.updateOne/#mongodb-method-db.collection.updateOne"><code>db.collection.updateOne()</code></a>
+\n\n\n\n</li>
+<li><a href="https://www.mongodb.com/zh-cn/docs/manual/reference/method/db.collection.updateMany/#mongodb-method-db.collection.updateMany"><code>db.collection.updateMany()</code></a>
+\n\n\n\n</li>
+<li><a href="https://www.mongodb.com/zh-cn/docs/manual/reference/method/db.collection.replaceOne/#mongodb-method-db.collection.replaceOne"><code>db.collection.replaceOne()</code></a>
+\n
+\n\n\n\n</li>
+</ul>
+<p>update支持partial的更新，而replace是直接替换</p>
+<p>\n\n\n\n</p>
+<p>批量更新可以指定条件or过滤器</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/06/image-16.png" alt="">\n\n\n\n</p>
+<h3 id="删除操作">删除操作</h3>
+<p>\n\n\n\n</p>
+<p>删除操作用于从集合中删除文档。MongoDB 提供以下方法来删除集合中的文档：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><a href="https://www.mongodb.com/zh-cn/docs/manual/reference/method/db.collection.deleteOne/#mongodb-method-db.collection.deleteOne"><code>db.collection.deleteOne()</code></a>
+\n\n\n\n</li>
+<li><a href="https://www.mongodb.com/zh-cn/docs/manual/reference/method/db.collection.deleteMany/#mongodb-method-db.collection.deleteMany"><code>db.collection.deleteMany()</code></a>
+\n
+\n\n\n\n</li>
+</ul>
+<p>在 MongoDB 中，删除操作针对的是单个<a href="https://www.mongodb.com/zh-cn/docs/manual/reference/glossary/#std-term-collection">集合</a>。MongoDB 中的所有写入操作在单个文档级别都具有<a href="https://www.mongodb.com/zh-cn/docs/manual/core/write-operations-atomicity/">原子性</a>。</p>
+<p>\n\n\n\n</p>
+<p>您可以指定条件或过滤器来识别要删除的文档。这些<a href="https://www.mongodb.com/zh-cn/docs/manual/core/document/#std-label-document-query-filter">过滤器</a>使用与读取操作相同的语法。</p>
+<p>\n\n\n\n<img src="https://www.mongodb.com/zh-cn/docs/manual/images/crud-annotated-mongodb-deleteMany.bakedsvg.svg" alt="The components of a MongoDB deleteMany operation.">\n\n\n\n</p>
+<h3 id="增删改查中的重要条件表述">增删改查中的重要条件表述</h3>
+<p>\n\n\n\n</p>
+<p>在更新时，会涉及到以下三个问题：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><em>新数据</em> \n\n
+* 默认是对原数据进行替换 
+\n\n\n\n
+* 若要进行修改,格式为 {修改器:{key:value}}
+\n\n
+\n\n\n\n</li>
+<li><em>是否新增</em> \n\n<ul>
+<li>条件匹配不到数据时是否插入: true插入,false不插入(默认) 
+\n\n
+\n\n\n\n</li>
+</ul>
+</li>
+<li><em>是否修改多条</em> - \n\n
+* 条件匹配成功的数据是否都修改: true都修改,false只修改一条(默认)
+\n\n
+\n<table>
+<thead>
+<tr>
+<th>\n\n\n\n<strong>修改器</strong></th>
+<th><strong>作用</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>$inc</td>
+<td>递增</td>
+</tr>
+<tr>
+<td>$rename</td>
+<td>重命名列</td>
+</tr>
+<tr>
+<td>$set</td>
+<td>修改列值</td>
+</tr>
+<tr>
+<td>$unset</td>
+<td>删除列</td>
+</tr>
+<tr>
+<td>\n\n\n\n</td>
+<td></td>
+</tr>
+</tbody></table>
+</li>
+</ul>
+<p>db.集合名.update(条件, 新数据 [,是否新增, 是否修改多条])</p>
+<p>\n\n\n\n</p>
+<p>任务：修改gcc的username为bareth，age+11，sex字段重命名为sexuality，删除address字段</p>
+<p>\n\n\n\n</p>
+<pre><code>db.people.update({username:&quot;gcc&quot;},{\n\t$set:{username:&quot;bareth&quot;},\n\t$inc:{age:11},\n\t$rename:{sex:&quot;sexuality&quot;},\n\t$unset:{address:true}\n})
+</code></pre>
+<p>\n\n\n\n</p>
+<p>对于查询而言，可以采取如下两种语法进行</p>
+<p>\n\n\n\n</p>
+<p>db.集合名.find(条件 [,查询的列])<br>db.集合名.find(条件 [,查询的列]).pretty() <em>#格式化查看</em></p>
+<p>\n\n\n\n</p>
+<p>查询的列是通过0,1分别指定的。</p>
+<p>\n\n\n\n</p>
+<pre><code># 查询的列(可选参数)\n- 不写则查询全部列\n- {key:1}\t只显示key列\n- {key:0}\t除了key列都显示\n- 注意:_id列都会存在
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>\n\n\n\n<strong>运算符</strong></th>
+<th><strong>作用</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>$gt</td>
+<td>大于</td>
+</tr>
+<tr>
+<td>$gte</td>
+<td>大于等于</td>
+</tr>
+<tr>
+<td>$lt</td>
+<td>小于</td>
+</tr>
+<tr>
+<td>$lte</td>
+<td>小于等于</td>
+</tr>
+<tr>
+<td>$ne</td>
+<td>不等于</td>
+</tr>
+<tr>
+<td>$in</td>
+<td>in</td>
+</tr>
+<tr>
+<td>$nin</td>
+<td>not in</td>
+</tr>
+<tr>
+<td>\n\n\n\n</td>
+<td></td>
+</tr>
+</tbody></table>
+<p>分页查询也是内置的一种方法（可通过find,sort,skip和limit来实现）</p>
+<p>\n\n\n\n</p>
+<pre><code>db.集合名.find().sort().skip(数字).limit(数字)[.count()]\n\n# skip(数字)\n- 指定跳过的数量(可选)\n\n# limit(数字)\n- 限制查询的数量\n\n# count()\n- 统计数量
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>实战</strong> ：数据库有1~10条数据，每页显示2条，一共5页</p>
+<p>\n\n\n\n</p>
+<pre><code># 数据准备\nfor(var i=1;i&lt;11;i++){\n\tdb.page.insert({_id:i,name:&quot;p&quot;+i})\n}\n\n# 分5页,每页2条显示\nfor(var i=0;i&lt;10;i=i+2){\n\tdb.page.find().skip(i).limit(2)\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="聚合查询">聚合查询</h2>
+<p>\n\n\n\n</p>
+<p>由于聚合功能是mongoDB特色的、强悍的一项查询+处理指令，因此单独区分开来讲解，具体的操作与实现逻辑。</p>
+<p>\n\n\n\n</p>
+<p>aggregate查询语法如下：</p>
+<p>\n\n\n\n</p>
+<pre><code>db.集合名.aggregate([\n\t{管道:{表达式}}\n\t...\n])
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>\n\n\n\n$group</th>
+<th>将集合中的文档分组，用于统计结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>$match</td>
+<td>过滤数据，只输出符合条件的文档</td>
+</tr>
+<tr>
+<td>$sort</td>
+<td>聚合数据进一步排序</td>
+</tr>
+<tr>
+<td>$skip</td>
+<td>跳过指定文档数</td>
+</tr>
+<tr>
+<td>$limit</td>
+<td>限制集合数据返回文档数</td>
+</tr>
+<tr>
+<td>\n\n\n\n$sum</td>
+<td>总和（$num:1同count表示统计）</td>
+</tr>
+<tr>
+<td>---</td>
+<td>---</td>
+</tr>
+<tr>
+<td>$avg</td>
+<td>平均</td>
+</tr>
+<tr>
+<td>$min</td>
+<td>最小值</td>
+</tr>
+<tr>
+<td>$max</td>
+<td>最大值</td>
+</tr>
+<tr>
+<td>\n\n\n\n</td>
+<td></td>
+</tr>
+</tbody></table>
+<p>比如有以下这些数据：</p>
+<p>\n\n\n\n</p>
+<pre><code>db.people.insertOne({_id:1,name:&quot;a&quot;,sex:&quot;男&quot;,age:21})\ndb.people.insertOne({_id:2,name:&quot;b&quot;,sex:&quot;男&quot;,age:20})\ndb.people.insertOne({_id:3,name:&quot;c&quot;,sex:&quot;女&quot;,age:20})\ndb.people.insertOne({_id:4,name:&quot;d&quot;,sex:&quot;女&quot;,age:18})\ndb.people.insertOne({_id:5,name:&quot;e&quot;,sex:&quot;男&quot;,age:19})
+</code></pre>
+<p>\n\n\n\n</p>
+<p>就可以用如下办法进行聚合查询</p>
+<p>\n\n\n\n</p>
+<pre><code>db.people.aggregate([\n\t{$group:{_id:&quot;$sex&quot;,age_sum:{$sum:&quot;$age&quot;}}}\n])
+</code></pre>
+<p>\n\n\n\n</p>
+<p>结果是这样的：</p>
+<p>\n\n\n\n</p>
+<pre><code>[\n  { _id: &#x27;女&#x27;, age_sum: 38 },\n  { _id: &#x27;男&#x27;, age_sum: 60 }\n]
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="索引">索引</h2>
+<p>\n\n\n\n</p>
+<p><strong>索引</strong> 是一种排序好的便于快速查询数据的数据结构，用于帮助数据库高效的查询数据</p>
+<p>\n\n\n\n</p>
+<p><strong>创建索引语法</strong> ：</p>
+<p>\n\n\n\n</p>
+<pre><code># 创建索引\ndb.集合名.createIndex(待创建索引的列:方式 [,额外选项])\n# 创建复合索引\ndb.集合名.createIndex({key1:方式,key2:方式} [,额外选项])\n\n# 参数说明：\n- `待创建索引的列:方式`：{key:1}/{key:-1}\n   1表示升序，-1表示降序; 例如{age:1}表示创建age索引并按照升序方法排列\n- `额外选项`：设置索引的名称或者唯一索引等\n   设置名称:{name:索引名}\n   唯一索引:{unique:列名}\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>可以使用分析来比较有索引和无索引的查找情况</p>
+<p>\n\n\n\n</p>
+<pre><code>db.集合名.find().explain(&#x27;executionStats&#x27;)
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="mongodb数据库权限管理">MongoDB数据库权限管理</h2>
+<p>\n\n\n\n</p>
+<p><strong>创建账号</strong></p>
+<p>\n\n\n\n</p>
+<pre><code>db.createUser({\n\t&quot;user&quot;:&quot;账号&quot;,\n\t&quot;pwd&quot;:&quot;密码&quot;,\n\t&quot;roles&quot;:[{\n\t\trole:&quot;角色&quot;,\n\t\tdb:&quot;所属数据库&quot;\n\t}]\n})
+</code></pre>
+<p>\n\n\n\n</p>
+<p>具体有如下角色类型</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>超级用户角色：<code>root</code>
+\n\n\n\n</li>
+<li>数据库用户角色：<code>read</code>、<code>readWrite</code>
+\n\n\n\n</li>
+<li>数据库管理角色：<code>dbAdmin</code>、<code>userAdmin</code>
+\n\n\n\n</li>
+<li>集群管理角色： <code>clusterAdmin</code>、<code>clusterManager</code>、<code>clusterMonitor</code>、<code>hostManager</code>
+\n\n\n\n</li>
+<li>备份恢复角色： <code>backup</code>、<code>restore</code>
+\n\n\n\n</li>
+<li>所有数据库角色： <code>readAnyDatabase</code>、<code>readWriteAnyDatabase</code>、<code>userAdminAnyDatabase</code>、<code>dbAdminAnyDatabase</code>
+\n
+\n</li>
+</ul>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

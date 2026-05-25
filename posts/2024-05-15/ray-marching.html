@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ray Marching | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2024-05-15</p>
+        <h1>Ray Marching</h1>
+        <div class="post-meta">
+          <span>2024-05-15</span>
+          <span class="tag">CG</span>
+        </div>
+        <p>\n</p>
+<p>//TODO: ray marching in volumetric lighting and shadows</p>
+<p>\n\n\n\n</p>
+<h2 id="纹理采样的ray-marching">纹理采样的ray marching</h2>
+<p>\n\n\n\n</p>
+<p>光线行军，算法思想很直观：首先有一个3D的体纹理，然后从相机发射n条射线，射线有一个采样的步长。当射线处在体纹理中时，每个步长采一次样，获取纹理值（实际上表示该点的密度值），计算光照，然后和该条射线当前累积的颜色值进行混合。</p>
+<p>\n\n\n\n</p>
+<p>为什么这样就可以渲染出正确的图案呢？因为光路是可逆的，从光源射出的光线经过散射，最终进入摄像机的效果等同于从摄像机发出的射线进行着色和采样，这个raytracing的道理是一样的。</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/06/image-27.png" alt="">\n\n\n\n</p>
+<p>这种算法很适合在GPU上实现，因为每条射线的计算都是独立并行的，GPU在大量并行计算上有先天的优势。为了在GPU上实现，我们需要解决的问题主要有2个：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>哪些片段需要raymarching。
+\n\n\n\n</li>
+<li>raymarching的方向和终点在哪里。
+\n
+\n\n\n\n</li>
+</ol>
+<h3 id="确定ray-marching的片段">确定Ray Marching的片段</h3>
+<p>\n\n\n\n</p>
+<p>体绘制首先需要一个<strong>载体(proxy geometry)</strong> ，也就是为了确定屏幕上的哪些像素是属于某个体纹理的。这个问题很容易就让人联想到包围盒，问题也就引刃而解。</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/06/image-28.png" alt="">\n\n\n\n</p>
+<h2 id="渲染层面的ray-marching">渲染层面的ray marching</h2>
+<p>\n\n\n\n</p>
+<p>Ray Marching相当近似于光追，只不过在操作处理上有一点不同：把表面作为“距离场”处理，光追则不同：“Ray tracing is based on the principle that we can compute <strong>analytically ray-surface intersections</strong> , being with triangles or more complex surfaces.”基本都是三角形或者更复杂的表面求交，所以我们就只能展示出“我们能够计算光线表面交点的部分”</p>
+<p>\n\n\n\n</p>
+<p>Thus, Ray Marching comes into place and allows us to display any surface defined by an expression 𝑓(𝑥,𝑦,𝑧)=0 such that ‖∇𝑓‖=1, in other words a distance field</p>
+<p>\n\n\n\n</p>
+<h3 id="main-principle">Main Principle</h3>
+<p>\n\n\n\n</p>
+<p>The main principle of Ray Marching remains similar to Ray Tracing: for <strong>each pixel</strong> of the screen, we cast a ray spreading from the camera center to the pixel, however instead of computing ray surface intersections by solving an equation, we iterate through the generated ray step by step and check if we intersect a surface at each step by evaluating the scene SDF at the current location. More precisely, for a given ray 𝑟(𝑡)=𝑑→𝑡+𝑐𝑐𝑎𝑚𝑒𝑟𝑎 and a given surface, we compute the SDF of the surface 𝑓(𝑟(𝑡)) and check if it equals 0. If not, we increase 𝑡 by a given amount 𝛿𝑡. Note that 𝑡=0 at the beginning of this process and that 𝑓(𝑟(0)) should be positive. In practice 𝑓(𝑟(𝑡))=0 never occurs in our programming world, instead we will check if 𝑓(𝑟(𝑡))≤0 meaning that we went through the surface.</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/06/image-29.png" alt="">Representation of a scene SDF\n\n\n\n</p>
+<p>Note that each surface like a Sphere or a Plane defines its own SDF that represents the closest distance from any given 3D point 𝑝 to the surface. Ray Marching also gives us the opportunity to combine each SDF with different operators in order to build multiple scenes with the same surfaces. The basic operation being the union of a SDF :</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

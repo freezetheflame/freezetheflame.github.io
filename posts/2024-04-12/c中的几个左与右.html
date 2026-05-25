@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C++中的几个“左与右” | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2024-04-12</p>
+        <h1>C++中的几个“左与右”</h1>
+        <div class="post-meta">
+          <span>2024-04-12</span>
+          <span class="tag">C++</span>
+        </div>
+        <p>\n</p>
+<p>在 C++ 或者 C 语言中，一个<a href="https://so.csdn.net/so/search?q=%E8%A1%A8%E8%BE%BE%E5%BC%8F&spm=1001.2101.3001.7020">表达式</a>（可以是字面量、变量、对象、函数的返回值等）根据其使用场景不同，分为<strong>左值表达式</strong> 和<strong>右值表达式</strong> 。确切的说 C++ 中左值和右值的概念是从 C 语言继承过来的。</p>
+<p>\n\n\n\n</p>
+<p>左值（lvalue）和右值（rvalue）是比较基础的概念，虽然平常几乎用不到，但C++11之后变得十分重要，它是理解 move/forward 等新语义的基础。</p>
+<p>\n\n\n\n</p>
+<pre><code>int a; _// a 为左值\n_ __a = 3;_// 3 为右值_
+</code></pre>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>左值的英文简写为“<strong><strong>lvalue</strong></strong> ”，右值的英文简写为“<strong><strong>rvalue</strong></strong> ”。很多人认为它们分别是&quot;left value&quot;、&quot;right value&quot; 的缩写，其实不然。lvalue 是“locator value”的缩写，可意为存储在内存中、有明确存储地址（可寻址）的数据，而 rvalue 译为 &quot;read value&quot;，指的是那些可以提供数据值的数据（不一定可以寻址，例如存储于寄存器中的数据）。</p>
+<p>CSDN</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<p>In C++03, an expression is either an <strong>rvalue</strong>  or an <strong>lvalue</strong>.</p>
+<p>\n\n\n\n</p>
+<p>In C++11, an expression can be an:</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li><strong>rvalue</strong>
+\n\n\n\n</li>
+<li><strong>lvalue</strong>
+\n\n\n\n</li>
+<li><strong>xvalue</strong>
+\n\n\n\n</li>
+<li><strong>glvalue</strong>
+\n\n\n\n</li>
+<li><strong>prvalue</strong>
+\n
+\n\n\n\n</li>
+</ol>
+<p>最完整最权威的解释应该在这里<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2010/n3055.pdf">n3055.pdf (open-std.org)</a></p>
+<p>\n\n\n\n</p>
+<p>不过stackoverflow也说它太长了，所以答主把它做了一些简单的浓缩处理，得到了以下的基本规则</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>An <strong>lvalue</strong>  (so-called, historically, because lvalues could appear on the left-hand side of an assignment expression) designates a function or an object. <em>[Example: If  <code>E</code> is an expression of pointer type, then <code>*E</code> is an lvalue expression referring to the object or function to which <code>E</code> points. As another example, the result of calling a function whose return type is an lvalue reference is an lvalue.]</em>
+\n\n\n\n</li>
+<li>An <strong>xvalue</strong>  (an “eXpiring” value) also refers to an object, usually near the end of its lifetime (so that its resources may be moved, for example). An xvalue is the result of certain kinds of expressions involving rvalue references. <em>[Example: The result of calling a function whose return type is an rvalue reference is an xvalue.]</em>
+\n\n\n\n</li>
+<li>A <strong>glvalue</strong>  (“generalized” lvalue) is an <strong>lvalue</strong>  or an <strong>xvalue</strong>.
+\n\n\n\n</li>
+<li>An <strong>rvalue</strong>  (so-called, historically, because rvalues could appear on the right-hand side of an assignment expression) is an xvalue, a temporary object or subobject thereof, or a value that is not associated with an object.
+\n\n\n\n</li>
+<li>A <strong>prvalue</strong>  (“pure” rvalue) is an rvalue that is not an xvalue. <em>[Example: The result of calling a function whose return type is not a reference is a prvalue]</em>
+\n
+\n\n\n\n</li>
+</ul>
+<p>最简单的方式：</p>
+<p>\n\n\n\n</p>
+<p>判断某个表达式是左值还是右值的方法：</p>
+<p>\n\n\n\n</p>
+<p>① 可位于赋值号（=）左侧的表达式就是左值；反之，只能位于赋值号右侧的表达式就是右值。</p>
+<p>\n\n\n\n</p>
+<pre><code>int a = 5;\n5 = a; //错误，5 不能为左值\n \n/*\n其中a是一个左值，字面值5是一个右值\n*/
+</code></pre>
+<p>\n\n\n\n</p>
+<p>【注意】 C++中的左值也可以当作右值使用。</p>
+<p>\n\n\n\n</p>
+<pre><code>int b = 10; // b 是一个左值\na = b; // a、b 都是左值，只不过将 b 可以当做右值使用
+</code></pre>
+<p>\n\n\n\n</p>
+<p> ② 有名称的、可以获取到存储地址的表达式即为左值；反之则是右值。</p>
+<p>\n\n\n\n</p>
+<p> 上述示例中变量 a、b 是变量名且通过 &amp;a 和 &amp;b 可以获得他们的存储地址，因此 a 和 b 都是左值；反之，字面量 5、10，它们既没有名称，也无法获取其存储地址（字面量通常存储在寄存器中，或者和代码存储在一起），因此 5、10 都是右值。</p>
+<p>\n\n\n\n</p>
+<p>在中文网站对于这两种基本的约束做出了这样的解释，接下来我们仔细解读一下那一份pdf来了解c++11之后的数值类型</p>
+<p>\n\n\n\n</p>
+<h2 id="c0x也即c11背景">c0x(也即c11)背景</h2>
+<p>\n\n\n\n</p>
+<p>The term “rvalue” implies certain characteristics that are incompatible with the<br>intended uses for rvalue references.</p>
+<p>\n\n\n\n</p>
+<p>Rvalues are anonymous and can be copied at will, with the copy assumed to be equivalent to the original. Rvalue references, however, designate（指派） a specific object in memory (even if it is a temporary), and that identity must be maintained. </p>
+<p>\n\n\n\n</p>
+<p>rvalue引用是指向内存中特定对象的引用（即使这个对象是临时的）这一点和rvalue的非持久化矛盾<br>• The type of an rvalue is fully known – that is, its type must be complete, and its static type is the same as its dynamic type. By contrast, an rvalue reference must support polymorphic </p>
+<p>\n\n\n\n</p>
+<p>rvalue的类型是完全已知的，意味着在编译时就已知其类型。与此相反，rvalue引用必须支持多态行为，这意味着它们可以指向不同类型的对象<br>behavior and should be able to have an incomplete type.<br>• The type of a non-class rvalue is never cv-qualified. An rvalue reference, however, can be bound to a const or volatile non-class object, and that qualification must be preserved.</p>
+<p>\n\n\n\n</p>
+<p>非类rvalue的类型永远不会被cv-qualified，即它们不会被声明为const或volatile。因为不必要。而rvalue引用可以绑定到const或volatile的非类对象。当rvalue引用绑定到这样的对象时，这些cv-qualification必须被保留。</p>
+<p>\n\n\n\n</p>
+<p>我们考虑了右值引用类型两种的解决办法：一种是iBaby传统的rvalue视为带有一大堆限制的rvalue，但要在rvalue的规范中添加各种警告和限制，以便那些来自rvalue引用的rvalue具有特殊特性。这种方法可以被称为“有趣的rvalue”（funny rvalue）方法。</p>
+<p>\n\n\n\n</p>
+<p>所以建议采用一种替代方案：必须看成左值，不过 需要一些例外把它们可以当做右值来处理，比如之前提到的一些情况</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/04/image-3.png" alt="">\n\n\n\n</p>
+<p>在C++11及之后的版本中，引入了右值引用（rvalue reference）和与之相关的概念，包括xvalues和glvalues。以下是一些例子，用以说明lvalues、xvalues和右值引用之间的区别和关系：</p>
+<p>\n\n\n\n</p>
+<h3 id="lvalue（左值）的例子：">Lvalue（左值）的例子：</h3>
+<p>\n\n\n\n</p>
+<pre><code>int variable = 10; &lt;em&gt;// variable是一个lvalue，因为它是一个命名的对象。&lt;/em&gt;\nint&amp; reference = variable; &lt;em&gt;// reference是一个lvalue reference，因为它引用了一个已命名的对象。&lt;/em&gt;
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="xvalue（即将过期的值）的例子：">Xvalue（即将过期的值）的例子：</h3>
+<p>\n\n\n\n</p>
+<pre><code>int&amp;&amp; xvalueRef = std::move(variable); &lt;em&gt;// xvalueRef是一个xvalue reference，它绑定到一个即将被移动的对象。&lt;/em&gt;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>在这个例子中，<code>std::move</code>操作将<code>variable</code>转换为一个xvalue，即一个即将过期的值。<code>xvalueRef</code>是一个xvalue引用，它绑定到了这个即将过期的值。这意味着<code>variable</code>的资源可以被移动到另一个对象，而<code>xvalueRef</code>则表示这个移动操作的中间状态。</p>
+<p>\n\n\n\n</p>
+<h3 id="右值引用与xvalues的关系：">右值引用与xvalues的关系：</h3>
+<p>\n\n\n\n</p>
+<pre><code>int&amp;&amp; xvalueRef = std::move(variable); &lt;em&gt;// xvalue reference绑定到一个通过std::move转换的lvalue。&lt;/em&gt;\nint&amp;&amp; prvalueRef = 20; &lt;em&gt;// prvalue reference绑定到一个字面量，这一个字面量是一个prvalue。&lt;/em&gt;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>在这里，<code>std::move</code>将<code>variable</code>转换为一个xvalue，而<code>prvalueRef</code>直接绑定到一个字面量，这个字面量是一个prvalue（纯右值）。xvalue和prvalue都可以通过右值引用来捕获和操作。</p>
+<p>\n\n\n\n</p>
+<h3 id="总结区别：">总结区别：</h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><strong>Lvalues</strong> ：代表可以取地址的表达式，通常是变量或其他命名对象的引用。lvalues允许对对象进行修改。
+\n\n\n\n</li>
+<li><strong>Xvalues</strong> ：代表即将被移动或销毁的临时对象。xvalues允许资源的转移，但它们本身是临时的，不能直接访问。
+\n\n\n\n</li>
+<li><strong>右值引用</strong> ：可以绑定到xvalues或prvalues的引用。它们用于移动语义，允许资源从一个对象转移到另一个对象，而不需要复制。
+\n
+\n\n\n\n</li>
+</ul>
+<p>通过这些例子，我们可以看到lvalues和xvalues在C++中的作用和区别，以及右值引用如何与它们交互，从而实现高效的资源管理和移动语义。这些概念在C++11及之后的版本中非常重要，因为它们是实现现代C++高效编程的基础。</p>
+<p>\n\n\n\n</p>
+<p>一个表达式是xvalue（即将过期的值）的情况如下：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>它是调用一个返回类型为对象类型的rvalue引用的函数的结果，无论是隐式调用还是显式调用；
+\n\n\n\n</li>
+<li>它是对对象类型的rvalue引用进行类型转换的结果；
+\n\n\n\n</li>
+<li>它是一个类成员访问表达式，该表达式指定了一个非静态数据成员，而对象表达式是xvalue；
+\n\n\n\n</li>
+<li>它是一个.*指针到成员的表达式，其中第一个操作数是xvalue，第二个操作数是指向数据成员的指针。
+\n
+\n\n\n\n</li>
+</ul>
+<p>In general, the effect of this rule is that named <strong>rvalue references are treated as lvalues and unnamed rvalue references to objects are treated as xvalues</strong> ;<strong>rvalue references to functions</strong> are treated as lvalues whether named or not.</p>
+<p>\n\n\n\n</p>
+<pre><code> [Example:\n  struct A {\n    int m;\n  };\n  A&amp;&amp; operator+(A, A);\n  A&amp;&amp; f();\n  A a;\n  A&amp;&amp; ar =  static_cast&lt;A&amp;&amp;&gt;(a);
+</code></pre>
+<p>\n\n\n\n</p>
+<p>The expressions f(),f().m,static_cast(a), and a + a are xvalues. The expression ar is an lvalue dynamic type of type A. —end example]</p>
+<p>\n\n\n\n</p>
+<p>标准委员会更改c++标准的文件还是太事无巨细了，只有对于某一特定类型困惑的时候比较适合去看，所以我们先去看cpp_reference中的对应解释</p>
+<p>\n\n\n\n</p>
+<h2 id="cppreference-value-categories">cppreference Value categories</h2>
+<p>\n\n\n\n</p>
+<p>ach C++ <a href="https://en.cppreference.com/w/cpp/language/expressions">expression</a> (an operator with its operands, a literal, a variable name, etc.) is characterized by two independent properties: a <em><a href="https://en.cppreference.com/w/cpp/language/type">type</a></em>  and a <em>value category</em>. Each expression has some non-reference type, and each expression belongs to exactly one of the three primary value categories: <a href="https://en.cppreference.com/w/cpp/language/value_category#prvalue"><em>prvalue</em></a>, <a href="https://en.cppreference.com/w/cpp/language/value_category#xvalue"><em>xvalue</em></a>, and <a href="https://en.cppreference.com/w/cpp/language/value_category#lvalue"><em>lvalue</em></a>.</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>a <a href="https://en.cppreference.com/w/cpp/language/value_category#glvalue">glvalue</a> (“generalized” lvalue) is an expression whose evaluation determines the identity of an object or function;
+\n\n\n\n</li>
+<li>a <a href="https://en.cppreference.com/w/cpp/language/value_category#prvalue">prvalue</a> (“pure” rvalue) is an expression whose evaluation
+\n
+\n\n\n\n\n</li>
+<li>computes the value of an operand of a built-in operator (such prvalue has no  <em>result object</em>), or
+\n\n\n\n</li>
+<li>initializes an object (such prvalue is said to have a  <em>result object</em>).
+\n
+\n\n\n\n</li>
+</ul>
+<p>The result object may be a variable, an object created by <a href="https://en.cppreference.com/w/cpp/language/new">new-expression</a>, a temporary created by <a href="https://en.cppreference.com/w/cpp/language/implicit_conversion#Temporary_materialization">temporary materialization</a>, or a member thereof. Note that non-void <a href="https://en.cppreference.com/w/cpp/language/expressions#Discarded-value_expressions">discarded</a> expressions have a result object (the materialized temporary). Also, every class and array prvalue has a result object except when it is the operand of <a href="https://en.cppreference.com/w/cpp/language/decltype"><code>decltype</code></a>;</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>an <a href="https://en.cppreference.com/w/cpp/language/value_category#xvalue">xvalue</a> (an “eXpiring” value) is a glvalue that <strong>denotes an object whose resources can be reused</strong> ;
+\n\n\n\n</li>
+<li>an <a href="https://en.cppreference.com/w/cpp/language/value_category#lvalue">lvalue</a> is a glvalue that is not an xvalue;
+\n\n\n\n</li>
+<li>an <a href="https://en.cppreference.com/w/cpp/language/value_category#rvalue">rvalue</a> is a prvalue or an xvalue;
+\n
+\n\n\n\n</li>
+</ul>
+<p>lvalue和rvalue对应的两个误区区分（由于历史原因l和r具备了左右的含义，所以这里要做出适当的澄清）</p>
+<p>\n\n\n\n</p>
+<pre><code>void foo();\n \nvoid baz()\n{\n    int a; // Expression `a` is lvalue\n    a = 4; // OK, could appear on the left-hand side of an assignment expression\n \n    int &amp;b{a}; // Expression `b` is lvalue\n    b = 5; // OK, could appear on the left-hand side of an assignment expression\n \n    const int &amp;c{a}; // Expression `c` is lvalue\n    c = 6;           // ill-formed, assignment of read-only reference\n \n    // Expression `foo` is lvalue\n    // address may be taken by built-in address-of operator\n    void (*p)() = &amp;foo;\n \n    foo = baz; // ill-formed, assignment of function\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n \nstruct S\n{\n    S() : m{42} {}\n    S(int a) : m{a} {}\n    int m;\n};\n \nint main()\n{\n    S s;\n \n    // Expression `S{}` is prvalue\n    // May appear on the right-hand side of an assignment expression\n    s = S{};\n \n    std::cout &lt;&lt; s.m &lt;&lt; &#x27;\\n&#x27;;\n \n    // Expression `S{}` is prvalue\n    // Can be used on the left-hand side too\n    std::cout &lt;&lt; (S{} = S{7}).m &lt;&lt; &#x27;\\n&#x27;;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="primary-categories">primary categories</h2>
+<p>\n\n\n\n</p>
+<h3 id="lvalue">lvalue:</h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><p>the <strong>name</strong> of a variable, a function, a <a href="https://en.cppreference.com/w/cpp/language/template_parameters#Non-type_template_parameter">template parameter object</a>(since C++20), or a data member, regardless of type, such as <a href="http://en.cppreference.com/w/cpp/io/cin">std::cin</a> or <a href="http://en.cppreference.com/w/cpp/io/manip/endl">std::endl</a>.<strong>Even if the variable&#39;s type is rvalue reference</strong> , the expression consisting of its name is an lvalue expression (but see <a href="https://en.cppreference.com/w/cpp/language/value_category#Move-eligible_expressions">Move-eligible expressions</a>);
+\n
+\n\n\n\n\n</p>
+</li>
+<li><p>a function call or an overloaded operator expression, whose return type is lvalue reference, such as <a href="http://en.cppreference.com/w/cpp/string/basic_string/getline">std::getline</a>(<a href="http://en.cppreference.com/w/cpp/io/cin">std::cin</a>, str), <a href="http://en.cppreference.com/w/cpp/io/cout">std::cout</a> &lt;&lt; 1, str1 = str2, or ++it;
+\n
+\n\n\n\n\n</p>
+</li>
+<li><p>a = b, a += b, a %= b, and all other built-in <a href="https://en.cppreference.com/w/cpp/language/operator_assignment">assignment and compound assignment</a> expressions;
+\n\n\n\n</p>
+</li>
+<li><p>++a and --a, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_incdec#Built-in_prefix_operators">pre-increment and pre-decrement</a> expressions;
+\n\n\n\n</p>
+</li>
+<li><p>*p, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_indirection_operator">indirection</a> expression;
+\n\n\n\n</p>
+</li>
+<li><p>a[n] and p[n], the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_subscript_operator">subscript</a> expressions, where one operand in a[n] is an array lvalue(since C++11);
+\n\n\n\n</p>
+</li>
+<li><p>a.m, the <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_member_access_operators">member of object</a> expression, except where <code>m</code> is a member enumerator or a non-static member function, or where a is an rvalue and <code>m</code> is a non-static data member of object type;
+\n
+\n\n\n\n\n</p>
+</li>
+<li><p>p-&gt;m, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_member_access_operators">member of pointer</a> expression, except where <code>m</code> is a member enumerator or a non-static member function;
+\n\n\n\n</p>
+</li>
+<li><p>a.*mp, the <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_pointer-to-member_access_operators">pointer to member of object</a> expression, where a is an lvalue and <code>mp</code> is a pointer to data member;
+\n\n\n\n</p>
+</li>
+<li><p>p-&gt;*mp, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_pointer-to-member_access_operators">pointer to member of pointer</a> expression, where <code>mp</code> is a pointer to data member;
+\n\n\n\n</p>
+</li>
+<li><p>a, b, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_other#Built-in_comma_operator">comma</a> expression, where b is an lvalue;
+\n\n\n\n</p>
+</li>
+<li><p>a ? b : c, the <a href="https://en.cppreference.com/w/cpp/language/operator_other#Conditional_operator">ternary conditional</a> expression for certain b and c (e.g., when both are lvalues of the same type, but see <a href="https://en.cppreference.com/w/cpp/language/operator_other#Conditional_operator">definition</a> for detail);
+\n\n\n\n</p>
+</li>
+<li><p>a <a href="https://en.cppreference.com/w/cpp/language/string_literal">string literal</a>, such as &quot;Hello, world!&quot;;
+\n\n\n\n</p>
+</li>
+<li><p>a cast expression to lvalue reference type, such as static_cast&lt;int&amp;&gt;(x) or static_cast&lt;void(&amp;)(int)&gt;(x);
+\n\n\n\n</p>
+</li>
+<li><p>a non-type <a href="https://en.cppreference.com/w/cpp/language/template_parameters">template parameter</a> of an lvalue reference type;
+\n
+\n\n\n\n</p>
+<p>int&amp;&amp; foo = 10; // foo 是一个右值引用\n\n// 但是，&quot;foo&quot; 是一个左值表达式，因为它表示一个具体的，已命名的对象\nint* p = &foo; // 这是合法的</p>
+</li>
+</ul>
+<p>\n\n\n\n</p>
+<h3 id="prvalue">prvalue</h3>
+<p>\n\n\n\n</p>
+<p>The following expressions are <em>prvalue expressions</em> :</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>a <a href="https://en.cppreference.com/w/cpp/language/expressions#Literals">literal</a> (except for <a href="https://en.cppreference.com/w/cpp/language/string_literal">string literal</a>), such as 42, true or nullptr;
+\n\n\n\n</li>
+<li>a function call or an overloaded operator expression, whose return type is non-reference, such as str.substr(1, 2), str1 + str2, or it++;
+\n\n\n\n</li>
+<li>a++ and a--, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_incdec#Built-in_postfix_operators">post-increment and post-decrement</a> expressions;
+\n\n\n\n</li>
+<li>a + b, a % b, a &amp; b, a &lt;&lt; b, and all other built-in <a href="https://en.cppreference.com/w/cpp/language/operator_arithmetic">arithmetic</a> expressions;
+\n\n\n\n</li>
+<li>a &amp;&amp; b, a || b, !a, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_logical">logical</a> expressions;
+\n\n\n\n</li>
+<li>a &lt; b, a == b, a &gt;= b, and all other built-in <a href="https://en.cppreference.com/w/cpp/language/operator_comparison">comparison</a> expressions;
+\n\n\n\n</li>
+<li>&amp;a, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_address-of_operator">address-of</a> expression;
+\n\n\n\n</li>
+<li>a.m, the <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_member_access_operators">member of object</a> expression,<strong>where<code>m</code> is a member enumerator or a non-static member function<a href="https://en.cppreference.com/w/cpp/language/value_category#cite_note-pmfc-2">[2]</a>;</strong>
+\n\n\n\n</li>
+<li>p-&gt;m, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_member_access_operators">member of pointer</a> expression, where <code>m</code> is a member enumerator or a non-static member function<a href="https://en.cppreference.com/w/cpp/language/value_category#cite_note-pmfc-2">[2]</a>;
+\n\n\n\n</li>
+<li>a.*mp, the <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_pointer-to-member_access_operators">pointer to member of object</a> expression, where <code>mp</code> is a pointer to member function<a href="https://en.cppreference.com/w/cpp/language/value_category#cite_note-pmfc-2">[2]</a>;
+\n\n\n\n</li>
+<li>p-&gt;*mp, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_pointer-to-member_access_operators">pointer to member of pointer</a> expression, where <code>mp</code> is a pointer to member function<a href="https://en.cppreference.com/w/cpp/language/value_category#cite_note-pmfc-2">[2]</a>;
+\n\n\n\n</li>
+<li>a, b, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_other#Built-in_comma_operator">comma</a> expression, where b is an prvalue;
+\n\n\n\n</li>
+<li>a ? b : c, the <a href="https://en.cppreference.com/w/cpp/language/operator_other#Conditional_operator">ternary conditional</a> expression for certain b and c (see <a href="https://en.cppreference.com/w/cpp/language/operator_other#Conditional_operator">definition</a> for detail);
+\n\n\n\n</li>
+<li>a cast expression to non-reference type, such as static_cast<double>(x), <a href="http://en.cppreference.com/w/cpp/string/basic_string">std::string</a>{}, or (int)42;
+\n\n\n\n</li>
+<li>the <a href="https://en.cppreference.com/w/cpp/language/this"><code>this</code></a> pointer;
+\n\n\n\n</li>
+<li>an <a href="https://en.cppreference.com/w/cpp/language/enum">enumerator</a>;
+\n\n\n\n</li>
+<li>a non-type <a href="https://en.cppreference.com/w/cpp/language/template_parameters">template parameter</a> of a scalar type;
+\n<table>
+<thead>
+<tr>
+<th>\n\n\n\na <a href="https://en.cppreference.com/w/cpp/language/lambda">lambda expression</a>, such as [](int x){ return x * x; };</th>
+<th>(since C++11)</th>
+</tr>
+</thead>
+</table>
+</li>
+</ul>
+<p>a <a href="https://en.cppreference.com/w/cpp/language/constraints">requires-expression</a>, such as requires (T i) { typename T::type; };a specialization of a <a href="https://en.cppreference.com/w/cpp/language/constraints">concept</a>, such as <a href="http://en.cppreference.com/w/cpp/concepts/equality_comparable">std::equality_comparable</a><int>.<br>\n\n\n\n</p>
+<h3 id="xvalue">xvalue</h3>
+<p>\n\n\n\n</p>
+<p>The following expressions are <em>xvalue expressions</em> :</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>a.m, the <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_member_access_operators">member of object</a> expression, where a is an rvalue and <code>m</code> is a non-static data member of an object type;
+\n\n\n\n</li>
+<li>a.*mp, the <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_pointer-to-member_access_operators">pointer to member of object</a> expression, where a is an rvalue and <code>mp</code> is a pointer to data member;
+\n\n\n\n</li>
+<li>a, b, the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_other#Built-in_comma_operator">comma</a> expression, where b is an xvalue;
+\n\n\n\n</li>
+<li>a ? b : c, the <a href="https://en.cppreference.com/w/cpp/language/operator_other#Conditional_operator">ternary conditional</a> expression for certain b and c (see <a href="https://en.cppreference.com/w/cpp/language/operator_other#Conditional_operator">definition</a> for detail);
+\n<table>
+<thead>
+<tr>
+<th>\n\n\n\na function call or an overloaded operator expression, whose return type is rvalue reference to object, such as std::move(x);a[n], the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_subscript_operator">subscript</a> expression, where one operand is an array rvalue;a cast expression to rvalue reference to object type, such as static_cast&lt;char&amp;&amp;&gt;(x);</th>
+<th>(since C++11)</th>
+</tr>
+</thead>
+</table>
+</li>
+</ul>
+<p>any expression that designates a temporary object, after <a href="https://en.cppreference.com/w/cpp/language/implicit_conversion#Temporary_materialization">temporary materialization</a>;| (since C++17)<br>a <a href="https://en.cppreference.com/w/cpp/language/value_category#Move-eligible_expressions">move-eligible expression</a>.<br>\n\n\n\n</p>
+<pre><code>struct Foo {\n    int x;\n};\n\nFoo foo; // foo 是一个左值\nFoo* p = &amp;foo; // p 是一个左值\n\nint Foo::*pm = &amp;Foo::x; // pm 是一个左值\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>在上述代码中，<code>foo</code> 和 <code>p</code> 都是左值，因为它们都是具名对象，我们可以获取它们的地址。</p>
+<p>\n\n\n\n</p>
+<pre><code>(p-&gt;*pm) = 42; // (p-&gt;*pm) 是一个左值\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>在这个例子中，<code>(p-&gt;*pm)</code> 是一个左值，因为它表示一个具体的，已命名的对象，我们可以对它进行赋值操作。</p>
+<p>\n\n\n\n</p>
+<pre><code>Foo().x; // Foo().x 是一个将亡值（xvalue）\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>在这个例子中，<code>Foo().x</code> 是一个将亡值（xvalue），因为 <code>Foo()</code> 是一个临时对象，其成员 <code>x</code> 的生命周期即将结束。</p>
+<p>\n\n\n\n</p>
+<pre><code>42; // 42 是一个纯右值（prvalue）\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>在这个例子中，<code>42</code> 是一个纯右值（prvalue），因为它不表示任何对象，只表示一个值。</p>
+<p>\n\n\n\n</p>
+<h2 id="mixed-categories">Mixed categories</h2>
+<p>\n\n\n\n</p>
+<h3 id="glvalue">glvalue</h3>
+<p>\n\n\n\n</p>
+<p>A <em>glvalue expression</em>  is either lvalue or xvalue.</p>
+<p>\n\n\n\n</p>
+<p>Properties:</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>A glvalue may be implicitly converted to a prvalue with lvalue-to-rvalue, array-to-pointer, or function-to-pointer <a href="https://en.cppreference.com/w/cpp/language/implicit_conversion">implicit conversion</a>.
+\n\n\n\n</li>
+<li>A glvalue may be <a href="https://en.cppreference.com/w/cpp/language/object#Polymorphic_objects">polymorphic</a>: the <a href="https://en.cppreference.com/w/cpp/language/type#Dynamic_type">dynamic type</a> of the object it identifies is not necessarily the static type of the expression.
+\n\n\n\n</li>
+<li>A glvalue can have <a href="https://en.cppreference.com/w/cpp/language/type#Incomplete_type">incomplete type</a>, where permitted by the expression.
+\n
+\n\n\n\n</li>
+</ul>
+<h3 id="rvalue">rvalue</h3>
+<p>\n\n\n\n</p>
+<p>An <em>rvalue expression</em>  is either prvalue or xvalue.</p>
+<p>\n\n\n\n</p>
+<p>Properties:</p>
+<p>\n\n\n\n</p>
+<h2 id="n----address-of-an-rvalue-cannot-be-taken-by-built-in-address-of-operator-int-i3-42-and-stdmovex-are-invalid-nnnn----an-rvalue-cant-be-used-as-the-left-hand-operand-of-the-built-in-assignment-or-compound-assignment-operators-nnnn----an-rvalue-may-be-used-to-initialize-a-const-lvalue-reference-in-which-case-the-lifetime-of-the-temporary-object-identified-by-the-rvalue-is-extended-until-the-scope-of-the-reference-ends-n-nnnnan-rvalue-may-be-used-to-initialize-an-rvalue-reference-in-which-case-the-lifetime-of-the-temporary-object-identified-by-the-rvalue-is-extended-until-the-scope-of-the-reference-endswhen-used-as-a-function-argument-and-when-two-overloads-of-the-function-are-available-one-taking-rvalue-reference-parameter-and-the-other-taking-lvalue-reference-to-const-parameter-an-rvalue-binds-to-the-rvalue-reference-overload-thus-if-both-copy-and-move-constructors-are-available-an-rvalue-argument-invokes-the-move-constructor-and-likewise-with-copy-and-move-assignment-operators">\n
+  * Address of an rvalue cannot be taken by built-in address-of operator: &amp;int(), &amp;i++<a href="https://en.cppreference.com/w/cpp/language/value_category#cite_note-3">[3]</a>, &amp;42, and &amp;std::move(x) are invalid.
+\n\n\n\n
+  * An rvalue can&#39;t be used as the left-hand operand of the built-in assignment or compound assignment operators.
+\n\n\n\n
+  * An rvalue may be used to <a href="https://en.cppreference.com/w/cpp/language/reference_initialization">initialize a const lvalue reference</a>, in which case the lifetime of the temporary object identified by the rvalue is <a href="https://en.cppreference.com/w/cpp/language/reference_initialization#Lifetime_of_a_temporary">extended</a> until the scope of the reference ends.
+\n
+\n\n\n\nAn rvalue may be used to <a href="https://en.cppreference.com/w/cpp/language/reference_initialization">initialize an rvalue reference</a>, in which case the lifetime of the temporary object identified by the rvalue is <a href="https://en.cppreference.com/w/cpp/language/reference_initialization#Lifetime_of_a_temporary">extended</a> until the scope of the reference ends.When used as a function argument and when <a href="https://en.cppreference.com/w/cpp/language/overload_resolution">two overloads</a> of the function are available, one taking rvalue reference parameter and the other taking lvalue reference to const parameter, an rvalue binds to the rvalue reference overload (thus, if both copy and move constructors are available, an rvalue argument invokes the <a href="https://en.cppreference.com/w/cpp/language/move_constructor">move constructor</a>, and likewise with copy and move assignment operators).  </h2>
+<p>\n\n\n\n</p>
+<p>以上对于c++中的各种类型做出了足够详尽的分类，不过我们仍然不清楚rvalue,lvalue乃至xvalue,prvalue的使用和实际场景的作用，所以我refer to了一篇相对比较优质的知乎文章寻求帮助<a href="https://zhuanlan.zhihu.com/p/55856487">C++11朝码夕解: move和forward - 知乎 (zhihu.com)</a></p>
+<p>\n\n\n\n</p>
+<p>注意：以下文章中暴论颇多，有一些“原则式的错误”，比如对于move和forward的说明误导性很大</p>
+<p>\n\n\n\n</p>
+<h2 id="太长不看细节-tldr"><strong>太长不看细节: TL;DR:</strong></h2>
+<p>\n\n\n\n</p>
+<p>(1) 问题: 临时变量copy开销太大</p>
+<p>\n\n\n\n</p>
+<p>(2) 引入: rvalue, lvalue, rvalue reference概念</p>
+<p>\n\n\n\n</p>
+<p>(3) 方法: rvalue reference传临时变量, move语义避免copy</p>
+<p>\n\n\n\n</p>
+<p>(4) 优化: forward同时能处理rvalue/lvalue reference和const reference</p>
+<p>\n\n\n\n</p>
+<h2 id="两个c的基础背景"><strong>两个C++的基础背景</strong></h2>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>C++传值默认是copy
+\n\n\n\n</li>
+<li>copy开销很大
+\n
+\n\n\n\n</li>
+</ol>
+<pre><code>func(&quot;some temporary string&quot;); //初始化string, 传入函数, 可能会导致string的复制\n\nv.push_back(X()); //初始化了一个临时X, 然后被复制进了vector\n\na = b + c; //b+c是一个临时值, 然后被赋值给了a\n\nx++; //x++操作也有临时变量的产生\n\na = b + c + d; //c+d一个临时变量, b+(c+d)另一个临时变量
+</code></pre>
+<p>\n\n\n\n</p>
+<p>我看到这里做出了我的猜测：这几个应该需要把常量字符串当成一个xvalue来做，然后及时销毁，或者创建生命周期足够长的引用，而无需拷贝</p>
+<p>\n\n\n\n</p>
+<p>以上copy操作有没有必要呢? 有些地方可不可以省略呢? 我们来看看下面一个案例, 之后我们会用到它来推导出为什么我们需要move和forward:</p>
+<p>假如有一个class A, 带有一个set函数, 可以传两个参数赋值class里的成员变量:</p>
+<p>\n\n\n\n</p>
+<pre><code>class A{...};\n\nvoid A::set(const string &amp; var1, const string &amp; var2){\n  m_var1 = var1;  //copy\n  m_var2 = var2;  //copy\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>下面这个写法是没法避免copy的, 因为怎么着都得把外部初始的string传进set函数, 再复制给成员变量:</p>
+<p>\n\n\n\n</p>
+<pre><code>A a1;\nstring var1(&quot;string1&quot;);\nstring var2(&quot;string2&quot;);\na1.set(var1, var2); // OK to copy
+</code></pre>
+<p>\n\n\n\n</p>
+<p>但下面这个呢? 临时生成了2个string, 传进set函数里, 复制给成员变量, 然后这两个临时string再被回收. 是不是有点多余?</p>
+<p>\n\n\n\n</p>
+<pre><code>A a1;\na1.set(&quot;temporary str1&quot;,&quot;temporary str2&quot;); //temporary, unnecessary copy
+</code></pre>
+<p>\n\n\n\n</p>
+<p>上面复制的行为, 在底层的操作很可能是这样的:</p>
+<p>\n\n\n\n</p>
+<p>(1)临时变量的内容先被复制一遍<br>(2)被复制的内容覆盖到成员变量指向的内存<br>(3)临时变量用完了再被回收</p>
+<p>\n\n\n\n</p>
+<p>这里能不能优化一下呢? 临时变量反正都要被回收, 如果能直接把临时变量的内容, 和成员变量内容交换一下, 就能避免复制了? 如下:</p>
+<p>\n\n\n\n</p>
+<p>(1)成员变量内部的指针指向&quot;temporary str1&quot;所在的内存<br>(2)临时变量内部的指针指向成员变量以前所指向的内存<br>(3)最后临时变量指向的那块内存再被回收</p>
+<p>\n\n\n\n</p>
+<p>上面这个操作避免了一次copy的发生, 其实它就是所谓的move语义.</p>
+<p>\n\n\n\n</p>
+<p>那么这个临时变量, 在以前是解决不了了. 为了填这个坑, 蛋疼的C++委员会就说, 不如把C++搞得更复杂一些吧!</p>
+<p>\n\n\n\n</p>
+<p>于是就引入了rvalue和lvalue的概念, 之前说的那些临时变量就是rvalue. 上面说的避免copy的操作就是<code>std::move</code></p>
+<p>\n\n\n\n</p>
+<p>传临时变量的时候, 可以传<code>T &amp;&amp;</code>, 叫rvalue reference(右值引用), 它能接收rvalue(临时变量), 之后再调用<code>std::move</code>就避免copy了.</p>
+<p>\n\n\n\n</p>
+<pre><code>void set(string &amp;&amp; var1, string &amp;&amp; var2){\n  //avoid unnecessary copy!\n  m_var1 = std::move(var1);  \n  m_var2 = std::move(var2);\n}\nA a1;\n//temporary, move! no copy!\na1.set(&quot;temporary str1&quot;,&quot;temporary str2&quot;);
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="新的问题-避免重复"><strong>新的问题: 避免重复</strong></h2>
+<p>\n\n\n\n</p>
+<p>现在终于能处理临时变量了, 但如果按上面那样写, 处理临时变量用右值引用<code>string &amp;&amp;</code>, 处理普通变量用const引用<code>const string &amp;</code>... 这边出现了麻烦的重载问题</p>
+<p>\n\n\n\n</p>
+<p>这代码量有点大呀? 每次都至少要写两遍, overload一个新的method吗?</p>
+<p>\n\n\n\n</p>
+<p>回忆一下程序员的核心价值观是什么? 避免重复!</p>
+<p>\n\n\n\n</p>
+<h2 id="perfect-forward-完美转发"><strong>perfect forward (完美转发)</strong></h2>
+<p>\n\n\n\n</p>
+<p>上面说的各种情况, 包括传<code>const T &amp;</code>, <code>T &amp;&amp;</code>, 都可以由以下操作代替:</p>
+<p>\n\n\n\n</p>
+<pre><code>template&lt;typename T1, typename T2&gt;\nvoid set(T1 &amp;&amp; var1, T2 &amp;&amp; var2){\n  m_var1 = std::forward&lt;T1&gt;(var1);\n  m_var2 = std::forward&lt;T2&gt;(var2);\n}\n\n//when var1 is an rvalue, std::forward&lt;T1&gt; equals to static_cast&lt;[const] T1 &amp;&amp;&gt;(var1)\n//when var1 is an lvalue, std::forward&lt;T1&gt; equals to static_cast&lt;[const] T1 &amp;&gt;(var1)
+</code></pre>
+<p>\n\n\n\n</p>
+<p>forward能转发下面所有的情况:</p>
+<p>\n\n\n\n</p>
+<pre><code>[const] T &amp;[&amp;]
+</code></pre>
+<p>\n\n\n\n</p>
+<p>也就是:</p>
+<p>\n\n\n\n</p>
+<pre><code>const T &amp;\nT &amp;\nconst T &amp;&amp;\nT &amp;&amp;
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="那我们有了forward为什么还要用move"><strong>那我们有了forward为什么还要用move?</strong></h2>
+<p>\n\n\n\n</p>
+<p>技术上来说, forward确实可以替代所有的move.</p>
+<p>\n\n\n\n</p>
+<p>可能会有人在这里和我杠吧. 这你得去和&quot;Effective Modern C ++&quot;的作者Scott Meyers去争了:</p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>\n</p>
+<p>&quot;From a purely technical perspective, the answer is yes: std::forward can do it all. std::move isn’t necessary. &quot;<br>来源：<a href="https://link.zhihu.com/?target=https%3A//stackoverflow.com/a/28828689">https://stackoverflow.com/a/28828689</a></p>
+<p>\n</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<p>但还有一些问题:</p>
+<p>\n\n\n\n</p>
+<p>首先, forward常用于template函数中, 使用的时候必须要多带一个template参数T: <code>forward&lt;T&gt;</code>, 代码略复杂;</p>
+<p>\n\n\n\n</p>
+<p>还有, 明确只需要move的情况而用forward, 代码意图不清晰, 其他人看着理解起来比较费劲.</p>
+<p>\n\n\n\n</p>
+<p><strong>更技术上来说, 他们都可以被static_cast替代</strong>. 为什么不用static_cast呢? 也就是为了读着方便易懂.</p>
+<p>\n\n\n\n</p>
+<p>ref: <a href="https://link.zhihu.com/?target=https%3A//stackoverflow.com/questions/28828159/usage-of-stdforward-vs-stdmove">https://stackoverflow.com/quest</a></p>
+<p>\n\n\n\n</p>
+<h2 id="some-other-articles">Some other articles</h2>
+<p>\n\n\n\n</p>
+<h2 id="1-stdmove">1. std::move</h2>
+<p>\n\n\n\n</p>
+<p>别看它的名字叫move，其实std::move并不能移动任何东西，它唯一的功能是将一个<code>左值/右值强制转化为右值引用</code>，继而可以通过右值引用使用该值，所以称为<code>移动语义</code>。</p>
+<p>\n\n\n\n</p>
+<p>std::move的<strong>作用</strong> ：将对象的状态或者所有权从一个对象转移到另一个对象，只是转移，没有内存的搬迁或者内存拷贝所以可以提高利用效率,改善性能。 它是怎么个转移法，将在文章的最后面解释。</p>
+<p>\n\n\n\n</p>
+<p><code>看到std::move的代码，意味着给std::move的参数，在调用之后，就不再使用了。</code></p>
+<p>\n\n\n\n</p>
+<p>函数原型：</p>
+<p>\n\n\n\n</p>
+<pre><code>/**\n *  @brief  Convert a value to an rvalue.\n *  @param  __t  A thing of arbitrary type.\n *  @return The parameter cast to an rvalue-reference to allow moving it.\n*/\ntemplate &lt;typename T&gt;\ntypename remove_reference&lt;T&gt;::type&amp;&amp; move(T&amp;&amp; t)\n{\n\treturn static_cast&lt;typename remove_reference&lt;T&gt;::type&amp;&amp;&gt;(t);\n}\n\n
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code>/// remove_reference\n  template&lt;typename _Tp&gt;\n    struct remove_reference\n    { typedef _Tp   type; };\n\n  template&lt;typename _Tp&gt;\n    struct remove_reference&lt;_Tp&amp;&gt;\n    { typedef _Tp   type; };\n\n  template&lt;typename _Tp&gt;\n    struct remove_reference&lt;_Tp&amp;&amp;&gt;\n    { typedef _Tp   type; };\n
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="参数讨论">参数讨论</h3>
+<p>\n\n\n\n</p>
+<p>先看<code>参数 T&amp;&amp; t</code>，其参数看起来是个右值引用，其是不然！！！</p>
+<p>\n\n\n\n</p>
+<p>因为T是个模板，当右值引用和模板结合的时候，就复杂了。<code>T&amp;&amp;</code>并不一定表示右值引用，它可能是个左值引用又可能是个右值引用。</p>
+<p>\n\n\n\n</p>
+<p>再弄个清爽的代码解释一下：</p>
+<p>\n\n\n\n</p>
+<pre><code>template&lt;typename T&gt;\nvoid func( T&amp;&amp; param){\n    \n}\nfunc(5);  &lt;em&gt;//15是右值， param是右值引用&lt;/em&gt;\nint a = 10; &lt;em&gt;//&lt;/em&gt;\nfunc(a); &lt;em&gt;//x是左值, param是左值引用&lt;/em&gt;\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>这里的<code>&amp;&amp;</code>是一个<strong>未定义的引用类型</strong> ，称为<br><code>通用引用 Universal References</code><br>(<a href="https://isocpp.org/blog/2012/11/universal-references-in-c11-scott-meyers%EF%BC%89">https://isocpp.org/blog/2012/11/universal-references-in-c11-scott-meyers）</a></p>
+<p>\n\n\n\n</p>
+<p>它必须被初始化，它是左值引用还是右值引用却决于它的初始化，如果它被一个左值初始化，它就是一个左值引用；如果被一个右值初始化，它就是一个右值引用。</p>
+<p>\n\n\n\n</p>
+<p><strong>注意</strong> ，只有当发生自动类型推断时（如函数模板的类型自动推导，或auto关键字），<code>&amp;&amp;</code>才是一个<code>Universal References</code>。</p>
+<p>\n\n\n\n</p>
+<h3 id="通用引用">通用引用</h3>
+<p>\n\n\n\n</p>
+<p>这里还可以再深入一下<strong>通用引用</strong> ，解释为什么它一会可以左值引用，一会可以右值引用。<br>既然T是个模板，那T就可以是string，也可以是string&amp;，或者string&amp;&amp;。<br>那参数就变成<br>(string&amp;&amp; &amp;&amp; param)了<br>这么多&amp;怎么办？好吓人！！！<br>没事，稳住，C++ 11立了规矩，太多&amp;就要折叠一下(也就是传说中的<code>引用折叠</code>)。具体而言</p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>\n</p>
+<p>X&amp; &amp;、X&amp;&amp; &amp;、X&amp; &amp;&amp;都折叠成X&amp;</p>
+<p>\n</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>\n</p>
+<p>X&amp;&amp; &amp;&amp;折叠成X&amp;&amp;</p>
+<p>\n这里有一个非常好的介绍universal refrence的示例代码</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n#include &lt;type_traits&gt;\n#include &lt;string&gt;\nusing namespace std;\n\ntemplate&lt;typename T&gt;\nvoid func(T&amp;&amp; param) {\n    if (std::is_same&lt;string, T&gt;::value)\n        std::cout &lt;&lt; &quot;string&quot; &lt;&lt; std::endl;\n    else if (std::is_same&lt;string&amp;, T&gt;::value)\n        std::cout &lt;&lt; &quot;string&amp;&quot; &lt;&lt; std::endl;\n    else if (std::is_same&lt;string&amp;&amp;, T&gt;::value)\n        std::cout &lt;&lt; &quot;string&amp;&amp;&quot; &lt;&lt; std::endl;\n    else if (std::is_same&lt;int, T&gt;::value)\n        std::cout &lt;&lt; &quot;int&quot; &lt;&lt; std::endl;\n    else if (std::is_same&lt;int&amp;, T&gt;::value)\n        std::cout &lt;&lt; &quot;int&amp;&quot; &lt;&lt; std::endl;\n    else if (std::is_same&lt;int&amp;&amp;, T&gt;::value)\n        std::cout &lt;&lt; &quot;int&amp;&amp;&quot; &lt;&lt; std::endl;\n    else\n        std::cout &lt;&lt; &quot;unkown&quot; &lt;&lt; std::endl;\n}\n\nint getInt() {\n    return 10;\n}\n\nint main() {\n    int x = 1;\n    func(1); // 传递参数是右值 T推导成了int, 所以是int&amp;&amp; param, 右值引用\n    func(x); // 传递参数是左值 T推导成了int&amp;, 所以是int&amp;&amp;&amp; param, 折叠成 int&amp;,左值引用\n    func(getInt());// 参数getInt是右值 T推导成了int, 所以是int&amp;&amp; param, 右值引用\n\n    return 0;\n}\n\n
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="15-stdmove的常用例子">1.5 std::move的常用例子</h3>
+<p>\n\n\n\n</p>
+<h4 id="151-用于vector添加值">1.5.1 用于vector添加值</h4>
+<p>\n\n\n\n</p>
+<p>以下是一个经典的用例：</p>
+<p>\n\n\n\n</p>
+<pre><code>\n//摘自https://zh.cppreference.com/w/cpp/utility/move\n#include &lt;iostream&gt;\n#include &lt;utility&gt;\n#include &lt;vector&gt;\n#include &lt;string&gt;\nint main()\n{\n    std::string str = &quot;Hello&quot;;\n    std::vector&lt;std::string&gt; v;\n    //调用常规的拷贝构造函数，新建字符数组，拷贝数据\n    v.push_back(str);\n    std::cout &lt;&lt; &quot;After copy, str is \\&quot;&quot; &lt;&lt; str &lt;&lt; &quot;\\&quot;\\n&quot;;\n    //调用移动构造函数，掏空str，掏空后，最好不要使用str\n    v.push_back(std::move(str));\n    std::cout &lt;&lt; &quot;After move, str is \\&quot;&quot; &lt;&lt; str &lt;&lt; &quot;\\&quot;\\n&quot;;\n    std::cout &lt;&lt; &quot;The contents of the vector are \\&quot;&quot; &lt;&lt; v[0]\n                                         &lt;&lt; &quot;\\&quot;, \\&quot;&quot; &lt;&lt; v[1] &lt;&lt; &quot;\\&quot;\\n&quot;;\n\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>After copy, str is &quot;Hello&quot;<br>After move, str is &quot;&quot;<br>The contents of the vector are &quot;Hello&quot;, &quot;Hello&quot;</strong></p>
+<p>\n\n\n\n</p>
+<h2 id="stdfoward">std::foward</h2>
+<p>\n\n\n\n</p>
+<p>有了前面的讨论，这个就简单一些了，不铺的很开。先看函数原型</p>
+<p>\n\n\n\n</p>
+<pre><code>  /**\n   *  @brief  Forward an lvalue.\n   *  @return The parameter cast to the specified type.\n   *\n   *  This function is used to implement &quot;perfect forwarding&quot;.\n   */\n  template&lt;typename _Tp&gt;\n    constexpr _Tp&amp;&amp;\n    forward(typename std::remove_reference&lt;_Tp&gt;::type&amp; __t) noexcept\n    { return static_cast&lt;_Tp&amp;&amp;&gt;(__t); }\n\n  /**\n   *  @brief  Forward an rvalue.\n   *  @return The parameter cast to the specified type.\n   *\n   *  This function is used to implement &quot;perfect forwarding&quot;.\n   */\n  template&lt;typename _Tp&gt;\n    constexpr _Tp&amp;&amp;\n    forward(typename std::remove_reference&lt;_Tp&gt;::type&amp;&amp; __t) noexcept\n    {\n      static_assert(!std::is_lvalue_reference&lt;_Tp&gt;::value, &quot;template argument&quot;\n            &quot; substituting _Tp is an lvalue reference type&quot;);\n      return static_cast&lt;_Tp&amp;&amp;&gt;(__t);\n    }\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>有两个函数：<br>第一个，参数是左值引用，可以接受左值。<br>第二个，参数是右值引用，可以接受右值。</p>
+<p>\n\n\n\n</p>
+<p>反正不管怎么着，都是一个引用，那就都是别名，也就是谁读取std::forward，都直接可以得到std::foward所赋值的参数。</p>
+<p>\n\n\n\n</p>
+<h1 id="c的stdmove与stdforward原理大白话总结">C++的std::move与std::forward原理大白话总结</h1>
+<p>\n\n\n\n</p>
+<p><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/original.png" alt=""></p>
+<p>\n\n\n\n</p>
+<p><a href="https://blog.csdn.net/newchenxf">newchenxf</a><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/newCurrentTime2.png" alt="">于 2021-06-18 18:28:12 发布</p>
+<p>\n\n\n\n</p>
+<p><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/articleReadEyes2.png" alt="">阅读量4.5k 收藏 58</p>
+<p>\n\n\n\n</p>
+<p><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/newHeart2023Black.png" alt="">点赞数 15</p>
+<p>\n\n\n\n</p>
+<p>分类专栏： <a href="https://blog.csdn.net/newchenxf/category_11006417.html">C++</a></p>
+<p>\n\n\n\n</p>
+<p>版权</p>
+<p>\n\n\n\n</p>
+<p><a href="https://blog.csdn.net/newchenxf/category_11006417.html">C++专栏收录该内容</a></p>
+<p>\n\n\n\n</p>
+<p>7 篇文章2 订阅</p>
+<p>\n\n\n\n</p>
+<p>订阅专栏</p>
+<p>\n\n\n\n</p>
+<p>阅读大型的C++开源项目代码，基本逃不过std::move和std::forward，例如<a href="https://so.csdn.net/so/search?q=webRTC&spm=1001.2101.3001.7020">webRTC</a>。<br>所以搞懂其原理，很有必要。</p>
+<p>\n\n\n\n</p>
+<p>网络上已有不少文章介绍（见@参考），但是比较分散，所以我把自认为的关键点，加上一些自己的想法，提取总结一下。</p>
+<p>\n\n\n\n</p>
+<h2 id="1-stdmove-1">1. std::move</h2>
+<p>\n\n\n\n</p>
+<p>别看它的名字叫move，其实std::move并不能移动任何东西，它唯一的功能是将一个<code>左值/右值强制转化为右值引用</code>，继而可以通过右值引用使用该值，所以称为<code>移动语义</code>。</p>
+<p>\n\n\n\n</p>
+<p>std::move的<strong>作用</strong> ：将对象的状态或者所有权从一个对象转移到另一个对象，只是转移，没有内存的搬迁或者内存拷贝所以可以提高利用效率,改善性能。 它是怎么个转移法，将在文章的最后面解释。</p>
+<p>\n\n\n\n</p>
+<p><code>看到std::move的代码，意味着给std::move的参数，在调用之后，就不再使用了。</code></p>
+<p>\n\n\n\n</p>
+<h3 id="11-函数原型">1.1 函数原型</h3>
+<p>\n\n\n\n</p>
+<p>函数定义原型：</p>
+<p>\n\n\n\n</p>
+<pre><code> _/**\n *  @brief  Convert a value to an rvalue.\n *  @param  __t  A thing of arbitrary type.\n *  @return The parameter cast to an rvalue-reference to allow moving it.\n*/_ \ntemplate &lt;typename T&gt;\ntypename remove_reference&lt;T&gt;::type&amp;&amp; move(T&amp;&amp; t)\n{\n\treturn static_cast&lt;typename remove_reference&lt;T&gt;::type&amp;&amp;&gt;(t);\n}\n\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>用到的remove_reference定义</p>
+<p>\n\n\n\n</p>
+<pre><code> _/// remove_reference_ \n  template&lt;typename _Tp&gt;\n    struct remove_reference\n    { typedef _Tp   type; };\n\n  template&lt;typename _Tp&gt;\n    struct remove_reference&lt;_Tp&amp;&gt;\n    { typedef _Tp   type; };\n\n  template&lt;typename _Tp&gt;\n    struct remove_reference&lt;_Tp&amp;&amp;&gt;\n    { typedef _Tp   type; };\n
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="12-参数讨论">1.2 参数讨论</h3>
+<p>\n\n\n\n</p>
+<p>先看<code>参数 T&amp;&amp; t</code>，其参数看起来是个右值引用，其是不然！！！</p>
+<p>\n\n\n\n</p>
+<p>因为T是个模板，当右值引用和模板结合的时候，就复杂了。<code>T&amp;&amp;</code>并不一定表示右值引用，它可能是个左值引用又可能是个右值引用。</p>
+<p>\n\n\n\n</p>
+<p>再弄个清爽的代码解释一下：</p>
+<p>\n\n\n\n</p>
+<pre><code>template&lt;typename T&gt;\nvoid func( T&amp;&amp; param){\n    \n}\nfunc(5);  _//15是右值， param是右值引用_ \nint a = 10; _//_ \nfunc(a); _//x是左值, param是左值引用_ \n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>这里的<code>&amp;&amp;</code>是一个<strong>未定义的引用类型</strong> ，称为<br><code>通用引用 Universal References</code><br>(<a href="https://isocpp.org/blog/2012/11/universal-references-in-c11-scott-meyers%EF%BC%89">https://isocpp.org/blog/2012/11/universal-references-in-c11-scott-meyers）</a></p>
+<p>\n\n\n\n</p>
+<p>它必须被初始化，它是左值引用还是右值引用却决于它的初始化，如果它被一个左值初始化，它就是一个左值引用；如果被一个右值初始化，它就是一个右值引用。</p>
+<p>\n\n\n\n</p>
+<p><strong>注意</strong> ，只有当发生自动类型推断时（如函数模板的类型自动推导，或auto关键字），<code>&amp;&amp;</code>才是一个<code>Universal References</code>。</p>
+<p>\n\n\n\n</p>
+<h3 id="13-通用引用">1.3 通用引用</h3>
+<p>\n\n\n\n</p>
+<p>这里还可以再深入一下<strong>通用引用</strong> ，解释为什么它一会可以左值引用，一会可以右值引用。<br>既然T是个模板，那T就可以是string，也可以是string&amp;，或者string&amp;&amp;。<br>那参数就变成<br>(string&amp;&amp; &amp;&amp; param)了<br>这么多&amp;怎么办？好吓人！！！<br>没事，稳住，C++ 11立了规矩，太多&amp;就要折叠一下(也就是传说中的<code>引用折叠</code>)。具体而言</p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>\n</p>
+<p>X&amp; &amp;、X&amp;&amp; &amp;、X&amp; &amp;&amp;都折叠成X&amp;</p>
+<p>\n</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>\n</p>
+<p>X&amp;&amp; &amp;&amp;折叠成X&amp;&amp;</p>
+<p>\n</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<p>所以，想知道 param 最终是什么引用，就看T被推导成什么类型了。<br>可以用下面的一个测试程序，来验证。</p>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;iostream&gt;\n#include &lt;type_traits&gt;\n#include &lt;string&gt;\nusing namespace std;\n\ntemplate&lt;typename T&gt;\nvoid func(T&amp;&amp; param) {\n    if (std::is_same&lt;string, T&gt;::value)\n        std::cout &lt;&lt; &quot;string&quot; &lt;&lt; std::endl;\n    else if (std::is_same&lt;string&amp;, T&gt;::value)\n        std::cout &lt;&lt; &quot;string&amp;&quot; &lt;&lt; std::endl;\n    else if (std::is_same&lt;string&amp;&amp;, T&gt;::value)\n        std::cout &lt;&lt; &quot;string&amp;&amp;&quot; &lt;&lt; std::endl;\n    else if (std::is_same&lt;int, T&gt;::value)\n        std::cout &lt;&lt; &quot;int&quot; &lt;&lt; std::endl;\n    else if (std::is_same&lt;int&amp;, T&gt;::value)\n        std::cout &lt;&lt; &quot;int&amp;&quot; &lt;&lt; std::endl;\n    else if (std::is_same&lt;int&amp;&amp;, T&gt;::value)\n        std::cout &lt;&lt; &quot;int&amp;&amp;&quot; &lt;&lt; std::endl;\n    else\n        std::cout &lt;&lt; &quot;unkown&quot; &lt;&lt; std::endl;\n}\n\nint getInt() {\n    return 10;\n}\n\nint main() {\n    int x = 1;\n    func(1); _// 传递参数是右值 T推导成了int, 所以是int &amp;&amp; param, 右值引用_\n    func(x); _// 传递参数是左值 T推导成了int &amp;, 所以是int&amp;&amp;&amp; param, 折叠成 int&amp;,左值引用_\n    func(getInt());_// 参数getInt是右值 T推导成了int, 所以是int &amp;&amp; param, 右值引用_\n\n    return 0;\n}\n\n
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="14-返回值">1.4 返回值</h3>
+<p>\n\n\n\n</p>
+<p>我们以T为string为例子，简化一下函数定义：</p>
+<p>\n\n\n\n</p>
+<pre><code> _//T的类型为string_ \n _//remove_reference &lt;T&gt;::type为string _\n _//整个std::move被实例如下_ \nstring&amp;&amp; move(string&amp;&amp; t) _//可以接受右值_ \n{\n    return static_cast&lt;string&amp;&amp;&gt;(t);  _//返回一个右值引用_ \n}\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>显而易见，用static_cast，返回的一定是个右值引用。</p>
+<p>\n\n\n\n</p>
+<p>综上，<code>std::move基本等同于一个类型转换：static_cast&lt;T&amp;&amp;&gt;(lvalue);</code></p>
+<p>\n\n\n\n</p>
+<p>即，输入可以是左值，右值，输出，是一个右值引用。</p>
+<p>\n\n\n\n</p>
+<h3 id="15-stdmove的常用例子-1">1.5 std::move的常用例子</h3>
+<p>\n\n\n\n</p>
+<h4 id="151-用于vector添加值-1">1.5.1 用于vector添加值</h4>
+<p>\n\n\n\n</p>
+<p>以下是一个经典的用例：</p>
+<p>\n\n\n\n</p>
+<pre><code>\n _//摘自https://zh.cppreference.com/w/cpp/utility/move_ \n#include &lt;iostream&gt;\n#include &lt;utility&gt;\n#include &lt;vector&gt;\n#include &lt;string&gt;\nint main()\n{\n    std::string str = &quot;Hello&quot;;\n    std::vector&lt;std::string&gt; v;\n    _//调用常规的拷贝构造函数，新建字符数组，拷贝数据_ \n    v.push_back(str);\n    std::cout &lt;&lt; &quot;After copy, str is \\&quot;&quot; &lt;&lt; str &lt;&lt; &quot;\\&quot;\\n&quot;;\n    _//调用移动构造函数，掏空str，掏空后，最好不要使用str_ \n    v.push_back(std::move(str));\n    std::cout &lt;&lt; &quot;After move, str is \\&quot;&quot; &lt;&lt; str &lt;&lt; &quot;\\&quot;\\n&quot;;\n    std::cout &lt;&lt; &quot;The contents of the vector are \\&quot;&quot; &lt;&lt; v[0]\n                                         &lt;&lt; &quot;\\&quot;, \\&quot;&quot; &lt;&lt; v[1] &lt;&lt; &quot;\\&quot;\\n&quot;;\n\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>输出：</p>
+<p>\n\n\n\n</p>
+<pre><code>After copy, str is &quot;Hello&quot;\nAfter move, str is &quot;&quot;\nThe contents of the vector are &quot;Hello&quot;, &quot;Hello&quot;\n
+</code></pre>
+<p>\n\n\n\n</p>
+<h4 id="152-用于unique_ptr传递">1.5.2 用于unique_ptr传递</h4>
+<p>\n\n\n\n</p>
+<pre><code>#include &lt;stdio.h&gt;\n#include &lt;unistd.h&gt;\n#include &lt;memory&gt;\n#include &lt;iostream&gt;\n\n _/***** 类定义开始****/_ \nclass TestC {\npublic:\n    TestC(int tmpa, int tmpb):a(tmpa),b(tmpb) {\n        std::cout&lt;&lt; &quot;construct TestC &quot; &lt;&lt; std::endl;\n    }\n\n    ~TestC() {\n        std::cout&lt;&lt; &quot;destruct TestC &quot; &lt;&lt; std::endl;\n    }\n    void print() {\n        std::cout &lt;&lt; &quot;print a &quot; &lt;&lt; a &lt;&lt; &quot; b &quot; &lt;&lt; b &lt;&lt; std::endl;\n    }\n\nprivate:\n    int a = 10;\n    int b = 5;\n};\n\nvoid TestFunc(std::unique_ptr&lt;TestC&gt; ptrC) {\n    printf(&quot;TestFunc called \\n&quot;);\n    ptrC-&gt;print();\n}\n _/***** 类定义结束****/_ \n\n\nint main(int argc, char* argv[]) {\n\n    std::unique_ptr&lt;TestC&gt; gPtrC(new TestC(2, 3));\n    _//初始化也可以写成如下这一句_ \n    _//std::unique_ptr &lt;TestC&gt; gPtrC = std::make_unique&lt;TestC&gt;(2, 3);_\n\n    TestFunc(std::move(gPtrC));\n    _//执行下面这一句会崩溃，因为gPtrC已经没有控制权_ \n    gPtrC-&gt;print();\n\n    return 0;\n}\n\n![](https://csdnimg.cn/release/blogv2/dist/pc/img/newCodeMoreWhite.png)1234567891011121314151617181920212223242526272829303132333435363738394041424344
+</code></pre>
+<p>\n\n\n\n</p>
+<p>输出：</p>
+<p>\n\n\n\n</p>
+<pre><code>construct TestC \nTestFunc called \nprint a 2 b 3\ndestruct TestC \n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>从日志可见，只有一次构造。</p>
+<p>\n\n\n\n</p>
+<p>这种类型的代码，在大型开源项目，如webRTC，随处可见。下次看到了不用纠结，不用关心细节了。只要直到最后拿到unique_ptr的变量（左值）有控制权就行了。</p>
+<p>\n\n\n\n</p>
+<h3 id="16-再说转移对象控制权">1.6 再说转移对象控制权</h3>
+<p>\n\n\n\n</p>
+<p>从@1.5.2的例子，看到std::move(gPtrC)之后，执行gPtrC-&gt;print();会崩溃？这是为什么呢？<br>其是，不全部是std::move的功劳，还需要使用方，即unique_ptr配合才行。</p>
+<p>\n\n\n\n</p>
+<p>请看这篇文章：<br><a href="https://blog.csdn.net/newchenxf/article/details/116274506">https://blog.csdn.net/newchenxf/article/details/116274506</a><br>当调用<br>TestFunc(std::move(gPtrC));<br>这TestFunc的参数ptrC要初始化，调用的是operator=，我把关键代码截取如下：</p>
+<p>\n\n\n\n</p>
+<pre><code>class unique_ptr\n{\nprivate:\n\tT * ptr_resource = nullptr;\n\t...\n\n    unique_ptr&amp; operator=(unique_ptr&amp;&amp; move) noexcept\n\t{\n\t\tmove.swap(*this);\n\t\treturn *this;\n\t}\n\n _// swaps the resources_ \n\tvoid swap(unique_ptr&lt;T&gt;&amp; resource_ptr) noexcept\n\t{\n\t\tstd::swap(ptr_resource, resource_ptr.ptr_resource);\n\t}\n![](https://csdnimg.cn/release/blogv2/dist/pc/img/newCodeMoreWhite.png)1234567891011121314151617
+</code></pre>
+<p>\n\n\n\n</p>
+<p>从函数看，执行完赋值后，智能指针的托管对象，即ptr_resource，交换了。<br>本来函数的参数ptrC，托管对象ptr_resource为空，现在换来了一个有用的，把空的，换给了gPtrC，于是gPtrC的资源为空，所以gPtrC使用资源时，也遇到空指针的错误了！</p>
+<p>\n\n\n\n</p>
+<h2 id="2-stdfoward">2. std::foward</h2>
+<p>\n\n\n\n</p>
+<p>有了前面的讨论，这个就简单一些了，不铺的很开。先看函数原型：</p>
+<p>\n\n\n\n</p>
+<pre><code>  _/**\n   *  @brief  Forward an lvalue.\n   *  @return The parameter cast to the specified type.\n   *\n   *  This function is used to implement &quot;perfect forwarding&quot;.\n   */_ \n  template&lt;typename _Tp&gt;\n    constexpr _Tp&amp;&amp;\n    forward(typename std::remove_reference&lt;_Tp&gt;::type&amp; __t) noexcept\n    { return static_cast&lt;_Tp&amp;&amp;&gt;(__t); }\n\n  _/**\n   *  @brief  Forward an rvalue.\n   *  @return The parameter cast to the specified type.\n   *\n   *  This function is used to implement &quot;perfect forwarding&quot;.\n   */_ \n  template&lt;typename _Tp&gt;\n    constexpr _Tp&amp;&amp;\n    forward(typename std::remove_reference&lt;_Tp&gt;::type&amp;&amp; __t) noexcept\n    {\n      static_assert(!std::is_lvalue_reference&lt;_Tp&gt;::value, &quot;template argument&quot;\n            &quot; substituting _Tp is an lvalue reference type&quot;);\n      return static_cast&lt;_Tp&amp;&amp;&gt;(__t);\n    }\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>有两个函数：<br>第一个，参数是左值引用，可以接受左值。<br>第二个，参数是右值引用，可以接受右值。</p>
+<p>\n\n\n\n</p>
+<p>根据引用折叠的原理，如果传递的是左值，Tp推断为string&amp;，则返回变成<br>static_cast&lt;string&amp; &amp;&amp;&gt;，也就是static_cast&lt;string&amp;&gt;，所以返回的是左值引用。</p>
+<p>\n\n\n\n</p>
+<p>如果传递的是右值，Tp推断为string或string&amp;&amp;，则返回变成<br>static_cast&lt;string&amp;&amp;&gt;，所以返回的是右值引用。</p>
+<p>\n\n\n\n</p>
+<p>反正不管怎么着，都是一个引用，那就都是别名，也就是谁读取std::forward，都直接可以得到std::foward所赋值的参数。</p>
+<p>\n\n\n\n</p>
+<p>这就是<code>完美转发</code>的基本原理！</p>
+<p>\n\n\n\n</p>
+<h3 id="21-stdforward的常用例子">2.1 std::forward的常用例子</h3>
+<p>\n\n\n\n</p>
+<p>阅读一些大型项目代码，发现std::forward常用于Lambda函数的完美转发。<br>我从项目中抽取了代码，来说明其使用方式。具体见下面。</p>
+<p>\n\n\n\n</p>
+<pre><code>/**\n * 编译：g++ test_forward.cpp -lpthread -o out\n * 执行：./out\n * \n * 这是测试代码，不够严谨，仅为了说明std::forward的用途\n * 例子的意思是，希望执行一个函数，函数放在子线程执行，函数由业务方随时定义\n * */\n#include &lt;stdio.h&gt;\n#include &lt;unistd.h&gt;\n#include &lt;memory&gt;\n#include &lt;iostream&gt;\n#include &lt;thread&gt;\n\ntemplate &lt;typename Closure&gt;\nclass ClosureTask {\npublic:\n    explicit ClosureTask(std::string &amp;&amp;name, Closure &amp;&amp;closure):\n        name_(std::forward&lt;std::string&gt;(name)),\n        closure_(std::forward&lt;Closure&gt;(closure)) {\n\n        }\n    \n\n    bool DoTask() {\n        closure_();//执行Lambda函数\n        return true;\n    }\nprivate:\n    typename std::decay&lt;Closure&gt;::type closure_;\n    std::string name_;\n};\n\n\n// 异步调用，非阻塞\ntemplate &lt;typename Closure&gt;\nvoid PostTask(std::string &amp;&amp;name, Closure &amp;&amp;closure)\n{\n    std::unique_ptr&lt;ClosureTask&lt;Closure&gt;&gt; queueTask(\n        //用forward透传name\n        new ClosureTask&lt;Closure&gt;(std::forward&lt;std::string&gt;(name),\n        //用forward透传closure\n        std::forward&lt;Closure&gt;(closure)));\n\n    printf(&quot;PostTask\\n&quot;);\n\n    //启动一个线程执行任务，taskThread的第二个参数，也是一个Lambda表达式\n    std::thread taskThread([=, &amp;queueTask]() {//=号表示外部的变量都可以在表达式内使用， &amp;queueTask表示表达式内部要使用该变量\n        printf(&quot;start thread\\n&quot;);\n\n        queueTask-&gt;DoTask();\n\n        printf(&quot;thread done\\n&quot;);\n    });\n    taskThread.detach();\n}\n\nint main(int argc, char* argv[]) {\n\n    printf(&quot;start\\n&quot;);\n\n    //参数2，传递的是Lambda表达式\n    //Lambda 是最新的 C++11 标准的典型特性之一。Lambda 表达式把函数看作对象\n    PostTask(&quot;TestForward&quot;, []() mutable {\n        //执行一个任务，任务的内容就在这里写\n        printf(&quot;I want to do something here\\n&quot;);\n    });\n    return 0;\n}\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>不过最符合我对于解释的预期的其实是copilot生成的回复，比较偏向于即学即用</p>
+<p>\n\n\n\n</p>
+<p>在C++中，<code>std::move</code> 和 <code>std::forward</code> 都是用于支持右值引用和完美转发的工具。它们的主要区别在于它们的用途和行为。</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><p><code>std::move</code> 是用于将其参数转换为右值（更准确地说是xvalue），这主要用于转移语义，即允许我们将资源从一个对象移动到另一个对象，而不是复制。这对于管理大型资源（如动态内存，文件句柄等）的对象非常有用。
+\n
+\n\n\n\n</p>
+<p>std::string str1 = &quot;Hello, world!&quot;;\nstd::string str2 = std::move(str1); // 将 str1 的资源移动到 str2\n</p>
+</li>
+</ul>
+<p>\n\n\n\n</p>
+<p>在上述代码中，<code>std::move</code> 将 <code>str1</code> 转换为右值，这使得 <code>str2</code> 的构造函数可以接管 <code>str1</code> 的内存，而不是进行复制。此后，<code>str1</code> 将不再拥有该内存。</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><p><code>std::forward</code> 是用于完美转发的，它可以保留其参数的值类别。这主要用于模板编程，当我们希望函数模板的参数保持其原始值类别（左值或右值）时。
+\n
+\n\n\n\n</p>
+<p>template <typename T>\nvoid wrapper(T&amp;&amp; arg) {\n    foo(std::forward<T>(arg)); // 完美转发 arg 到 foo\n}\n</p>
+</li>
+</ul>
+<p>\n\n\n\n</p>
+<p>在上述代码中，<code>std::forward</code> 用于在 <code>wrapper</code> 函数内部将 <code>arg</code> 完美转发到 <code>foo</code>。如果 <code>arg</code> 是左值，则 <code>std::forward</code> 会产生左值；如果 <code>arg</code> 是右值，则 <code>std::forward</code> 会产生右值。</p>
+<p>\n\n\n\n</p>
+<p>总的来说，<code>std::move</code> 和 <code>std::forward</code> 都是现代C++中非常重要的工具，它们使我们能够更有效地管理和使用资源。希望这个解释对你有所帮助！如果你还有其他问题，欢迎随时向我提问。😊</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How to Understand T2V Models?(Open-Sora MAINLY) | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-05-15</p>
+        <h1>How to Understand T2V Models?(Open-Sora MAINLY)</h1>
+        <div class="post-meta">
+          <span>2025-05-15</span>
+          <span class="tag">Windows相关</span>
+        </div>
+        <p>\n</p>
+<h3 id="open-sora-的典型架构组成：">Open-Sora 的典型架构组成：</h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li><strong>Text Encoder</strong> （CLIP or T5）\n\n<ul>
+<li>将文本编码为嵌入向量
+\n\n\n\n</li>
+<li>通常作为 cross-attention 的 key/value 输入
+\n\n
+\n\n\n\n</li>
+</ul>
+</li>
+<li><strong>Latent Space 编码器/解码器</strong> \n\n<ul>
+<li>使用 VAE 将视频压缩到隐空间
+\n\n\n\n</li>
+<li>减少计算量，提升训练效率
+\n\n
+\n\n\n\n</li>
+</ul>
+</li>
+<li><strong>Video Diffusion Transformer (Video DiT)</strong> \n\n<ul>
+<li>包含多个 <strong>Transformer Block</strong>
+\n\n\n\n</li>
+<li>每个 Block 内部包含：\n\n<ul>
+<li>Spatio-Temporal Attention（空间+时间注意力）
+\n\n\n\n</li>
+<li>Cross-Attention（与文本嵌入交互）
+\n\n\n\n</li>
+<li>FFN（前馈网络）
+\n\n
+\n\n
+\n\n\n\n</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>Noise Predictor / Denoiser Head</strong> \n\n<ul>
+<li>预测噪声残差，用于去噪过程
+\n\n
+\n
+\n</li>
+</ul>
+</li>
+</ol>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

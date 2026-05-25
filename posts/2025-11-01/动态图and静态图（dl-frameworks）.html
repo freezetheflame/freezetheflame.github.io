@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>动态图and静态图（DL Frameworks） | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-11-01</p>
+        <h1>动态图and静态图（DL Frameworks）</h1>
+        <div class="post-meta">
+          <span>2025-11-01</span>
+          <span class="tag">AI</span><span class="tag">深度学习</span><span class="tag">framework</span>
+        </div>
+        <p>\n</p>
+<p>参考内容：<a href="https://openmlsys.github.io/chapter_computational_graph/background_and_functionality.html">4.1. 计算图的设计背景和作用 — 机器学习系统：设计和实现 1.0.0 documentation</a> 《机器学习系统：设计与实现》</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n<img src="https://openmlsys.github.io/_images/graph.png" alt="../_images/graph.png">\n\n\n\n</p>
+<p>早期机器学习框架主要针对全连接和卷积神经网络设计，这些神经网络的拓扑结构简单，神经网络层之间通过串行连接。因此，它们的拓扑结构可以用简易的配置文件表达（例如Caffe基于Protocol Buffer格式的模型定义）。</p>
+<p>\n\n\n\n</p>
+<p>现代机器学习模型的拓扑结构日益复杂，显著的例子包括混合专家模型、生成对抗网络、注意力模型等。复杂的模型结构（例如带有分支的循环结构等）需要机器学习框架能够对模型算子的执行依赖关系、梯度计算以及训练参数进行快速高效的分析，便于优化模型结构、制定调度执行策略以及实现自动化梯度计算，从而提高机器学习框架训练复杂模型的效率。因此，机器学习系统设计者需要一个通用的数据结构来理解、表达和执行机器学习模型。为了应对这个需求，如 <a href="https://openmlsys.github.io/chapter_computational_graph/background_and_functionality.html#dag">图4.1.1</a>所示基于计算图的机器学习框架应运而生，框架延续前端语言与后端语言分离的设计。从高层次来看，计算图实现了以下关键功能：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><strong>统一的计算过程表达。</strong>
+\n\n\n\n</li>
+<li><strong>自动化计算梯度。</strong>
+\n\n\n\n</li>
+<li><strong>分析模型变量生命周期。</strong>
+\n\n\n\n</li>
+<li><strong>优化程序执行。</strong>
+\n
+\n\n\n\n</li>
+</ul>
+<h2 id="计算图的基本构成">计算图的基本构成</h2>
+<p>\n\n\n\n</p>
+<h3 id="1张量">1.张量</h3>
+<p>\n\n\n\n</p>
+<p>在pytorch中一般称为tensor，可以理解为是标量与向量的推广，具备多重维度的一个数据，使用秩来表示张量的轴数或维度</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/11/image.png" alt="">\n\n\n\n</p>
+<h3 id="2算子">2.算子</h3>
+<p>\n\n\n\n</p>
+<p>算子是构成神经网络的基本计算单元，对张量数据进行加工处理，实现了多种机器学习中常用的计算逻辑，包括数据转换、条件控制、数学运算等。为了便于梳理算子类别，按照功能将算子分类为张量操作算子、神经网络算子、数据流算子和控制流算子等。</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><strong>张量操作算子</strong> ：包括张量的结构操作和数学运算。张量的结构操作通常用于张量的形状、维度调整以及张量合并等，张量相关的数学运算算子，例如矩阵乘法、计算范数、行列式和特征值计算，在机器学习模型的梯度计算中经常被使用到。
+\n\n\n\n</li>
+<li><strong>神经网络算子</strong> ：包括特征提取、激活函数、损失函数、优化算法等，是构建神经网络模型频繁使用的核心算子。
+\n\n\n\n</li>
+<li><strong>数据流算子</strong> ：包含数据的预处理与数据载入相关算子，数据预处理算子主要是针对图像数据和文本数据的裁剪填充、归一化、数据增强等操作。
+\n\n\n\n</li>
+<li><strong>控制流算子</strong> ：可以控制计算图中的数据流向，当表示灵活复杂的模型时需要控制流。使用频率比较高的控制流算子有条件运算符和循环运算符。控制流操作一般分为两类，机器学习框架本身提供的控制流操作符和前端语言控制流操作符。
+\n
+\n\n\n\n</li>
+</ul>
+<p>在计算图中，算子之间存在依赖关系，而这种依赖关系影响了算子的执行顺序与并行情况。机器学习算法模型中，计算图是一个有向无环图，即在计算图中造成循环依赖（Circular Dependency）的数据流向是不被允许的。循环依赖会形成计算逻辑上的死循环，模型的训练程序将无法正常结束，而流动在循环依赖闭环上的数据将会趋向于无穷大或者零成为无效数据。</p>
+<p>\n\n\n\n</p>
+<p>如图中所示，在此计算图中，若将Matmul1算子移除则该节点无输出，导致后续的激活函数无法得到输入，从而计算图中的数据流动中断，这表明计算图中的算子间具有依赖关系并且存在传递性。</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/11/image-1.png" alt="">\n\n\n\n<img src="../../assets/images/2025/11/image-2.png" alt="">\n\n\n\n</p>
+<p>在机器学习框架中，表示循环关系（Loop Iteration）通常是以<strong>展开</strong> 机制（Unrolling）来实现。循环三次的计算图进行展开如 <a href="https://openmlsys.github.io/chapter_computational_graph/components_of_computational_graph.html#unroll">图4.2.6</a>，循环体的计算子图按照迭代次数进行复制3次，将代表相邻迭代轮次的子图进行串联，相邻迭代轮次的计算子图之间是直接依赖关系。在计算图中，每一个张量和运算符都具有独特的标识符，即使是相同的操作运算，在参与循环不同迭代中的计算任务时具有不同的标识符。区分循环关系和循环依赖的关键在于，具有两个独特标识符的计算节点之间是否存在相互依赖关系。循环关系在展开复制计算子图的时候会给复制的所有张量和运算符赋予新的标识符，区分被复制的原始子图，以避免形成循环依赖。</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/11/image-3.png" alt="">\n\n\n\n</p>
+<p>模型中有循环控制时，循环中的操作可以执行零次或者多次。此时采用展开机制，对每一次操作都赋予独特的运算标识符，以此来区分相同运算操作的多次调用。每一次循环都直接依赖于前一次循环的计算结果，所以在循环控制中需要维护一个张量列表，将循环迭代的中间结果缓存起来，这些中间结果将参与前向计算和梯度计算。下面这段代码描述了简单的循环控制</p>
+<p>\n\n\n\n</p>
+<pre><code>def recurrent_control(X : Tensor, W : Sequence[Tensor], cur_num = 3):\n    for i in range(cur_num):\n        X = matmul(X, W[i])\n    return X\n#利用展开机制将上述代码展开，可得到等价表示\ndef recurrent_control(X : Tensor, W : Sequence[Tensor]):\n    X1 = matmul(X, W)   #为便于表示与后续说明，此处W = W[0], W1 = W[1], W2 = W[2]\n    X2 = matmul(X1, W1)\n    Y = matmul(X2, W2)\n    return Y
+</code></pre>
+<p>\n\n\n\n</p>
+<p>了解计算图的基本构成后，那么下一个问题就是：</p>
+<p>\n\n\n\n</p>
+<p><strong>计算图要如何自动化生成呢？</strong></p>
+<p>\n\n\n\n</p>
+<p>在机器学习框架中可以生成静态图和动态图两种计算图。静态生成可以根据前端语言描述的神经网络拓扑结构以及参数变量等信息构建一份固定的计算图。因此静态图在执行期间可以不依赖前端语言描述，常用于神经网络模型的部署，比如移动端人脸识别场景中的应用等。</p>
+<p>\n\n\n\n</p>
+<p>动态图则需要在每一次执行神经网络模型依据前端语言描述动态生成一份临时的计算图，这意味着计算图的动态生成过程灵活可变，该特性有助于在神经网络结构调整阶段提高效率。主流机器学习框架TensorFlow、MindSpore均支持动态图和静态图模式；PyTorch则可以通过工具将构建的动态图神经网络模型转化为静态结构，以获得高效的计算执行效率。了解两种计算图生成方式的优缺点及构建执行特点，可以针对待解决的任务需求，选择合适的生成方式调用执行神经网络模型。</p>
+<p>\n\n\n\n</p>
+<p>tf是典型的静态图，具备强大的执行计算和直接部署能力，但是编写网络模型和定义模型训练过程代码较为繁琐：</p>
+<p>\n\n\n\n</p>
+<pre><code>import tensorflow as tf\nimport numpy as np\n\nx = tf.placeholder(dtype=tf.float32, shape=(5,5)) #数据占位符\nw1 = tf.Variable(tf.ones([5,5]),name=&#x27;w1&#x27;)\nw2 = tf.Variable(tf.zeros([5,5]),name=&#x27;w2&#x27;)\nb = tf.Variable(tf.zeros([5,]),name=&#x27;b&#x27;)\ndef f1(): return tf.matmul(w1,x)\ndef f2(): return tf.matmul(w2,x)\ny1 = tf.cond(flag &gt; 0, f1, f2) #图内条件控制算子\ny2 = tf.add(y1, b)\noutput = tf.relu(y2)\nwith tf.Session() as sess:\n    sess.run(tf.global_variables_initializer()) #静态图变量初始化\n    random_array = np.random.rand(5,5)\n    sess.run(output, feed_dict = {x:random_array, flag: [1.0]}) #静态图执行
+</code></pre>
+<p>\n\n\n\n</p>
+<p>前端语言构建的神经网络模型经过编译后，计算图结构便固定执行阶段不再改变，并且经过优化用于执行的静态图代码与原始代码有较大的差距。代码执行过程中发生错误时，机器学习框架会返回错误在优化后的静态图代码位置。用户难以直接查看优化后的代码，因此无法定位原始代码错误位置，增加了代码调试难度。比如在代码中，若add算子和relu算子经给优化合并为一个算子，执行时合并算子报错，用户可能并不知道错误指向的是add算子错误 还是relu算子错误。</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/11/image-4.png" alt="">\n\n\n\n<img src="../../assets/images/2025/11/image-5.png" alt="">\n\n\n\n</p>
+<p>而动态图具备用户友好的命令式编程范式，使用前端语言构建神经网络模型更加简洁，深受广大深度学习研究者青睐。</p>
+<p>\n\n\n\n</p>
+<p>动态图生成采用解析式的执行方式，其核心特点是编译与执行同时发生。动态图采用前端语言自身的解释器对代码进行解析，利用机器学习框架本身的算子分发功能，算子会即刻执行并输出结果。</p>
+<table>
+<thead>
+<tr>
+<th>\n\n\n\n<img src="../../assets/images/2025/11/image-6.png" alt="">\n\n\n\n<img src="../../assets/images/2025/11/image-7.png" alt="">\n\n\n\n特性</th>
+<th>静态图</th>
+<th>动态图</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>即时获取中间结果</td>
+<td>否</td>
+<td>是</td>
+</tr>
+<tr>
+<td>代码调试难易</td>
+<td>难</td>
+<td>易</td>
+</tr>
+<tr>
+<td>控制流实现方式</td>
+<td>特定的语法</td>
+<td>前端语言语法</td>
+</tr>
+<tr>
+<td>性能</td>
+<td>优化策略多，性能更佳</td>
+<td>图优化受限，性能较差</td>
+</tr>
+<tr>
+<td>内存占用</td>
+<td>内存占用少</td>
+<td>内存占用相对较多</td>
+</tr>
+<tr>
+<td>内存占用</td>
+<td>可直接部署</td>
+<td>不可直接部署</td>
+</tr>
+<tr>
+<td>\n\n\n\n</td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

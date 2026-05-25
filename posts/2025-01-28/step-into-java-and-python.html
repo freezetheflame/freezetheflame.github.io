@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step into Java and Python | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-01-28</p>
+        <h1>Step into Java and Python</h1>
+        <div class="post-meta">
+          <span>2025-01-28</span>
+          <span class="tag">Windows相关</span>
+        </div>
+        <p>\n</p>
+<h2 id="main-definition（首首首首先，他们是什么？）">Main definition（首首首首先，他们是什么？）</h2>
+<p>\n\n\n\n</p>
+<p>java，是一款95年正式推出的，<strong>一次编写，到处运行</strong> ”（Write Once, Run Anywhere, WORA）的一款OOP（面向对象）语言，具有很强的跨平台能力，至于WORA和OOP是什么，我之后再写。</p>
+<p>\n\n\n\n</p>
+<p>python，91年正式发布，是一种 <strong>高级、解释型、通用编程语言</strong> ，以<strong>简洁易读的语法</strong>  和 <strong>强大的生态</strong>  著称，被誉为“<strong>最易上手的编程语言</strong> ”之一。它具有多种语言的特性，不过本身运行效率较低，但是经过c等更加底层高效的语言重写也能实现相当高的运行效率。</p>
+<p>\n\n\n\n</p>
+<h2 id="main-features（这两个语言最主要的一些特性）">Main features（这两个语言最主要的一些特性）</h2>
+<p>\n\n\n\n</p>
+<p>这里可以分别解释一下上文提及的内容了，比如WORA是怎么实现的？</p>
+<p>\n\n\n\n</p>
+<p>对于一些我们之前接触的语言，主要是C，其实C++也比较类似，他们都是基于平台的语言，比如说你在Windows和linux上面配置的c环境并不完全相同，Windows上面你都是借助MINGW配置gcc，而linux上面可以直接安装或者装clang来代替gcc，整体的编译过程是——先借助编译器编译成o中间文件，之后经过链接之后再编译生成可执行文件</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/01/image-7.png" alt="">\n\n\n\n</p>
+<p>这是一个完整的过程。所以不同平台会有不同的中间工具转换成不同的可执行机器码。</p>
+<p>\n\n\n\n</p>
+<p>但是对于java而言并没有这样的问题。因为所有的java代码都是在jvm上执行的。JVM ，全称java virtual machine，即用于运行java文件的虚拟机，因此只要针对每个系统编写不同的jvm，那么同一份java代码就可以以相同的方式在不同的机器上运行而无需考虑跨平台。譬如Android也是运行在jvm上的，所以有时候会把安卓系统运行的缓慢归咎于jvm这样一层“中间商”，对于IOS来说并没有这样的设计。</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/01/image-8.png" alt="">\n\n\n\n</p>
+<p>从java代码编译再到字节码再到jvm运行的大致流程如下：</p>
+<p>\n\n\n\n</p>
+<p>1、<strong>编译</strong></p>
+<p>\n\n\n\n</p>
+<p>在windows环境中，打开命令窗口，切换到java文件的目录，使用 javac 命令，执行 javac xxx.java 把.java文件编译成.class文件</p>
+<p>\n\n\n\n</p>
+<p>2、<strong>装载字节码</strong></p>
+<p>\n\n\n\n</p>
+<p>编译好的.class文件交给 <a href="https://so.csdn.net/so/search?q=JVM&spm=1001.2101.3001.7020">JVM</a> 执行，即使用java命令，执行java xxx（.class文件的名称，不带后缀）。java命令将会启动 JVM，并将后面的参数作为初始化类，通过 JVM 内的类加载器将字节码文件装载到内存中。</p>
+<p>\n\n\n\n</p>
+<p>3、<strong>校验字节码</strong></p>
+<p>\n\n\n\n</p>
+<p>类的加载是通过<a href="https://so.csdn.net/so/search?q=%E7%B1%BB%E5%8A%A0%E8%BD%BD&spm=1001.2101.3001.7020">类加载</a>器进行的，加载完后，先由字节码校验器负责检查那些无法执行的明显有破坏性的操作。除了系统类之外，其他类都要被校验。</p>
+<p>\n\n\n\n</p>
+<p>这就是java的WORA的特性，这一特性在许多modern的语言中也有体现，成为了新式语言的一种设计理念，有效推动了跨平台的开发。kotlin则是基于java进行了小型调整的、同样具有跨平台功能的一门比较新的语言，目前手机端的应用开发大多数基于此，并且也可以在“jvm”上运行。</p>
+<p>\n\n\n\n</p>
+<h3 id="至于oop">至于OOP</h3>
+<p>\n\n\n\n</p>
+<p>面向对象编程是一个很大的概念，这一个设计在整个计算机语言的历史上都有相当重要的地位，但是这样一种设计虽然符合直观理解，比如说其中的继承、实现等一系列多态概念，很符合人一般的设计认知，但是其中存在的一些固有矛盾导致了一些不美观的妥协，并且OOP的编程方式并不适用于所有业务开发领域，之后也有AOP（面向切口编程）或者是组合式编程等一系列的其他编程方式，不过面向对象仍然是非常重要的一个编程方式与语言设计方式。</p>
+<p>\n\n\n\n</p>
+<p>那OOP到底是什么？核心来自于这样一个关键字：class</p>
+<p>\n\n\n\n</p>
+<p>其实java的OOP和C++的在很多地方有异曲同工之处，不过具体对于一些OOP漏洞缺陷的弥补上采取了有小区别的方式。接下来我们谈谈这个</p>
+<p>\n\n\n\n</p>
+<p>我来用最生活化的例子和比喻，带大家轻松理解 Java 的面向对象编程（OOP）。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="第一步：什么是面向对象？"><strong>第一步：什么是“面向对象”？</strong></h3>
+<p>\n\n\n\n</p>
+<p>想象你要描述一只小狗。<br>你会说它有 <strong>名字、颜色、年龄</strong> （这些是 <strong>属性</strong> ），还会 <strong>跑、叫、摇尾巴</strong> （这些是 <strong>行为</strong> ）。<br>在 OOP 中，<strong>“类（Class）”就像一张设计图纸</strong> ，而<strong>“对象（Object）”是根据图纸造出来的具体小狗</strong> 。</p>
+<p>\n\n\n\n</p>
+<p><strong>举个栗子 🌰：</strong></p>
+<p>\n\n\n\n</p>
+<pre><code>// 1. 先设计一张“小狗图纸”（类）\nclass Dog {\n    // 属性（是什么）\n    String name;\n    String color;\n    int age;\n\n    // 方法（能做什么）\n    void run() {\n        System.out.println(name + &quot;正在飞奔！&quot;);\n    }\n\n    void bark() {\n        System.out.println(&quot;汪汪！我是&quot; + name);\n    }\n}\n\n// 2. 根据图纸造出具体的小狗（对象）\npublic class Main {\n    public static void main(String[] args) {\n        Dog myDog = new Dog(); // 创建一只小狗对象\n        myDog.name = &quot;旺财&quot;;\n        myDog.color = &quot;黄色&quot;;\n        myDog.age = 2;\n\n        myDog.bark(); // 输出：汪汪！我是旺财\n        myDog.run();  // 输出：旺财正在飞奔！\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>记住：</strong></p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><strong>类 = 设计图纸</strong> （比如“汽车设计图”）
+\n\n\n\n</li>
+<li><strong>对象 = 具体实例</strong> （比如“你家的那辆红色特斯拉”）
+\n
+\n\n\n\n</li>
+</ul>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="第二步：oop-的三大核心特征"><strong>第二步：OOP 的三大核心特征</strong></h3>
+<p>\n\n\n\n</p>
+<h4 id="1-封装（encapsulation）-保护隐私"><strong>1. 封装（Encapsulation）—— “保护隐私”</strong></h4>
+<p>\n\n\n\n</p>
+<p>把狗的年龄设为私有属性，<strong>防止别人乱改</strong> ：</p>
+<p>\n\n\n\n</p>
+<pre><code>class Dog {\n    private int age; // 私有属性，外部不能直接访问\n\n    // 通过公共方法间接修改年龄（比如年龄不能为负数）\n    public void setAge(int newAge) {\n        if (newAge &gt;= 0) {\n            age = newAge;\n        } else {\n            System.out.println(&quot;年龄不能为负数！&quot;);\n        }\n    }\n\n    public int getAge() {\n        return age;\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>为什么封装？</strong><br>就像你不会让陌生人随便改你的手机密码，<strong>封装保护了数据的安全性</strong> 。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h4 id="2-继承（inheritance）-子承父业"><strong>2. 继承（Inheritance）—— “子承父业”</strong></h4>
+<p>\n\n\n\n</p>
+<p>金毛犬（GoldenRetriever）<strong>继承</strong> 了狗的所有特性，但还有自己的特长：</p>
+<p>\n\n\n\n</p>
+<pre><code>class GoldenRetriever extends Dog { // extends 表示继承\n    void fetchBall() { // 金毛独有的方法\n        System.out.println(&quot;叼回飞盘！&quot;);\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        GoldenRetriever golden = new GoldenRetriever();\n        golden.name = &quot;小金&quot;;\n        golden.bark(); // 继承自 Dog 类的方法\n        golden.fetchBall(); // 自己的独有方法\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>继承的好处：</strong></p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><strong>复用代码</strong> （不用重复写“狗”的属性和方法）
+\n\n\n\n</li>
+<li><strong>扩展功能</strong> （子类可以添加新特性）
+\n
+\n\n\n\n</li>
+</ul>
+<hr>
+<p>\n\n\n\n</p>
+<h4 id="3-多态（polymorphism）-同一方法，不同表现"><strong>3. 多态（Polymorphism）—— “同一方法，不同表现”</strong></h4>
+<p>\n\n\n\n</p>
+<p>不同类型的狗，叫声不同：</p>
+<p>\n\n\n\n</p>
+<pre><code>class Dog {\n    void bark() {\n        System.out.println(&quot;汪汪！&quot;);\n    }\n}\n\nclass Husky extends Dog {\n    @Override\n    void bark() {\n        System.out.println(&quot;嗷呜~~&quot;); // 哈士奇的叫声不同\n    }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        Dog dog1 = new Dog();\n        Dog dog2 = new Husky(); // 父类引用指向子类对象\n\n        dog1.bark(); // 输出：汪汪！\n        dog2.bark(); // 输出：嗷呜~~ （实际调用子类的方法）\n    }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p><strong>多态的意义：</strong><br>同一操作（比如 <code>bark()</code>）作用在不同对象上，<strong>产生不同的结果</strong> ，让代码更灵活。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="第三步：oop-的核心思想总结"><strong>第三步：OOP 的核心思想总结</strong></h3>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li><strong>万物皆对象</strong><br>把现实中的事物抽象成代码中的“对象”（比如学生、订单、游戏角色）。
+\n\n\n\n</li>
+<li><strong>关注“谁”能“做什么”</strong><br>而不是像面向过程那样关注“第一步做什么，第二步做什么”。
+\n\n\n\n</li>
+<li><strong>隐藏复杂度，暴露简单接口</strong><br>比如你开车不需要知道发动机原理，只需踩油门（这就是封装！）。
+\n
+\n\n\n\n</li>
+</ol>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="最后：面向过程-vs-面向对象"><strong>最后：面向过程 vs 面向对象</strong></h3>
+<p>\n\n\n\n</p>
+<p>假设要编程实现“小狗跑”：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><p><strong>面向过程（传统写法）：</strong>
+\n
+\n\n\n\n</p>
+<p>  String dogName = &quot;旺财&quot;;\n  int dogSpeed = 10;\n  void run(string name,int speed) { ... } // 单独的函数\n  run(dogName, dogSpeed); // 把数据传给函数处理</p>
+</li>
+</ul>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><p><strong>面向对象（OOP写法）：</strong>
+\n
+\n\n\n\n</p>
+<p>  Dog myDog = new Dog();\n  myDog.run(); // 数据和方法绑定在一起</p>
+</li>
+</ul>
+<p>\n\n\n\n</p>
+<p><strong>OOP 的优势：</strong></p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><strong>代码更贴近现实</strong> ，容易理解和维护
+\n\n\n\n</li>
+<li><strong>模块化开发</strong> ，适合大型项目
+\n\n\n\n</li>
+<li><strong>复用性和扩展性</strong> 更强
+\n
+\n\n\n\n</li>
+</ul>
+<hr>
+<p>\n\n\n\n</p>
+<p><strong>练习小任务：</strong><br>试着设计一个 <code>Student</code> 类，包含姓名、年龄属性，以及一个 <code>study()</code> 方法。然后创建一个学生对象，调用它的方法吧！</p>
+<p>\n\n\n\n</p>
+<p>Python 最核心的特征可以用以下简洁例子展示：</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="1-简洁语法">1. <strong>简洁语法</strong></h3>
+<p>\n\n\n\n</p>
+<pre><code># 一行代码输出 &quot;Hello World&quot;\nprint(&quot;Hello World&quot;)  # 输出：Hello World
+</code></pre>
+<p>\n\n\n\n</p>
+<p>Python 语法接近自然语言，代码量通常比 Java/C++ 减少 30%~50%。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="2-动态类型">2. <strong>动态类型</strong></h3>
+<p>\n\n\n\n</p>
+<pre><code>a = 5        # 整数\na = &quot;Python&quot; # 直接变为字符串，无需类型声明\nprint(a)     # 输出：Python
+</code></pre>
+<p>\n\n\n\n</p>
+<p>变量类型在运行时自动推断，灵活但需注意类型安全。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="3-缩进代码块">3. <strong>缩进代码块</strong></h3>
+<p>\n\n\n\n</p>
+<pre><code># 用缩进代替大括号\nif 10 &gt; 5:\n    print(&quot;条件成立&quot;)  # 属于 if 代码块\n    print(&quot;Python 用缩进定义逻辑结构&quot;)  # 输出两行
+</code></pre>
+<p>\n\n\n\n</p>
+<p>强制代码可读性，避免大括号混乱。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="4-列表推导式">4. <strong>列表推导式</strong></h3>
+<p>\n\n\n\n</p>
+<pre><code># 生成平方数列表（传统写法 vs Pythonic写法）\nsquares = [x**2 for x in range(5)]  # 输出：[0, 1, 4, 9, 16]
+</code></pre>
+<p>\n\n\n\n</p>
+<p>一行代码实现循环+条件判断，高效简洁。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="5-内置数据结构">5. <strong>内置数据结构</strong></h3>
+<p>\n\n\n\n</p>
+<pre><code># 字典（键值对）\nuser = {&quot;name&quot;: &quot;Alice&quot;, &quot;age&quot;: 30, &quot;city&quot;: &quot;Beijing&quot;}\nprint(user[&quot;age&quot;])  # 输出：30
+</code></pre>
+<p>\n\n\n\n</p>
+<p>原生支持列表、字典、元组、集合，处理数据更高效。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="6-函数式编程">6. <strong>函数式编程</strong></h3>
+<p>\n\n\n\n</p>
+<pre><code># 使用 lambda 和 map\nnumbers = [1, 2, 3]\nsquared = list(map(lambda x: x**2, numbers))  # 输出：[1, 4, 9]
+</code></pre>
+<p>\n\n\n\n</p>
+<p>支持高阶函数（如 <code>map</code>/<code>filter</code>），适合数据处理。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="7-面向对象">7. <strong>面向对象</strong></h3>
+<p>\n\n\n\n</p>
+<pre><code>class Dog:\n    def __init__(self, name):\n        self.name = name\n\n    def bark(self):\n        print(f&quot;{self.name} 在叫：汪汪！&quot;)\n\nmy_dog = Dog(&quot;Buddy&quot;)\nmy_dog.bark()  # 输出：Buddy 在叫：汪汪！
+</code></pre>
+<p>\n\n\n\n</p>
+<p>完整面向对象支持，适合复杂项目开发。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="8-丰富库生态">8. <strong>丰富库生态</strong></h3>
+<p>\n\n\n\n</p>
+<pre><code># 使用 requests 库发起 HTTP 请求（需安装：pip install requests）\nimport requests\nresponse = requests.get(&quot;https://api.example.com/data&quot;)\nprint(response.status_code)  # 输出：200
+</code></pre>
+<p>\n\n\n\n</p>
+<p>海量第三方库（Web开发、AI、自动化等），避免重复造轮子。</p>
+<p>\n\n\n\n</p>
+<hr>
+<p>\n\n\n\n</p>
+<h3 id="总结">总结</h3>
+<p>\n\n\n\n</p>
+<p>Python 的核心特征：<strong>代码简洁、开发高效、生态强大</strong> ，适合快速实现想法，从脚本小工具到大型系统均可胜任。</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

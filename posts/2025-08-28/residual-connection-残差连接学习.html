@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Residual connection 残差连接学习 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-08-28</p>
+        <h1>Residual connection 残差连接学习</h1>
+        <div class="post-meta">
+          <span>2025-08-28</span>
+          <span class="tag">AI</span><span class="tag">python</span><span class="tag">深度学习</span>
+        </div>
+        <p>\n</p>
+<p>训练神经网络的一个困境是，我们通常希望更深的神经网络具有更好的准确性和性能。然而，网络越深，训练就越难收敛。这一点困扰着层数深的模型，不过Kaiming He提出的Resnet创新性的使用的残差skip的方法，有效解决了这样的极深网络的问题。</p>
+<p>\n\n\n\n</p>
+<p>网络过深时会出现以下问题：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li><strong>梯度消失或梯度爆炸：</strong> 以梯度消失为例，反向传播过程中，每向前传播一层，都要乘以一个小于1的误差梯度。<strong>解决梯度消失或梯度爆炸的方法有：对数据标准化处理；权重初始化；Batch Normalization（BN）</strong>
+\n\n\n\n</li>
+<li><strong>退化问题</strong> （degradation problem）：ResNet主要解决退化问题，提出残差结构
+\n
+\n\n\n\n</li>
+</ol>
+<p>在传统的前馈神经网络中，数据顺序地流过每一层：一层的输出是下一层的输入。它有隐患，一旦其中某一个导数很小，多次连乘后梯度可能越来越小，<strong>这就是常说的梯度消散</strong> ，对于深层网络，传到浅层几乎就没了。但是如果使用了残差，<strong>每一个导数就加上了一个恒等项1，dh/dx=d(f+x)/dx=1+df/dx</strong> 。此时就算原来的导数df/dx很小，这时候误差仍然能够有效的反向传播，这就是核心思想。</p>
+<p>\n\n\n\n</p>
+<p>Residual Connection通过跳过某些层为数据到达神经网络的后面部分提供了另一条路径。考虑一系列层，从层  <em>i</em> 到层  <em>i + n</em> ，设  <em>F</em> 为这些层所表示的函数。用  <em>x</em> 表示层  <em>i</em> 的输入。在传统的前馈设置中， <em>x</em> 将简单地一个接一个地通过这些层，并且层  <em>i + n</em> 的结果是  <em>F</em> （ <em>x</em> ）。绕过这些层的剩余连接通常按以下方式工作：</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/08/image.png" alt="">\n\n\n\n</p>
+<p>剩余连接首先对  <em>x</em> 应用恒等映射，然后执行逐元素加法  <em>F</em> （ <em>x</em> ）+<em>x</em> 。在文献中，接受输入  <em>x</em> 并产生输出  <em>F</em> （ <em>x</em> ）+<em>x</em> 的整个架构通常被称为残差块或构建块。通常，残差块还将包括激活函数，例如应用于  <em>F</em> （ <em>x</em> ）+<em>x</em> 的 ReLU。</p>
+<p>\n\n\n\n</p>
+<p>强调上图中看似多余的标识映射的主要原因是，如果需要，它可以作为更复杂函数的占位符。例如，元素加法  <em>F</em> （ <em>x</em> ）+<em>x</em> 只有在  <em>F</em> （ <em>x</em> ）和  <em>x</em> 具有相同维数时才有意义。如果它们的维数不同，我们可以用线性变换（即乘以矩阵  <em>W</em> ）代替单位映射，并执行  <em>F</em> （ <em>x</em> ）+<em>Wx</em> 。</p>
+<p>\n\n\n\n</p>
+<p>在ResNet原文中，分为5个版本的ResNet，这5个版本详细又能分为浅层和深层两种</p>
+<p>\n\n\n\n</p>
+<p><strong>对于浅层网络（18/34）：</strong></p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><strong>conv2_x第一层</strong> 为<strong>实线</strong> 残差结构，因为通过最大池化下采样后得到的输出是[56,56,64]，刚好是实线残差结构所需要的输入shape
+\n\n\n\n</li>
+<li><strong>conv3_x第一层</strong> 为<strong>虚线</strong> 残差结构，输入特征矩阵shape是[56,56,64]，输出特征矩阵shape是[28,28,128]
+\n
+\n\n\n\n<img src="../../assets/images/2025/08/image-1.png" alt="">\n\n\n\n</li>
+</ul>
+<p><strong>对于深层网络（50/101/152）：</strong></p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><strong>conv2_x第一层</strong> 为<strong>虚线</strong> 残差结构，因为通过最大池化下采样后得到的输出是[56,56,64]，而实线残差结构所需要的输入shape是[56,56,256]
+\n\n\n\n</li>
+<li><strong>conv3_x第一层</strong> 为<strong>虚线</strong> 残差结构，输入特征矩阵shape是[56,56,256]，输出特征矩阵shape是[28,28,512]
+\n
+\n\n\n\n</li>
+</ul>
+<p><strong>无论是浅层网络还是深层网络，conv3_x、conv4_x、conv5_x的第一层都为虚线残差结构</strong> ，因为需要将上一层输出特征矩阵的高、宽、深度调整为当前层所需输入特征矩阵的高、宽、深度（Down-sampling is performed by conv3_1、conv4_1 and conv5_1 with a stride of 2）</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/08/image-2.png" alt="">\n\n\n\n</p>
+<p>pytorch对于Resnet的主类实现如下：</p>
+<p>\n\n\n\n</p>
+<pre><code>class ResNet(nn.Module):\n    def __init__(\n        self,\n        block: type[Union[BasicBlock, Bottleneck]],\n        layers: list[int],\n        num_classes: int = 1000,\n        zero_init_residual: bool = False,\n        groups: int = 1,\n        width_per_group: int = 64,\n        replace_stride_with_dilation: Optional[list[bool]] = None,\n        norm_layer: Optional[Callable[..., nn.Module]] = None,\n    ) -&gt; None:\n        super().__init__()\n        _log_api_usage_once(self)\n        if norm_layer is None:\n            norm_layer = nn.BatchNorm2d\n        self._norm_layer = norm_layer\n\n        self.inplanes = 64\n        self.dilation = 1\n        if replace_stride_with_dilation is None:\n            # each element in the tuple indicates if we should replace\n            # the 2x2 stride with a dilated convolution instead\n            replace_stride_with_dilation = [False, False, False]\n        if len(replace_stride_with_dilation) != 3:\n            raise ValueError(\n                &quot;replace_stride_with_dilation should be None &quot;\n                f&quot;or a 3-element tuple, got {replace_stride_with_dilation}&quot;\n            )\n        self.groups = groups\n        self.base_width = width_per_group\n        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)\n        self.bn1 = norm_layer(self.inplanes)\n        self.relu = nn.ReLU(inplace=True)\n        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)\n        self.layer1 = self._make_layer(block, 64, layers[0])\n        self.layer2 = self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])\n        self.layer3 = self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])\n        self.layer4 = self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])\n        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))\n        self.fc = nn.Linear(512 * block.expansion, num_classes)\n\n        for m in self.modules():\n            if isinstance(m, nn.Conv2d):\n                nn.init.kaiming_normal_(m.weight, mode=&quot;fan_out&quot;, nonlinearity=&quot;relu&quot;)\n            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):\n                nn.init.constant_(m.weight, 1)\n                nn.init.constant_(m.bias, 0)\n\n        # Zero-initialize the last BN in each residual branch,\n        # so that the residual branch starts with zeros, and each residual block behaves like an identity.\n        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677\n        if zero_init_residual:\n            for m in self.modules():\n                if isinstance(m, Bottleneck) and m.bn3.weight is not None:\n                    nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]\n                elif isinstance(m, BasicBlock) and m.bn2.weight is not None:\n                    nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]\n\n    def _make_layer(\n        self,\n        block: type[Union[BasicBlock, Bottleneck]],\n        planes: int,\n        blocks: int,\n        stride: int = 1,\n        dilate: bool = False,\n    ) -&gt; nn.Sequential:\n        norm_layer = self._norm_layer\n        downsample = None\n        previous_dilation = self.dilation\n        if dilate:\n            self.dilation *= stride\n            stride = 1\n        if stride != 1 or self.inplanes != planes * block.expansion:\n            downsample = nn.Sequential(\n                conv1x1(self.inplanes, planes * block.expansion, stride),\n                norm_layer(planes * block.expansion),\n            )\n\n        layers = []\n        layers.append(\n            block(\n                self.inplanes, planes, stride, downsample, self.groups, self.base_width, previous_dilation, norm_layer\n            )\n        )\n        self.inplanes = planes * block.expansion\n        for _ in range(1, blocks):\n            layers.append(\n                block(\n                    self.inplanes,\n                    planes,\n                    groups=self.groups,\n                    base_width=self.base_width,\n                    dilation=self.dilation,\n                    norm_layer=norm_layer,\n                )\n            )\n\n        return nn.Sequential(*layers)\n\n    def _forward_impl(self, x: Tensor) -&gt; Tensor:\n        # See note [TorchScript super()]\n        x = self.conv1(x)\n        x = self.bn1(x)\n        x = self.relu(x)\n        x = self.maxpool(x)\n\n        x = self.layer1(x)\n        x = self.layer2(x)\n        x = self.layer3(x)\n        x = self.layer4(x)\n\n        x = self.avgpool(x)\n        x = torch.flatten(x, 1)\n        x = self.fc(x)\n\n        return x\n\n    def forward(self, x: Tensor) -&gt; Tensor:\n        return self._forward_impl(x)\n        \n        \n        \ndef _resnet(\n    block: type[Union[BasicBlock, Bottleneck]],\n    layers: list[int],\n    weights: Optional[WeightsEnum],\n    progress: bool,\n    **kwargs: Any,\n) -&gt; ResNet:\n    if weights is not None:\n        _ovewrite_named_param(kwargs, &quot;num_classes&quot;, len(weights.meta[&quot;categories&quot;]))\n\n    model = ResNet(block, layers, **kwargs)\n\n    if weights is not None:\n        model.load_state_dict(weights.get_state_dict(progress=progress, check_hash=True))\n\n    return model
+</code></pre>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

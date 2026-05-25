@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Time Training | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-12-10</p>
+        <h1>Test Time Training</h1>
+        <div class="post-meta">
+          <span>2025-12-10</span>
+          <span class="tag">AI</span><span class="tag">深度学习</span><span class="tag">LLM</span><span class="tag">TTT</span>
+        </div>
+        <p>\n</p>
+<blockquote>
+<p><strong>Most models in machine learning today are fixed during deployment. As a consequence, a trained model must prepare to be robust to all possible futures, even though only one of them is actually going to happen</strong></p>
+<p>Electrical Engineering and Computer Sciences<br>University of California, Berkeley</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<p>我从UCB的TTT abstract中抽取了这句话，这句summary的起首句点名了TTT诞生的核心原因：能够robust all possible futures，是个“成长性的框架”。反正写文章的这部分时，我的理解是这样的。本篇更多是我学习TTT之间逐渐成长的理解，并非完整的、成熟的，望读者批判性阅读理解。</p>
+<p>\n\n\n\n</p>
+<h2 id="引文">引文</h2>
+<p>\n\n\n\n</p>
+<p><a href="https://yueatsprograms.github.io/ttt/home.html">Test-Time Training Project Website</a><br><a href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2023/EECS-2023-86.pdf">EECS-2023-86.pdf</a><br><a href="https://www.youtube.com/watch?v=NbuWxmMco30">Test-Time Training with Self-Supervision for Generalization under Distribution Shifts</a>  </p>
+<p>\n\n\n\n</p>
+<h2 id="origin起源">Origin——起源</h2>
+<p>\n\n\n\n</p>
+<p>最早TTT来自于这篇论文（指正式成型而非获得idea）:<a href="https://arxiv.org/abs/1909.13231">[1909.13231] Test-Time Training with Self-Supervision for Generalization under Distribution Shifts</a></p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>\n</p>
+<p>In this paper, we propose Test-Time Training, a general approach for improving the performance of predictive models when training and test data come from different distributions. We turn a single unlabeled test sample into a self-supervised learning problem, on which we update the model parameters before making a prediction. This also extends naturally to data in an online stream. Our simple approach leads to improvements on diverse image classification benchmarks aimed at evaluating robustness to distribution shifts.</p>
+<p>\n</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<p>本文根据一种<strong>现象</strong> ：训练集和数据集的数据分布接近，因此可以取得较好的效果，但在现实中数据很容易产生分布上的偏移，那么有什么办法使得训练能够适配这样的shifts呢？提出了TTT</p>
+<p>\n\n\n\n</p>
+<p>TTT is analogous to transforming a general physician into a surgeon who is now super specialized in <em>only</em>  heart valve replacements.<br>TTT 类似于将普通医生转变为现在只专攻心脏瓣膜置换的外科医生。</p>
+<p>\n\n\n\n</p>
+<p>即：<strong>用测试样本本身，在测试时通过自监督任务“临时训练”一下模型，让它更好地适应当前数据分布。</strong></p>
+<p>\n\n\n\n</p>
+<p>我这里产生了一些疑问：数据分布是什么？如何量化这个东西？这个方法根据测试任务微调，那么和“在测试集上训练”有什么区别？</p>
+<p>\n\n\n\n</p>
+<p>一番研究后，我分别解释如下：</p>
+<p>\n\n\n\n</p>
+<h3 id="数据分布">数据分布</h3>
+<p>\n\n\n\n</p>
+<p>在监督学习中，我们通常假设训练数据和测试数据是**<a href="https://zhuanlan.zhihu.com/p/52530189">独立同分布</a>（i.i.d.）**的，即：</p>
+<p>\n\n\n\n</p>
+<blockquote>
+<p>\n</p>
+<p><strong>(x, y) ∼ P_train ≈ P_test</strong></p>
+<p>\n</p>
+</blockquote>
+<p>\n\n\n\n</p>
+<p>但在现实中，<strong>P_train ≠ P_test</strong> ，这就是<strong>分布偏移（distribution shift）</strong> 。</p>
+<p>\n\n\n\n</p>
+<p>虽然我们无法直接“看到”整个分布，但可以通过以下方式来<strong>量化两个分布之间的差异</strong> ：</p>
+<table>
+<thead>
+<tr>
+<th>\n\n\n\n方法</th>
+<th>描述</th>
+<th>是否可计算</th>
+<th>参考</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>KL 散度（Kullback-Leibler Divergence）</strong></td>
+<td>衡量两个概率分布之间的“信息量差异”</td>
+<td>✅（需密度估计）</td>
+<td><a href="https://zhuanlan.zhihu.com/p/438129018">[1]</a></td>
+</tr>
+<tr>
+<td><strong>Wasserstein 距离（Earth Mover’s Distance）</strong></td>
+<td>衡量将一个分布“搬运”成另一个分布所需的最小代价</td>
+<td>✅（可用判别器估计）</td>
+<td><a href="https://zhuanlan.zhihu.com/p/353418080">[2]</a></td>
+</tr>
+<tr>
+<td><strong>Maximum Mean Discrepancy (MMD)</strong></td>
+<td>在再生核希尔伯特空间中衡量两个分布的均值差异</td>
+<td>✅（无需密度估计）</td>
+<td><a href="https://zhuanlan.zhihu.com/p/679276071">[3]</a></td>
+</tr>
+<tr>
+<td><strong>Frechet Inception Distance (FID)</strong></td>
+<td>用 Inception 网络提取特征后计算两个分布的均值和协方差差异</td>
+<td>✅（图像生成常用）</td>
+<td>[4]</td>
+</tr>
+<tr>
+<td><strong>Classifier-based 方法</strong></td>
+<td>训练一个判别器区分两个数据集，准确率越高说明分布差异越大</td>
+<td>✅（实用性强）</td>
+<td>[5]</td>
+</tr>
+<tr>
+<td><strong>Coverage/Confidence Drop</strong></td>
+<td>用模型在测试集上的置信度下降作为分布偏移的代理指标</td>
+<td>✅（无标签也可用）</td>
+<td>[6]</td>
+</tr>
+<tr>
+<td>\n\n\n\n</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<h4 id="二-两样本问题（two-sample-problem）"><strong>二. 两样本问题（Two-sample Problem）</strong></h4>
+<p>\n\n\n\n</p>
+<p>假设有两组观测到的样本集X={x1....xm}X=\\{ {x_1....x_m} \\}  和Y={y1,......ym}Y = \\{ y_1,...... y_m \\} 分别独立同分布采样自分布 p 和分布 q，如何通过 和 判断分布 p 和 q 是否相同？也就是说，我们<strong>无法直接获取到关于分布 p 和 分布 q 的任何信息</strong> ，比如均值和方差，是否是高斯分布等，<strong>只能基于观察到的两组样本判断它们背后是否来自于同一个分布</strong> ？</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/12/image.png" alt="">\n\n\n\n</p>
+<h3 id="和在测试集上训练的区别">和在测试集上训练的区别</h3>
+<p>\n\n\n\n</p>
+<p>我们首先看一下论文中使用的example:</p>
+<p>\n\n\n\n<img src="../../assets/images/2025/12/image-1.png" alt="">\n\n\n\n</p>
+<p>他使用了两个部分来进行训练：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li><strong>训练阶段（Training）</strong> ：\n\n<ul>
+<li>同时训练两个任务：\n\n<ul>
+<li><strong>主任务</strong> ：图像分类（监督学习）
+\n\n\n\n</li>
+<li><strong>辅助任务</strong> ：图像旋转预测（自监督学习，4分类：0°、90°、180°、270°）
+\n\n
+\n\n\n\n</li>
+</ul>
+</li>
+<li>两个任务共享一部分网络参数（特征提取器），形成一个“Y”型结构。
+\n\n
+\n\n\n\n</li>
+</ul>
+</li>
+<li><strong>测试阶段（Test-Time Training）</strong> ：\n\n<ul>
+<li>每个测试样本到来时，<strong>用它的旋转预测任务对共享特征提取器进行几步梯度更新</strong> 。
+\n\n\n\n</li>
+<li>更新后再用主任务（分类器）进行预测。
+\n\n\n\n</li>
+<li><strong>在线版本（TTT-Online）</strong> ：测试样本按顺序到来时，保留上一次的参数状态，继续更新。
+\n\n
+\n
+\n\n\n\n</li>
+</ul>
+</li>
+</ol>
+<p>因此测试是仅仅是使用了测试集的x，而不使用y，进行一个自监督的训练（所以要求辅助任务必须得是一个自监督的任务）</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>TTT 在几乎所有 corruption 类型上都优于基线模型。
+\n\n\n\n</li>
+<li><strong>TTT-Online</strong> 进一步提升性能，甚至在某些情况下<strong>超过使用整个测试集做无监督域适应的方法（UDA-SS）</strong> 。
+\n\n\n\n</li>
+<li><strong>不牺牲原始分布上的性能</strong> ，甚至在原始测试集上略有提升。
+\n
+\n\n\n\n</li>
+</ul>
+<p>所以通过众多数据集的实践，首先证明了这一方法的有效性。</p>
+<p>\n\n\n\n</p>
+<p>在论文的part4，作者在理论层面对于该方法的有效性进行了证明：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>作者给出了一个简单的<strong>凸模型理论分析</strong> ，表明：如果主任务和自监督任务的梯度在共享参数上是<strong>正相关的</strong> ，那么 TTT 就能降低主任务损失。
+\n
+\n\n\n\n</li>
+</ul>
+<p>（详细分析//TODO）</p>
+<p>\n\n\n\n</p>
+<h2 id="develop发展">Develop发展</h2>
+<p>\n\n\n\n</p>
+<p>自TTT出现后，有一系列基于TTT思想发展的方法，在EL（extended learning栏的第二篇知乎博主的文章中有做规范整理）</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<h2 id="extended-learning扩展学习">Extended Learning扩展学习</h2>
+<p>\n\n\n\n</p>
+<p>1.<a href="https://arxiv.org/abs/2407.04620">Learning to (Learn at Test Time): RNNs with Expressive Hidden States</a></p>
+<p>\n\n\n\nabstract:\n</p>
+<p>Self-attention performs well in long context but has quadratic complexity. Existing RNN layers have linear complexity, but their performance in long context is limited by the expressive power of their hidden states. We present a practical framework for instantiating sequence modeling layers with linear complexity and expressive hidden states. The key idea is to make the hidden state a machine learning model itself, and the update rule a step of self-supervised learning. Since the hidden state is updated by training even on test sequences, our layers are called Test-Time Training (TTT) layers. We consider two instantiations: TTT-Linear and TTT-MLP, whose hidden state is a linear model and a two-layer MLP respectively. We evaluate our instantiations at the scale of 125M to 1.3B parameters, comparing with a strong Transformer and Mamba, a modern RNN. Similar to Transformer, TTT-Linear and TTT-MLP can keep reducing perplexity by conditioning on more tokens, while Mamba cannot after 16k context. TTT-MLP still faces challenges in memory I/O, but shows larger potential in long context, pointing to a promising direction for future research.  </p>
+<p>\n\n\n\n\n</p>
+<p>2.<a href="https://zhuanlan.zhihu.com/p/631274637">Test-Time Adaptation 1</a></p>
+<p>\n\n\n\n</p>
+<p>不同于 DA 和 DG ，TTA 方法通过在线地利用测试数据调整模型来克服 domain shift 问题，目前主流方法大致有两类：Test-Time Training 与 Fully TTA</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

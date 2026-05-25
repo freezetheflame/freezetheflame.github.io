@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C++ new features | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2024-08-29</p>
+        <h1>C++ new features</h1>
+        <div class="post-meta">
+          <span>2024-08-29</span>
+          <span class="tag">C++</span>
+        </div>
+        <p>\n</p>
+<h2 id="decltype-since-c11">decltype (since c++11)</h2>
+<p>\n\n\n\n</p>
+<p><a href="https://www.cnblogs.com/QG-whz/p/4952980.html">C++11特性：decltype关键字 - melonstreet - 博客园 (cnblogs.com)</a></p>
+<p>\n\n\n\n</p>
+<p>我们之前使用的typeid运算符来查询一个变量的类型，这种类型查询在运行时进行。RTTI机制为每一个类型产生一个type_info类型的数据，而typeid查询返回的变量相应type_info数据，通过name成员函数返回类型的名称。同时在C++11中typeid还提供了hash_code这个成员函数，用于返回类型的唯一哈希值。RTTI会导致运行时效率降低，且在泛型编程中，我们更需要的是编译时就要确定类型，RTTI并无法满足这样的要求。编译时类型推导的出现正是为了泛型编程，在非泛型编程中，我们的类型都是确定的，根本不需要再进行推导。</p>
+<p>\n\n\n\n</p>
+<p>而编译时类型推导，除了我们说过的auto关键字，还有本文的decltype。</p>
+<p>\n\n\n\n</p>
+<p>decltype与auto关键字一样，用于进行编译时类型推导，不过它与auto还是有一些区别的。decltype的类型推导并不是像auto一样是从变量声明的初始化表达式获得变量的类型，而是总是<strong>以一个普通表达式作为参数</strong> ，返回该表达式的类型,而且decltype并不会对表达式进行求值。</p>
+<p>\n\n\n\n</p>
+<pre><code>auto varName=value;\ndecltype(exp) varName=value;
+</code></pre>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li><p>uto根据=右边的初始值推导出变量的类型，decltype根据exp表达式推导出变量的类型，跟=右边的value没有关系
+\n\n\n\n</p>
+</li>
+<li><p>auto要求变量必须初始化，这是因为auto根据变量的初始值来推导变量类型的，如果不初始化，变量的类型也就无法推导
+\n\n\n\n</p>
+</li>
+<li><p>而decltype不要求，因此可以写成如下形式
+\n
+\n\n\n\n</p>
+<p>decltype(exp) varName;</p>
+</li>
+</ul>
+<p>\n\n\n\n</p>
+<p>原则上将，exp只是一个普通的表达式，它可以是任意复杂的形式，但必须保证exp的结果是有类型的，不能是void；如exp为一个返回值为void的函数时，exp的结果也是void类型，此时会导致编译错误</p>
+<p>\n\n\n\n</p>
+<p>decltype的推导规则可以简单概述如下：</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ul>
+<li>如果exp是一个不被括号()包围的表达式，或者是一个类成员访问表达式，或者是一个单独的变量，decltype(exp)的类型和exp一致
+\n\n\n\n</li>
+<li>如果exp是函数调用，则decltype(exp)的类型就和函数返回值的类型一致\n\n<ul>
+<li>如果exp是一个左值，或被括号()包围，decltype(exp)的类型就是exp的引用，假设exp的类型为T，则decltype(exp)的类型为T&amp;
+\n\n
+\n
+\n\n\n\n</li>
+</ul>
+</li>
+</ul>
+<h2 id="decltype用法">decltype用法</h2>
+<p>\n\n\n\n</p>
+<h3 id="推导出表达式类型">推导出表达式类型</h3>
+<p>\n\n\n\n</p>
+<pre><code>    int i = 4;\n    decltype(i) a; //推导结果为int。a的类型为int。\n
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="与usingtypedef合用，用于定义类型。">与using/typedef合用，用于定义类型。</h3>
+<p>\n\n\n\n</p>
+<pre><code>    using size_t = decltype(sizeof(0));//sizeof(a)的返回值为size_t类型\n    using ptrdiff_t = decltype((int*)0 - (int*)0);\n    using nullptr_t = decltype(nullptr);\n
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code>    vector&lt;int &gt;vec;\n    typedef decltype(vec.begin()) vectype;\n    for (vectype i = vec.begin; i != vec.end(); i++)\n    {\n        //...\n    }\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>这样和auto一样，也提高了代码的可读性。</p>
+<p>\n\n\n\n</p>
+<h3 id="重用匿名类型">重用匿名类型</h3>
+<p>\n\n\n\n</p>
+<p>在C++中，我们有时候会遇上一些匿名类型，如:</p>
+<p>\n\n\n\n</p>
+<pre><code>struct \n{\n    int d ;\n    doubel b;\n}anon_s;\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>而借助decltype，我们可以重新使用这个匿名的结构体：</p>
+<p>\n\n\n\n</p>
+<pre><code>decltype(anon_s) as ;//定义了一个上面匿名的结构体\n
+</code></pre>
+<p>\n\n\n\n</p>
+<h3 id="泛型编程中结合auto，用于追踪函数的返回值类型">泛型编程中结合auto，用于追踪函数的返回值类型</h3>
+<p>\n\n\n\n</p>
+<p>这也是decltype最大的用途了。</p>
+<p>\n\n\n\n</p>
+<pre><code>template &lt;typename _Tx, typename _Ty&gt;\nauto multiply(_Tx x, _Ty y)-&gt;decltype(_Tx*_Ty)\n{\n    return x*y;\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="copy-copy_if-用法from--">copy copy_if 用法(from <algorithm> <numeric>)</h2>
+<p>\n\n\n\n</p>
+<h3 id="1功能">1.功能<a href="https://www.cnblogs.com/pandamohist/p/13854881.html#3041064392">#</a></h3>
+<p>\n\n\n\n</p>
+<p>复制 [first, last) 所定义的范围中的元素到始于 d_first 的另一范围.<br>区别: copy_if 带条件拷贝,而非全拷贝</p>
+<p>\n\n\n\n</p>
+<pre><code>template&lt; class InputIt, class OutputIt &gt;\nOutputIt copy( InputIt first, InputIt last,OutputIt d_first );\n\ntemplate&lt; class InputIt, class OutputIt, class UnaryPred &gt;\nOutputIt copy_if( InputIt first, InputIt last, OutputIt d_first, UnaryPred pred );\n
+</code></pre>
+<p>\n\n\n\n</p>
+<p>示例使用</p>
+<p>\n\n\n\n</p>
+<pre><code>// 1. 构建一个原始数组\nstd::vector&lt;int&gt; src_vector(5);\n// iota(起始，结束，从哪一个开始);\nstd::iota(src_vector.begin(), src_vector.end(), 10);\n\n// 2. 将原始数组拷贝到目标数组\nstd::vector&lt;int&gt; dst_vector;\n\n// 3. 执行拷贝\nstd::copy(src_vector.begin(), src_vector.end(), std::back_inserter(dst_vector));\n\n\n// 4.遍历输出目标数组和原始数组\nstd::cout &lt;&lt; &quot;原始数组：\\n&quot;;\nstd::for_each(src_vector.begin(), src_vector.end(), [](const int &amp;item) {std::cout &lt;&lt; &quot;item = &quot; &lt;&lt; item &lt;&lt; std::endl; });\n\nstd::cout &lt;&lt; &quot;目标数组：\\n&quot;;\nstd::for_each(dst_vector.begin(), dst_vector.end(), [](const int &amp;item) {std::cout &lt;&lt; &quot;item = &quot; &lt;&lt; item &lt;&lt; std::endl; });
+</code></pre>
+<p>\n\n\n\n</p>
+<pre><code>// 1. 构建一个原始数组\nstd::vector&lt;int&gt; src_vector(5);\n// iota(起始，结束，从哪一个开始);\nstd::iota(src_vector.begin(), src_vector.end(), 10);\n\n// 2. 将原始数组拷贝到目标数组\nstd::vector&lt;int&gt; dst_vector(src_vector.size());\n\n// 3. 将 src 拷贝到 dst，当时只拷贝大于13的元素。\nauto it = std::copy_if(src_vector.begin(), src_vector.end(), dst_vector.begin(), [](const int item) {return item &gt; 13; });\n// 调整拷贝后的大小，为什么？ 因为初始化时，指定了其大小\ndst_vector.resize(std::distance(dst_vector.begin(), it));\n\n\n// 4.遍历输出目标数组和原始数组\nstd::cout &lt;&lt; &quot;原始数组：\\n&quot;;\nstd::for_each(src_vector.begin(), src_vector.end(), [](const int &amp;item) {std::cout &lt;&lt; &quot;item = &quot; &lt;&lt; item &lt;&lt; std::endl; });\n\nstd::cout &lt;&lt; &quot;目标数组：\\n&quot;;\nstd::for_each(dst_vector.begin(), dst_vector.end(), [](const int &amp;item) {std::cout &lt;&lt; &quot;item = &quot; &lt;&lt; item &lt;&lt; std::endl; });
+</code></pre>
+<p>\n\n\n\n</p>
+<h2 id="remove_ifsince-c17">remove_if(since c++17)</h2>
+<p>\n\n\n\n</p>
+<p>Defined in header <code>[&lt;algorithm&gt;](&lt;https://en.cppreference.com/w/cpp/header/algorithm&gt;)</code></p>
+<p>\n\n\n\n</p>
+<pre><code>template&lt; class ExecutionPolicy, class ForwardIt, class UnaryPred &gt;\nForwardIt remove_if( ExecutionPolicy&amp;&amp; policy,\n                     ForwardIt first, ForwardIt last, UnaryPred p );
+</code></pre>
+<p>\n\n\n\n</p>
+<p>Removes all elements satisfying specific criteria from the range <code>[</code>first<code>,</code>last<code>)</code> and returns a past-the-end iterator for the new end of the range.</p>
+<p>\n\n\n\n</p>
+<p>对于没有if的版本，即std::remove（until c++26）</p>
+<p>\n\n\n\n</p>
+<pre><code>template&lt; class ForwardIt, class T &gt;\nForwardIt remove( ForwardIt first, ForwardIt last, const T&amp; value );
+</code></pre>
+<p>\n\n\n\n</p>
+<ol>
+<li>Removes all elements that are equal to value (using operator==).（remove）</li>
+</ol>
+<p>\n\n\n\n</p>
+<ol start="3">
+<li>Removes all elements for which predicate p returns true.(remove_if)</li>
+</ol>
+<p>\n\n\n\n</p>
+<p>所以remove_if相比于remove即可以用其他判断的indicator来做是否需要remove的判断，最后返回的是新container的end，即把所有需要删除的元素都移到了某位，可以用erase等container方法从remove_if返回的迭代器到原来的end的部分全部删除，实现删去。</p>
+<p>\n\n\n\n</p>
+<p>除此之外，list这个类存在一个内部的remove_if方法，可以删除）</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

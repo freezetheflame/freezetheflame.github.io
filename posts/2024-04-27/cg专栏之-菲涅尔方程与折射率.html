@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CG专栏之——菲涅尔方程与折射率 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2024-04-27</p>
+        <h1>CG专栏之——菲涅尔方程与折射率</h1>
+        <div class="post-meta">
+          <span>2024-04-27</span>
+          <span class="tag">CG</span>
+        </div>
+        <p>\n</p>
+<p>研究这个内容的契机在于应学长的指导我先去理解dieletric material相关的代码内容，即导体材料的渲染。之前我只学习过简单的渲染方程，其实至今我也没办法保证徒手写出来的渲染方程的正确性，可能还有很多的不熟练与不了解，所以这一部分的内容我也出现了很多新问题，菲涅尔方程就是其中之一。所以究竟什么是菲涅尔方程？在渲染中占据什么样的地位？我们应该怎么应用这样一个基础理论并且助力于真实性渲染？接下来的博客内容就是为了解决这样的问题</p>
+<p>\n\n\n\n</p>
+<p>菲涅尔效应在我们的日常生活中无处不在，下面来个例子三连：</p>
+<p>\n\n\n\n</p>
+<p>我们去公园的池塘喂鲤鱼，当爆米花丢的比较近的时候，我们可以看见水底下成群的鲤鱼在抢吃的。但是当我们把爆米花丢的很远时，却看不见水底下那些如狼似虎的鲤鱼，只能看见水面上的倒影。</p>
+<p>\n\n\n\n</p>
+<p>近处可以看清水下，远处则能看见倒影</p>
+<p>\n\n\n\n</p>
+<p>上面这些生活中常见的现象就是菲涅尔效应</p>
+<p>\n\n\n\n<img src="https://picx.zhimg.com/70/v2-967b688b3cc3542311d5a77d52744008_1440w.image?source=172ae18b&biz_tag=Post" alt="菲涅尔方程（Fresnel Equation）">\n\n\n\n</p>
+<p>那么我们怎么用跟科学的术语来描述这个它们呢？我们能够看见水底下或者玻璃后的东西，那肯定是光线发生了<strong>折射</strong> 所导致的。而对于水面上的倒影或者是玻璃变得像镜子一样这些都是因为光线发生了<strong>反射</strong> 所导致的。通过前面的现象，我们可以发现，当我们人眼离物体表面（玻璃，水或者桌子等）比较近时，此时我们的<strong>视线几乎与表面垂直</strong> ，我们可以看见更多折射过来的光（水底的鱼，玻璃外的东西）。而当们人眼离物体表面比较远时，此时我们的<strong>视线几乎与表面平行</strong> ，我们可以看见更多反射过来的光（倒影）</p>
+<p>\n\n\n\n</p>
+<p>那么在我们渲染的时候，自然要把这个现象给考虑进去，才能够达到以假乱真的目的。因此我们自然需要一个公式，能够<strong>描述</strong> 出在不同入射光的情况下，反射光与折射光所占的<strong>比例</strong> ，这个公式就是菲涅尔方程</p>
+<p>\n\n\n\n</p>
+<h2 id="菲涅尔方程">菲涅尔方程</h2>
+<p>\n\n\n\n</p>
+<p>当光线碰撞到一个表面的时候，<strong>菲涅尔方程会根据观察角度告诉我们被反射的光线所占的百分比</strong> 。利用这个反射比率和能量守恒原则，我们可以直接得出光线被折射的部分以及光线剩余的能量。将其应用在<strong>BRDF</strong> 当中，我们就可以更加精准的计算出渲染方程中<img src="../../assets/images/2024/04/%E5%B1%8F%E5%B9%95%E6%88%AA%E5%9B%BE-2024-04-27-004847.png" alt="">的值</p>
+<p>\n\n\n\n</p>
+<p>我们假设入射光与法线的夹角为 𝜃𝑖 ，折射光与法线的夹角为 𝜃𝑡 。由于折射还和介质的折射率有关，例如空气中的光射入水中，我们需要知道空气和水分别对应的折射率，我们再假设入射光所在介质的折射率为 𝑛1 ，物体的折射率为 𝑛2 。由于<strong>光的偏振</strong> （极化）现象，我们可以得到<strong>S偏振光</strong> 和 <strong>P偏振光</strong> 分别对应的菲涅尔方程，如下：</p>
+<p>\n\n\n\n[latex]\n$$R_s = \\left| \\frac{n_1\\cos\\theta_i -n_2\\cos\\theta_t}{n_1\\cos\\theta_i +n_2\\cos\\theta_t}\\right|^2$$\n\n$$R_p = \\left| \\frac{n_1\\cos\\theta_t -n_2\\cos\\theta_i}{n_1\\cos\\theta_t +n_2\\cos\\theta_i}\\right|^2$$\n\n\n\n</p>
+<p>这里我们先停一停，以上是我跟着知乎<a href="https://zhuanlan.zhihu.com/p/375746359">菲涅尔方程（Fresnel Equation） - 知乎 (zhihu.com)</a>进行的思考流程，不过对于这里的偏振概念似乎还要进一步探究</p>
+<p>\n\n\n\n</p>
+<p>我们把视野放到brown University的介绍中，</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/04/image-18.png" alt="">\n\n\n\n</p>
+<p>What happens when light, <strong>propagating in a uniform medium, encounters a smooth interface</strong><br>which is the boundary of another medium (with a different refractive index)?</p>
+<p>\n\n\n\n</p>
+<p>指的就是光在接触另一种介质的边界时会发生什么？</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/04/image-19.png" alt="">\n\n\n\n</p>
+<p>我们首先做出一些定义or规约</p>
+<p>\n\n\n\n</p>
+<p>入射面<strong>Plane of incidence</strong> 和接触面<strong>Plane of the interface</strong></p>
+<p>\n\n\n\n<img src="../../assets/images/2024/04/image-21.png" alt="">\n\n\n\n</p>
+<p><strong>Plane of incidence</strong>(in this illustration, the yz plane) is the plane that contains the incident and reflected k-vectors.</p>
+<p>\n\n\n\n</p>
+<p><strong>Plane of the interface</strong>(y=0, the xz plane) is the plane that defines the interface between the two materials</p>
+<p>\n\n\n\n</p>
+<h3 id="s-and-p-polarizations">“S” and “P” polarizations</h3>
+<p>\n\n\n\n</p>
+<p>一个关键问题：电场指向哪个方向？有两种截然不同的可能性。</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+<ol>
+<li>“S” polarization is the <strong>perpendicular polarization</strong> , and it sticks up out of the plane of incidence
+\n
+\n\n\n\n<img src="../../assets/images/2024/04/image-22.png" alt="">\n\n\n\n</li>
+</ol>
+<p>\n
+  2. “P” polarization is the <strong>parallel polarization</strong> , and it lies parallel to the plane of incidence.
+\n
+\n\n\n\n<img src="../../assets/images/2024/04/image-23.png" alt="">\n\n\n\n<img src="../../assets/images/2024/04/image-24.png" alt="">\n\n\n\n</p>
+<p>In other words, The component of the E-field that lies in the xz plane is continuous as you move across the plane of the interface. Here, all E-fields are in the z-direction, which is in the plane of the interface.</p>
+<p>\n\n\n\n</p>
+<p>换言之，当您在界面平面上移动时，位于 xz 平面中的 E 场分量是连续的。在这里，所有电子场都在 z 方向上，即在界面的平面上。</p>
+<p>\n\n\n\n</p>
+<p>具体的推导过程略（可见<a href="https://www.brown.edu/research/labs/mittleman/sites/brown.edu.research.labs.mittleman/files/uploads/lecture13_0.pdf">lecture13_0.pdf (brown.edu)</a>）</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/04/image-25.png" alt="">\n\n\n\n</p>
+<p>所以这个时候我们可以试着使用反射定律修改上面的菲涅尔方程</p>
+<p>\n\n\n\n[latex]\n$$R_s = \\left| \\frac{n_1\\cos\\theta_i -n_2\\sqrt{1-\\left(\\frac{n_1}{n_2}\\sin\\theta_i\\right)^2}}{n_1\\cos\\theta_i +n_2\\cos\\theta_t}\\right|^2$$\n\n$$R_p = \\left| \\frac{n_1\\sqrt{1-\\left(\\frac{n_1}{n_2}\\sin\\theta_i\\right)^2} -n_2\\cos\\theta_i}{n_1\\sqrt{1-\\left(\\frac{n_1}{n_2}\\sin\\theta_i\\right)^2} +n_2\\cos\\theta_i}\\right|^2$$\n\n\n\n</p>
+<p>如果我们不考虑偏振的情况，那么菲涅尔方程即是上面两者的平均值：</p>
+<p>\n\n\n\n[latex]\n$$R= \\frac{R_s+R_p}{2}$$\n\n\n\n</p>
+<p>通过理论计算以及实验证明，在通常情况下，我们在反射光垂直于折射光时，<strong>反射光中平行于入射面的振动会完全消失，只剩下垂直于入射面的振动</strong> 。也就是说此时反射光变成了振动方向垂直于入射面的线偏振光。</p>
+<p>\n\n\n\n</p>
+<p>此时的入射角被称为<strong>布儒斯特角</strong> ，记为 𝑖𝐵</p>
+<p>\n\n\n\n</p>
+<p>由图，根据折射定律可知</p>
+<p>\n\n\n\n[latex]\n$$\\frac{n_1}{n_2} = \\frac{\\sin i_B}{\\sin i_\\gamma}=\\frac{\\sin i_B}{\\cos i_B}=\\tan i_B$$\n\n\n\n</p>
+<p>利用菲涅尔方程，我们就可以根据不同的反射率画出 R 与 𝜃𝑖 的对应关系图，如下：</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/04/image-26.png" alt="">\n\n\n\n</p>
+<p>图中代表的是折射率为1.5的<strong>绝缘体</strong> （例如某种玻璃）的反射情况。可以发现当夹角为0时，即入射光垂直于表面，反射光的比例只有4%左右，而当夹角为90度时，即入射光平行于表面，反射比例将近100%，符合我们前面所说的菲涅尔效应。</p>
+<p>\n\n\n\n</p>
+<p>我们再来看一个<strong>导体</strong> （比如铜镜）的关系图，如下：</p>
+<p>\n\n\n\n<img src="../../assets/images/2024/04/image-27.png" alt="">\n\n\n\n</p>
+<p>可以发现即使光线垂直于导体表面，但是依旧有90%的光被反射。这也证实了为什么我们可以用铜来做镜子，却没法使用玻璃来做镜子。</p>
+<p>\n\n\n\n</p>
+<p>比起菲涅尔方法，我们有一些更加简洁快速的近似方式，称之为：</p>
+<p>\n\n\n\n</p>
+<h2 id="schlick近似法">Schlick近似法</h2>
+<p>\n\n\n\n</p>
+<p>从上面两个关系图中，我们可以发现，反射比例和夹角的关系，基本上都是由基础反射率以某种类似的曲线增长到1</p>
+<p>\n\n\n\n</p>
+<p>其中基础反射率的值我们很好求得，因为此时 cos⁡𝜃𝑖=1 ，带入前面的公式可得：</p>
+<p>\n\n\n\n[latex]\n$$R_0 = \\left( \\frac{n_1-n_2}{n_1+n_2}\\right)^2$$\n\n\n\n</p>
+<p>例如水的折射率为1.333，对应的 𝑅0 即为(0.333/2.333)²=0.02。接下来的问题就是怎么用一个简单的函数使得反射率能随着 𝜃𝑖 的增长以类似某种指数增长的方式从基础反射率变为1，这里<strong>Schlick为我们提供了一种近似方程</strong> ：</p>
+<p>\n\n\n\n[latex]\n$$R=R_0 + (1-R_0)(1-\\cos\\theta_i)^5$$\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

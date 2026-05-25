@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>最短路问题实战 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2025-09-29</p>
+        <h1>最短路问题实战</h1>
+        <div class="post-meta">
+          <span>2025-09-29</span>
+          <span class="tag">算法与数据结构</span><span class="tag">图论</span><span class="tag">algorithm</span><span class="tag">最短路</span>
+        </div>
+        <p>\n</p>
+<p>当出现一个复杂度ok，可以直接套用最短路算法处理的问题时，是否经历过：想不起来，不知道如何选择Floyd，SPFA，Dijkstra？这篇文章会根据OI wiki的介绍全面覆盖这几个算法以及最简单的实现描述，并且结合更加具体的题目描述。</p>
+<p>\n\n\n\n</p>
+<h2 id="floyd算法最直白的算法">Floyd算法——最直白的算法</h2>
+<p>\n\n\n\n</p>
+<pre><code>for (k = 1; k &lt;= n; k++) {\n  for (x = 1; x &lt;= n; x++) {\n    for (y = 1; y &lt;= n; y++) {\n      f[k][x][y] = min(f[k - 1][x][y], f[k - 1][x][k] + f[k - 1][k][y]);\n    }\n  }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>即使用每一个路径点来更新路径的最短长度</p>
+<p>\n\n\n\n</p>
+<p>但是有一些空间上的优化之处，由于每次更新k时，k-1都已经完成计算且没有后续作用，所以可以消去第一维度</p>
+<p>\n\n\n\n</p>
+<pre><code>for (k = 1; k &lt;= n; k++) {\n  for (x = 1; x &lt;= n; x++) {\n    for (y = 1; y &lt;= n; y++) {\n      f[x][y] = min(f[x][y], f[x][k] + f[k][y]);\n    }\n  }\n}
+</code></pre>
+<p>\n\n\n\n</p>
+<p>由于时间复杂度较高，因此在大部分有要求的题目中都会被卡（），不过通过这个办法可以求出所有的最短路径，并且在正负边权，有向无向图中都适用。（不能有负环）</p>
+<p>\n\n\n\n</p>
+<h2 id="bellmanford-算法">Bellman–Ford 算法</h2>
+<p>\n\n\n\n</p>
+<p>这是一种基于松弛（relax）操作的最短路算法，可以求出有负权的图的最短路，并可以对最短路不存在的情况进行判断。复杂度优于floyd</p>
+<p>\n\n\n\n</p>
+<p>对于一个边(u,v)，松弛操作即为：dis(v) = min(dis(v),dis(u)+(u,v))</p>
+<p>\n\n\n\n</p>
+<p>即尝试使用S-&gt;u-&gt;v去更新到v点的最短路的长度，如果路径更优，就进行更新。</p>
+<p>\n\n\n\n</p>
+<p>在最短路存在的情况下，由于一次松弛操作会使最短路的边数至少 +1，而最短路的边数最多为 𝑛 −1，因此整个算法最多执行 𝑛 −1 轮松弛操作。故总时间复杂度为 𝑂(𝑛𝑚)。</p>
+<p>\n\n\n\n</p>
+<p>所以如果当n轮的时候，仍然可以对边进行松弛，那么说明从S出发可以抵达一个负环，这是有问题的</p>
+<p>\n\n\n\n</p>
+<pre><code>struct Edge {\n  int u, v, w;\n};\n\nvector&lt;Edge&gt; edge;\n\nint dis[MAXN], u, v, w;\nconstexpr int INF = 0x3f3f3f3f;\n\nbool bellmanford(int n, int s) {\n  memset(dis, 0x3f, (n + 1) * sizeof(int));\n  dis[s] = 0;\n  bool flag = false;  // 判断一轮循环过程中是否发生松弛操作\n  for (int i = 1; i &lt;= n; i++) {\n    flag = false;\n    for (int j = 0; j &lt; edge.size(); j++) {\n      u = edge[j].u, v = edge[j].v, w = edge[j].w;\n      if (dis[u] == INF) continue;\n      // 无穷大与常数加减仍然为无穷大\n      // 因此最短路长度为 INF 的点引出的边不可能发生松弛操作\n      if (dis[v] &gt; dis[u] + w) {\n        dis[v] = dis[u] + w;\n        flag = true;\n      }\n    }\n    // 没有可以松弛的边时就停止算法\n    if (!flag) {\n      break;\n    }\n  }\n  // 第 n 轮循环仍然可以松弛时说明 s 点可以抵达一个负环\n  return flag;\n}
+</code></pre>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

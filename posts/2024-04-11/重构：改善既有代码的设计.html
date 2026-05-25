@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>重构：改善既有代码的设计 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2024-04-11</p>
+        <h1>重构：改善既有代码的设计</h1>
+        <div class="post-meta">
+          <span>2024-04-11</span>
+          <span class="tag">Java</span><span class="tag">C++</span>
+        </div>
+        <p>\n</p>
+<p>按照章节的演进逐步了解一些基本的重构技巧，顺序大多是乱的，不过蕴含了大量的经验技巧，可以闲杂时候读读写写。</p>
+<p>\n\n\n\n</p>
+<h2 id="110-extract-method">110 Extract Method</h2>
+<p>\n\n\n\n</p>
+<p>简而言之，即找到最大的代码块，尝试用抽象出函数方法的思路简化这一段代码块，尽可能的把各种功能分开到各个可命名的函数中，也能减少不必要的注释（这个重构技巧很好理解所以一般不补充资料和实际案例）</p>
+<p>\n\n\n\n</p>
+<h2 id="142-move-method">142 Move Method</h2>
+<p>\n\n\n\n</p>
+<p>这个也很显然，不过一般是在多文件的场景，尤其是一些OOP的情境下，假如一个函数的操作基本上作用于某一个其他文件中的类或者是对象之类的东西，那就应该把这个函数迁移过去，成为该文件下的方法乃至是成员函数，然后重构所有的函数引用，比如假如成为成员函数的话要注意重新定义或者是实例化的调用</p>
+<p>\n\n\n\n</p>
+<h2 id="120-replace-temp-with-query">120 Replace temp with Query</h2>
+<p>\n\n\n\n</p>
+<p>简单来讲，只使用一次两次的变量就没有存在的必要，直接转换成方法调用替换即可，比如int temp = each.getCharge()，直接替换即可，而不应该使用temp，而且这种重构方法强调：替换成“查询函数”，主要是为了行语义之便。有的时候假如没有这样的函数那就得自己定义了。</p>
+<p>\n\n\n\n</p>
+<p>\n\n\n\n</p>
+<p>\n</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
