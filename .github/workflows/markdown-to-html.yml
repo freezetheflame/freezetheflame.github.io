@@ -2,6 +2,13 @@ name: Convert Markdown to HTML
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'posts/**.md'
+      - 'posts/index.md'
+
+permissions:
+  contents: write
 
 jobs:
   convert-markdown:
@@ -9,27 +16,24 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
         
     - name: Install dependencies
-      run: |
-        npm ci
+      run: npm ci
         
     - name: Convert Markdown files to HTML
-      run: |
-        node .github/scripts/convert-markdown.js
+      run: node .github/scripts/convert-markdown.js
         
     - name: Commit and push changes
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add .
-        git commit -m "Auto-convert Markdown to HTML" || echo "No changes to commit"
-        git push
+        git diff --staged --quiet || (git commit -m "Auto-convert Markdown to HTML" && git push)
