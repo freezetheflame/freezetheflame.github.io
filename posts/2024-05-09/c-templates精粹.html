@@ -47,8 +47,8 @@
 <p>在我们这个例子力，参数列表是typename T 。这个typename是一种关键字，到目前位置它是c++程序使用最广泛的模板参数，同样地可以用其他的没错，比如鉴于历史原因可能会有class来代替typename</p>
 <p>函数模板通常不用声明为 inline，唯一例外的是特定类型的全特化，因为编译器可能忽略 inline，函数模板是否内联取决于编译器的优化策略</p>
 <p>对于你定义的模版，并不是吧模板编译成一个可以处理任何类型的单一实体，而是对于实例化模版岑书的每种类型，都从模板中产生一个不同的实体,比如下面这个例子</p>
-<p><img src="../../assets/images/2024/05/image.png" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-1.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-1.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-1.png" alt=""></a></p>
 <p>最终编译结果中有两个独立的实例存在，而对于一开始定义的模板而言并没有单独的编译过程，而且这样的实例化过程是自动的。因此我们得到一些结论：模板在被使用时被调用了两次：</p>
 <ol>
 <li><p>实例化之前，先检查模板代码本身，查看语法是否正确，在这里会发现错误的语法，比如说什么分号遗漏，类型错误等</p>
@@ -56,7 +56,7 @@
 <li><p>在实例化期间，检查模板代码，查看是否所有的调用都有效</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/05/image-2.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-2.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-2.png" alt=""></a></p>
 <p>注意，实参的演绎是不允许自动类型转换的，你可以强制类型转换或者显式指定</p>
 <h3 id="模板参数">模板参数</h3>
 <p>函数模板有两种类型的参数：</p>

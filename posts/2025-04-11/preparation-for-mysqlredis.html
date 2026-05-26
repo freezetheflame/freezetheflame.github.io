@@ -72,26 +72,26 @@
 <li><p><strong>2</strong> ：设置为 2 的时候，表示每次事务提交时都只把 log buffer 里的 redo log 内容写入 page cache（文件系统缓存）。page cache 是专门用来缓存文件的，这里被缓存的文件就是 redo log 文件。这种方式的性能和安全性都介于前两者中间。</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2025/02/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/02/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/02/image.png" alt=""></a></p>
 <h2 id="数据库三大范式是什么？">数据库三大范式是什么？</h2>
 <p><strong>第一范式（1NF）：要求数据库表的每一列都是不可分割的原子数据项。</strong></p>
-<p><img src="../../assets/images/2025/04/image-35.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-35.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-35.png" alt=""></a></p>
 <p>在上面的表中，“家庭信息”和“学校信息”列均不满足原子性的要求，故不满足第一范式，调整如下：</p>
-<p><img src="../../assets/images/2025/04/image-36.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-36.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-36.png" alt=""></a></p>
 <p><strong>第二范式（2NF）：在1NF的基础上，非码属性必须完全依赖于候选码（在1NF基础上消除非主属性对主码的部分函数依赖）</strong></p>
 <p><strong>第二范式需要确保数据库表中的每一列都和主键相关，而不能只与主键的某一部分相关（主要针对联合主键而言）。</strong></p>
-<p><img src="../../assets/images/2025/04/image-37.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-37.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-37.png" alt=""></a></p>
 <p>在上图所示的情况中，同一个订单中可能包含不同的产品，因此主键必须是“订单号”和“产品号”联合组成，</p>
 <p>但可以发现，产品数量、产品折扣、产品价格与“订单号”和“产品号”都相关，但是订单金额和订单时间仅与“订单号”相关，与“产品号”无关，</p>
 <p>这样就不满足第二范式的要求，调整如下，需分成两个表：</p>
-<p><img src="../../assets/images/2025/04/image-38.png" alt=""></p>
-<p><img src="../../assets/images/2025/04/image-39.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-38.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-38.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-39.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-39.png" alt=""></a></p>
 <p><strong>第三范式（3NF）：在2NF基础上，任何非主<a href="https://baike.baidu.com/item/%E5%B1%9E%E6%80%A7">属性 (opens new window)</a>不依赖于其它非主属性（在2NF基础上消除传递依赖）</strong></p>
 <p><strong>第三范式需要确保数据表中的每一列数据都和主键直接相关，而不能间接相关。</strong></p>
-<p><img src="../../assets/images/2025/04/image-40.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-40.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-40.png" alt=""></a></p>
 <p>上表中，所有属性都完全依赖于学号，所以满足第二范式，但是“班主任性别”和“班主任年龄”直接依赖的是“班主任姓名”，</p>
-<p><img src="../../assets/images/2025/04/image-41.png" alt=""></p>
-<p><img src="../../assets/images/2025/04/image-42.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-41.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-41.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-42.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-42.png" alt=""></a></p>
 <h2 id="mysql常见数据类型">MySQL常见数据类型</h2>
 <h3 id="char-和-varchar-的区别是什么？"><a href="https://javaguide.cn/database/mysql/mysql-questions-01.html#char-%E5%92%8C-varchar-%E7%9A%84%E5%8C%BA%E5%88%AB%E6%98%AF%E4%BB%80%E4%B9%88">CHAR 和 VARCHAR 的区别是什么？</a></h3>
 <p>CHAR 和 VARCHAR 是最常用到的字符串类型，两者的主要区别在于：<strong>CHAR 是定长字符串，VARCHAR 是变长字符串。</strong></p>
@@ -195,7 +195,7 @@ WHERE EXISTS (SELECT column_name FROM another_table WHERE condition);</p>
 </li>
 </ul>
 <h3 id="sql查询语句的执行顺序是怎么样的？"><strong>SQL查询语句的执行顺序是怎么样的？</strong></h3>
-<p><img src="../../assets/images/2025/04/image-43.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-43.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-43.png" alt=""></a></p>
 <h3 id="函数依赖中的重要概念">函数依赖中的重要概念</h3>
 <ul>
 <li><p><strong>函数依赖（functional dependency）</strong> ：若在一张表中，在属性（或属性组）X 的值确定的情况下，必定能确定属性 Y 的值，那么就可以说 Y 函数依赖于 X，写作 X → Y。</p>
@@ -271,7 +271,7 @@ WHERE EXISTS (SELECT column_name FROM another_table WHERE condition);</p>
 <li><p>支持分库分表、读写分离、高可用。</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2025/04/image-44.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-44.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-44.png" alt=""></a></p>
 <h3 id="null-和--的区别是什么？"><a href="https://javaguide.cn/database/mysql/mysql-questions-01.html#null-%E5%92%8C-%E7%9A%84%E5%8C%BA%E5%88%AB%E6%98%AF%E4%BB%80%E4%B9%88">NULL 和 &#39;&#39; 的区别是什么？</a></h3>
 <p><code>NULL</code> 和 <code>&#39;&#39;</code> (空字符串) 是两个完全不同的值，它们分别表示不同的含义，并在数据库中有着不同的行为。<code>NULL</code> 代表缺失或未知的数据，而 <code>&#39;&#39;</code> 表示一个已知存在的空字符串。它们的主要区别如下：</p>
 <ol>
@@ -311,7 +311,7 @@ WHERE EXISTS (SELECT column_name FROM another_table WHERE condition);</p>
 </li>
 </ol>
 <h3 id="mysql-基础架构"><a href="https://javaguide.cn/database/mysql/mysql-questions-01.html#mysql-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84">MySQL 基础架构</a></h3>
-<p><img src="../../assets/images/2025/04/image-45.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-45.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-45.png" alt=""></a></p>
 <p>从上图可以看出， MySQL 主要由下面几部分构成：</p>
 <ul>
 <li><p><strong>连接器：</strong>  身份认证和权限相关(登录 MySQL 的时候)。</p>
@@ -356,7 +356,7 @@ WHERE EXISTS (SELECT column_name FROM another_table WHERE condition);</p>
 <p>SQL1,SQL2...</p>
 <h2 id="提交事务">提交事务</h2>
 <p>COMMIT;</p>
-<p><img src="../../assets/images/2025/04/image-49.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-49.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-49.png" alt=""></a></p>
 <ol>
 <li><p><strong>原子性</strong> （<code>Atomicity</code>）：事务是最小的执行单位，不允许分割。事务的原子性确保动作要么全部完成，要么完全不起作用；</p>
 </li>
@@ -396,7 +396,7 @@ WHERE EXISTS (SELECT column_name FROM another_table WHERE condition);</p>
 </li>
 </ul>
 <p>通过将多个字段组合成一个索引，该索引就被称为联合索引。</p>
-<p><img src="../../assets/images/2025/04/image-51.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-51.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-51.png" alt=""></a></p>
 <h3 id="聚簇索引和非聚簇索引">聚簇索引和非聚簇索引</h3>
 <p>如上图，其主要区别在于，聚簇索引的叶子节点存的是数据本身，而非聚簇索引的叶子结点存的是指向数据的指针或者主键值。</p>
 <ul>
@@ -489,7 +489,7 @@ WHERE EXISTS (SELECT column_name FROM another_table WHERE condition);</p>
 <td>合并左右表所有数据</td>
 </tr>
 </tbody></table></div>
-<p><img src="../../assets/images/2025/04/image-50.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-50.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-50.png" alt=""></a></p>
 <h3 id="example">example</h3>
 <h4 id="1️⃣-employees-表">1️⃣ <strong>employees 表</strong></h4>
 <div class="table-wrap"><table>
@@ -715,7 +715,7 @@ WHERE EXISTS (SELECT 1 FROM orders o
 <li><p><strong>一致性则是通过持久性+原子性+隔离性来保证；</strong></p>
 </li>
 </ul>
-<p><img src="../../assets/images/2025/04/image-54.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-54.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-54.png" alt=""></a></p>
 <h3 id="并发事务造成的问题">并发事务造成的问题</h3>
 <h4 id="脏读">脏读</h4>
 <p>一个事务读取数据并且对数据进行了修改，这个修改对其他事务来说是可见的，即使当前事务没有提交。这时另外一个事务读取了这个还未提交的数据，但第一个事务突然回滚，导致数据并没有被提交到数据库，那第二个事务读取到的就是脏数据，这也就是脏读的由来。</p>
@@ -765,7 +765,7 @@ WHERE EXISTS (SELECT 1 FROM orders o
 <p>为了防止数据库中的版本无限增长，MVCC 会定期进行版本的回收。回收机制会删除已经不再需要的旧版本数据，从而释放空间。</p>
 <p>MVCC 通过创建数据的多个版本和使用快照读取来实现并发控制。读操作使用旧版本数据的快照，写操作创建新版本，并确保原始版本仍然可用。这样，不同的事务可以在一定程度上并发执行，而不会相互干扰，从而提高了数据库的并发性能和数据一致性。</p>
 <h3 id="讲一下mysql里有哪些锁？">讲一下mysql里有哪些锁？</h3>
-<p><img src="../../assets/images/2025/04/image-55.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-55.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-55.png" alt=""></a></p>
 <p><strong>全局锁</strong> ：通过flush tables with read lock 语句会将整个数据库就处于只读状态了，这时其他线程执行以下操作，增删改或者表结构修改都会阻塞。全局锁主要应用于做<strong>全库逻辑备份</strong> ，这样在备份数据库期间，不会因为数据或表结构的更新，而出现备份文件的数据与预期的不一样。</p>
 <p><strong>表级锁</strong> ：MySQL 里面表级别的锁有这几种：</p>
 <ul>

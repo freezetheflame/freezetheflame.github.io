@@ -56,22 +56,22 @@
  }  </p>
 <p>serveral Implementations多种实现</p>
 <p>使用数组：</p>
-<p><img src="../../assets/images/2024/01/image-89.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-89.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-89.png" alt=""></a></p>
 <p>search(x): 复杂度为On（可以遍历，或者考虑有序集二分）<br>remove(a,x):复杂度为On（移除后前移）<br>insert(x,i):复杂度为On</p>
 <p>使用链表</p>
-<p><img src="../../assets/images/2024/01/image-90.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-90.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-90.png" alt=""></a></p>
 <p>最后一个节点为空</p>
 <p>delete删除操作：</p>
 <p>first get to node just before node to be removed<br>before= first .link;直到够到需要删除的节点之后，before .link = before .link .link;</p>
 <p>insert插入操作：首先new一个chainNode对象，然后放在first位置，first find node whose index is 3，然后插入这个</p>
-<p><img src="../../assets/images/2024/01/image-91.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-92.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-93.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-94.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-95.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-96.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-91.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-91.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-92.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-92.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-93.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-93.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-94.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-94.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-95.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-95.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-96.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-96.png" alt=""></a></p>
 <p>双向链表</p>
-<p><img src="../../assets/images/2024/01/image-97.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-97.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-97.png" alt=""></a></p>
 <h2 id="栈与队列（lifofifo表）">栈与队列（LIFO&amp;FIFO表）</h2>
 <pre><code>AbstractDataType Stack{
 </code></pre>
@@ -84,7 +84,7 @@
  Top():return top element of the stack;
  Add(x): add element x to the stack;
  Delete(x):Delete top element from stack and put it in x;</p>
-<p><img src="../../assets/images/2024/01/image-98.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-98.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-98.png" alt=""></a></p>
 <pre><code> public class StackLi 
 </code></pre>
 <p>{   public StackLi( ){ topOfStack = null; }
@@ -132,8 +132,8 @@ First(): return first element of the queue;
  Delete(x): delete front element from the queue  and put it in x;
  }</p>
 <p>使用数组实现：最好采取环形的方式（防止free space挤在一端）</p>
-<p><img src="../../assets/images/2024/01/image-99.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-100.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-99.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-99.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-100.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-100.png" alt=""></a></p>
 <pre><code> Public class QueueAr
 </code></pre>
 <p> {<br>public QueueAr( )
@@ -171,14 +171,14 @@ LinkedQueue<T>&amp; Delete(T&amp; x);
 <p>一些性质：有n个元素的二叉树有n-1条边<br>如果叶子的个数是n0，度数为2的节点个数是n-1  </p>
 <p>The height of a binary tree that contains n(n&gt;=0) element is at most n-1 and at least log2(n+1)-1(向上取整)</p>
 <p>完全二叉树：（堆）</p>
-<p><img src="../../assets/images/2024/01/image-101.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-102.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-103.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-101.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-101.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-102.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-102.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-103.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-103.png" alt=""></a></p>
 <p>（这些性质也是使用数组存放堆的基本原理）</p>
 <p>因此非完全二叉树使用数组表达时可以把对应位置空出</p>
 <p>——链表表达的二叉树</p>
-<p><img src="../../assets/images/2024/01/image-104.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-105.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-104.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-104.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-105.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-105.png" alt=""></a></p>
 <pre><code>class BinaryNode {
 BinaryNode(){Left=Right=0;}
 BinaryNode(Object e)
@@ -325,8 +325,8 @@ void Postorder(BinaryNode <T> * t) {
 \t\t}
 \t}</p>
 <p>Thread Tree 线索树</p>
-<p><img src="../../assets/images/2024/01/image-106.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-184.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-106.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-106.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-184.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-184.png" alt=""></a></p>
 <p>中序遍历的线索树</p>
 <p>leftchild leftthread data rightthread rightchild线索树的结点结构</p>
 <pre><code>template&lt;class Type&gt; 
@@ -529,7 +529,7 @@ private BinaryNode insert( Comparable x, BinaryNode t ) {
 </li>
 </ol>
 <p>例如图 2.1 不是平衡二叉树，因为结点 60 的左子树不是平衡二叉树</p>
-<p><img src="../../assets/images/2024/01/image-139.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-139.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-139.png" alt=""></a></p>
 <pre><code>class AVLNode {
 AVLNode(Comparable theElement) {
     this( theElement, null, null);
@@ -549,7 +549,7 @@ int height;
 private static int height( AVLNode t ) {<br>    return t =s= null ? –1 : t. height;
 }</p>
 <p>AVL树的插入操作：</p>
-<p><img src="../../assets/images/2024/01/image-140.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-140.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-140.png" alt=""></a></p>
 <ol>
 <li><p>简单来看，每一个子树都可以被看为如上的图</p>
 </li>
@@ -557,12 +557,12 @@ private static int height( AVLNode t ) {<br>    return t =s= null ? –1 : t. he
 </li>
 </ol>
 <p><strong>插入C的右子树E(外侧结点)</strong></p>
-<p><img src="../../assets/images/2024/01/image-141.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-141.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-141.png" alt=""></a></p>
 <p>注意左单旋转的方式：C树原本的左子树迁移成原来C的父节点A的右子树</p>
 <p><strong>插入C的左子树D(内侧结点)</strong></p>
-<p><img src="../../assets/images/2024/01/image-142.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-142.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-142.png" alt=""></a></p>
 <h4 id="插入其他地方，树不需要转">插入其他地方，树不需要转</h4>
-<p><img src="../../assets/images/2024/01/image-143.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-143.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-143.png" alt=""></a></p>
 <ol>
 <li><p>一直到5的时候，树的平衡性才受到影响</p>
 </li>
@@ -586,13 +586,13 @@ private static int height( AVLNode t ) {<br>    return t =s= null ? –1 : t. he
 </li>
 </ol>
 <p>右下：</p>
-<p><img src="../../assets/images/2024/01/image-144.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-144.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-144.png" alt=""></a></p>
 <p>左下</p>
-<p><img src="../../assets/images/2024/01/image-145.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-145.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-145.png" alt=""></a></p>
 <p>左内</p>
-<p><img src="../../assets/images/2024/01/image-146.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-146.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-146.png" alt=""></a></p>
 <p>右内</p>
-<p><img src="../../assets/images/2024/01/image-147.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-147.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-147.png" alt=""></a></p>
 <ol>
 <li><p>首先要找到正确的位置进行插入</p>
 </li>
@@ -604,27 +604,27 @@ private static int height( AVLNode t ) {<br>    return t =s= null ? –1 : t. he
 </li>
 </ol>
 <p>AVL树的删除：</p>
-<p><img src="../../assets/images/2024/01/image-148.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-148.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-148.png" alt=""></a></p>
 <p>举例：</p>
-<p><img src="../../assets/images/2024/01/image-149.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-158.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-149.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-149.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-158.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-158.png" alt=""></a></p>
 <h2 id="b树（m叉搜索树）">B树（m叉搜索树）</h2>
 <p>搜索树可能为空。如果是一个非空的树，则为满足以下属性的树：<br>1.在相应的扩展搜索树(用外部节点替换零指针获得)中，每个内部节点最多有m个子节点，在1和m-1元素之间。</p>
 <p>2.每个具有p元素的节点正好有p+1子节点。</p>
 <p>c0,c1,……,cp be the p+1 children of the node 假设任何节点都有p个元素，那么C0 - Cp是他们对应的p+1个子元素。</p>
-<p><img src="../../assets/images/2024/01/image-150.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-150.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-150.png" alt=""></a></p>
 <p>1）每个结点最多有m-1个关键字。</p>
 <p>2）根结点最少可以只有1个关键字。</p>
 <p>3）非根结点至少有Math.ceil(m/2)-1个关键字</p>
 <p>4）每个结点中的关键字都按照从小到大的顺序排列，每个关键字的左子树中的所有关键字都小于它，而右子树中的所有关键字都大于它。</p>
 <p><strong>操作：</strong></p>
 <p>插入：（第一种是m路搜索树的插入）<br>如果一层没有满，就在同一级进行插入。(针对的是m叉的情况)<br>如果这一层已经满了，那么在下一层进行插入。</p>
-<p><img src="../../assets/images/2024/01/image-151.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-152.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-153.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-151.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-151.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-152.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-152.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-153.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-153.png" alt=""></a></p>
 <p>或者更加严谨的是使用分裂法（下图部分数据有误自行识别）</p>
-<p><img src="../../assets/images/2024/01/image-156.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-157.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-156.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-156.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-157.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-157.png" alt=""></a></p>
 <p>删除操作：</p>
 <ol>
 <li><p>删除元素不会影响树的叉数，物理层次影响叉数。</p>
@@ -634,8 +634,8 @@ private static int height( AVLNode t ) {<br>    return t =s= null ? –1 : t. he
 <li><p>类型二:本层删除后没有节点，所以需要把底下能合适的最大(最小)的进行提升</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-154.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-155.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-154.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-154.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-155.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-155.png" alt=""></a></p>
 <p>the height of a m-way search tree with n elements is between logm(n+1) and n</p>
 <p>m叉搜索树和B树的区别：</p>
 <ol>
@@ -650,7 +650,7 @@ private static int height( AVLNode t ) {<br>    return t =s= null ? –1 : t. he
 <li><p>有k个孩子的非叶节点恰好包含k-1个关键字</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-159.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-159.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-159.png" alt=""></a></p>
 <p>删除操作：</p>
 <ol>
 <li><p>case1:The element to be deleted is in a node whose children are external nodes(i.e.the element is in a leaf)(将要被删除的元素的关键码的子节点是外部结点[小正方形])</p>
@@ -672,8 +672,8 @@ private static int height( AVLNode t ) {<br>    return t =s= null ? –1 : t. he
 </ul>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-160.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-161.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-160.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-160.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-161.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-161.png" alt=""></a></p>
 <h2 id="优先队列（堆）">优先队列（堆）</h2>
 <p>在最小优先级队列中，当需要删除一个元素的时候，我们找到优先级最小的元素来删除</p>
 <p>最大堆是一个完全二叉树，由于可以完成优先队列所需要的优先出，所以一般用堆的结构来表示优先队列，即使用完全二叉树表示</p>
@@ -738,9 +738,9 @@ return *this;
 <li><p>Transitive x ≡ y and y ≡ z,then x ≡ z(传递性)</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-162.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-162.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-162.png" alt=""></a></p>
 <p>并查集的物理实现：森林</p>
-<p><img src="../../assets/images/2024/01/image-163.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-163.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-163.png" alt=""></a></p>
 <ol start="2">
 <li><p>parent数组中存储的值为0的时候，这个结点表示为根结点</p>
 </li>
@@ -841,7 +841,7 @@ void Union(int i, int j) {
 <li><p>性质:(度数)TD(v)=ID(v)+OD(v)</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-164.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-164.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-164.png" alt=""></a></p>
 <p>所有的度数加起来是边的个数的两倍</p>
 <p>在图 G=(V，E)中，如果每j的边(ij，ij+1)在E中，1&lt;= j&lt; k，则顶点序列P=i1，i2，…,ik是i1到ik的路径。</p>
 <p>简单路径 : 路径除了第一个和最后一个顶点中<strong>没有出现相同</strong> 的顶点</p>
@@ -863,9 +863,9 @@ void Union(int i, int j) {
 <p>  }</p>
 <p>图的视线与表示：</p>
 <p>1。邻接矩阵</p>
-<p><img src="../../assets/images/2024/01/image-165.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-165.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-165.png" alt=""></a></p>
 <p><strong>无向图的每个顶点的度数等于矩阵中每一行的和</strong></p>
-<p><img src="../../assets/images/2024/01/image-166.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-166.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-166.png" alt=""></a></p>
 <ol start="2">
 <li><p>有向图的邻接矩阵</p>
 <ul>
@@ -922,7 +922,7 @@ if (v!=-1) {
 return -1;
 </code></pre>
 <p>}</p>
-<p><img src="../../assets/images/2024/01/image-167.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-167.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-167.png" alt=""></a></p>
 <p>邻接多重表</p>
 <ol>
 <li><p>在无向图中, 如果边数为m, 则在邻接表表示中需2m个单位来存储. 为了克服这一缺点, 采用邻接多重表, 每条边用一个结点表示.</p>
@@ -936,9 +936,9 @@ return -1;
 </ul>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-168.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-168.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-168.png" alt=""></a></p>
 <p><strong>DFS</strong></p>
-<p><img src="../../assets/images/2024/01/image-169.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-169.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-169.png" alt=""></a></p>
 <ol start="2">
 <li><p>递归方法实现 算法中用一个辅助数组visited[]:</p>
 <ol>
@@ -1015,7 +1015,7 @@ delete[] visited;
 <li><p>生成树不唯一</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-170.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-170.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-170.png" alt=""></a></p>
 <p>1.贪心法求解最小生成树：Prim和Kruskal两种方式</p>
 <ol>
 <li><p>Grandy策略：设：连通网络N={V,E}, V中有n个顶点。</p>
@@ -1033,11 +1033,11 @@ delete[] visited;
 </ol>
 <h3 id="kruskal算法对边进行排序，然后生成">Kruskal算法(对边进行排序，然后生成)</h3>
 <p>把无向图的所有边排序</p>
-<p><img src="../../assets/images/2024/01/image-171.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-171.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-171.png" alt=""></a></p>
 <p>一开始的最小生成树为</p>
-<p><img src="../../assets/images/2024/01/image-172.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-172.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-172.png" alt=""></a></p>
 <p>在E中选一条代价最小的边(u,v)加入T，一定要满足(u,v) 不和TE中已有的边构成回路</p>
-<p><img src="../../assets/images/2024/01/image-173.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-173.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-173.png" alt=""></a></p>
 <pre><code>void Graph&lt;string,float&gt;::Kruskal(MinSpanTree&amp;T) {
 //结果赋值给T
 MSTEdgeNode e;
@@ -1083,7 +1083,7 @@ while(count&lt;NumVertices) {
 </ol>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-174.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-174.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-174.png" alt=""></a></p>
 <p><strong>最短路径</strong></p>
 <ol>
 <li><p>设G=(V,E)是一个带权图(有向，无向)，如果从顶点v到顶点w的一条路径为(v,v1,v2,…,w)，其路径长度不大于从v到w的所有其它路径的长度，则该路径为从 v 到 w 的最短路径。</p>
@@ -1103,7 +1103,7 @@ while(count&lt;NumVertices) {
 </ol>
 <p><strong>含非负权值的单源最短路径</strong></p>
 <p>Dijkstra</p>
-<p><img src="../../assets/images/2024/01/image-175.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-175.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-175.png" alt=""></a></p>
 <h3 id="贝尔曼福特改进算法">贝尔曼——福特改进算法</h3>
 <p>可以检测负边权，每次固定松弛操作n-1次</p>
 <h3 id="floyed算法">floyed算法</h3>
@@ -1111,8 +1111,8 @@ while(count&lt;NumVertices) {
 <p>复杂度比较高，但是常数小，容易实现（只有三个 <code>for</code>）。</p>
 <p>适用于任何图，不管有向无向，边权正负，但是最短路必须存在。（不能有个负环）</p>
 <h3 id="活动网络">活动网络</h3>
-<p><img src="../../assets/images/2024/01/image-176.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-177.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-176.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-176.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-177.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-177.png" alt=""></a></p>
 <h3 id="拓扑算法思想">拓扑算法思想</h3>
 <ol>
 <li><p>从图中选择一个入度为0的结点输出之。(如果一个图中，同时存在多个入度为0的结点，则随便输出任意一个结点)</p>
@@ -1143,8 +1143,8 @@ while(count&lt;NumVertices) {
 </ul>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-179.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-178.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-179.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-179.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-178.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-178.png" alt=""></a></p>
 <p>关键路径</p>
 <ol>
 <li><p>目的: 利用事件顶点网络，研究完成整个工程需要多少时间 加快那些活动的速度后，可使整个工程提前完成。</p>
@@ -1169,17 +1169,17 @@ while(count&lt;NumVertices) {
 <h3 id="131-解决冲突方案1linear-probing线性探测法">1.3.1. 解决冲突方案(1):linear Probing(线性探测法)</h3>
 <p>If hash(key)= d and the bucket is already occupied then we will examine successive buckets d+1, d+2,……m-1, 0, 1, 2, ……d-1, in the array(如何key的哈希值是d，并且d对应的位置已经被占据，然后我们会按照线性顺序向后成环形查找)</p>
 <p>线性表示法的弊端:堆积问题</p>
-<p><img src="../../assets/images/2024/01/image-180.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-180.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-180.png" alt=""></a></p>
 <h3 id="132-解决冲突方法2二次探测法quadratic-probing">1.3.2. 解决冲突方法(2):二次探测法(Quadratic probing)</h3>
 <p>放置hash值相同的情况下导致严重的堆积情况。</p>
-<p><img src="../../assets/images/2024/01/image-181.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-181.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-181.png" alt=""></a></p>
 <h3 id="133-解决冲突方法3双散列哈希double-hashing">1.3.3. 解决冲突方法(3):双散列哈希(Double Hashing)</h3>
 <p>If hash1(k)= d and the bucket is already occupied then we will counting hash2(k) = c, examine successive buckets d+c, d+2c, d+3c……，in the array(如果k的第一哈希值为d，而这个对应的格子已经被占用则我们继续计算k的第二哈希值，然后检查d+c…)</p>
-<p><img src="../../assets/images/2024/01/image-182.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-182.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-182.png" alt=""></a></p>
 <p>尽量保证表项数&gt;表的70%，也就是意味着如果不满足，就需要进行再散列。</p>
 <h3 id="解决冲突方法4分离链接法separate-chaining">解决冲突方法(4):分离链接法(Separate Chaining)</h3>
 <p>使用每个位置对应线性表解决这个问题</p>
-<p><img src="../../assets/images/2024/01/image-183.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-183.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-183.png" alt=""></a></p>
 <h2 id="排序算法">排序算法</h2>
 <p>插入排序：</p>
 <ol>
@@ -1232,7 +1232,7 @@ while(count&lt;NumVertices) {
 </ol>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-185.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-185.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-185.png" alt=""></a></p>
 <pre><code>public static void shellsort( Comparable [ ] a ) {
 for (int gap = a.length/2 ; gap&gt;0 ; gap/=2 )
     for (int i = gap; i &lt; a.length; i++) {
@@ -1444,10 +1444,10 @@ public static void Rearrange( int [ ]a, int n, int[ ] r) {
 <li><p>原理:每次让这一位的从前往后排序。</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-186.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-186.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-186.png" alt=""></a></p>
 <p>归并排序：</p>
 <p>归并：两个(多个)有序的文件组合成一个有序文件 方法：每次取出两个序列中的小的元素输出之；当一序列完，则输出另一序列的剩余部分</p>
-<p><img src="../../assets/images/2024/01/image-187.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-187.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-187.png" alt=""></a></p>
 <pre><code>//java
 </code></pre>
 <p>public static void mergeSort( Comparable [ ] a ) {

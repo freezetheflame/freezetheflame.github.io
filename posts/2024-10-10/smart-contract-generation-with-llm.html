@@ -33,9 +33,9 @@
         <h2 id="关于合约的生成部分：">关于合约的生成部分：</h2>
 <p><a href="https://ieeexplore.ieee.org/abstract/document/10633392/authors#authors">利用大型语言模型自动生成智能合约 |IEEE 会议出版物 |IEEE Xplore --- Leveraging Large Language Models for Automatic Smart Contract Generation | IEEE Conference Publication | IEEE Xplore</a></p>
 <p>其中，关于生成代码质量的评估办法具有相当好的价值</p>
-<p><img src="../../assets/images/2024/10/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/10/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/10/image.png" alt=""></a></p>
 <p>他们通过简单的COSTAR zeroshot方法获得了如下的评分</p>
-<p><img src="../../assets/images/2024/10/image-2.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/10/image-2.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/10/image-2.png" alt=""></a></p>
 <p>在向 ChatGPT API 端点发出的  <em>54</em> 个请求中（ <em>6</em> 个提示中每个提示  <em>4</em> 个，每  <em>6</em> 个提示的  <em>5</em> 个温度值中每个请求 1 个），OpenAI 模型 gpt-4-0125-preview 能够在 98.1% 的情况下生成可编译的智能合约。这种高成功率可能表明 LLM 具有强大的能力，可以解释和处理自然语言提示和合同中指定的法律要求，并将它们翻译成语法和语义正确的智能合约代码。因此，LLMs 可以代表自动生成智能合约的有效工具，从而简化其开发过程。高成功率符合我们的预期，因为如 中所述 Section III-C ，OpenAI 模型可能已经在各种数据上进行了训练，包括包含有效 Solidity 代码的 GitHub 项目。</p>
 <p>当然这篇里面的内容也是可以参考的</p>
 <p><a href="https://www.mdpi.com/2076-3417/12/9/4773">Smart Contract Generation Assisted by AI-Based Word Segmentation (mdpi.com)</a> 不过也只能参考其评估方式了，比如说把“代码是否可编译”纳入评分权重</p>

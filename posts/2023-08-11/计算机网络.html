@@ -61,19 +61,19 @@
 <p>DSU常见的应用场景包括数字电话网络（Digital Voice Network）、ISDN（Integrated Services Digital Network）、T1/E1传输线路等。它们通过将数字信号转换为模拟信号，并提供适当的接口和功能，实现了数字设备与传输介质之间的互联和数据传输。</p>
 <p>[/su_spoiler] [/su_accordion]</p>
 <p>OSI基本模型<br><a href="https://www.zhihu.com/tardis/zm/art/296670054?source_id=1005">一文看懂网络七层协议/OSI七层模型 (zhihu.com)</a></p>
-<p><img src="../../assets/images/2023/09/image-11.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/09/image-11.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/09/image-11.png" alt=""></a></p>
 <p><strong>1.2网络边缘</strong></p>
 <p>网络设备通过基础设施，然后连接到网络核心</p>
 <p>在计算机网络中，&quot;forward&quot;（转发）是指<strong>将数据包从一个网络节点传递到下一个网络节点的过程</strong> 。当数据包到达网络节点时，该节点根据目标地址或其他路由规则决定将数据包发送到哪个下一跳节点。这个过程被称为转发。</p>
 <p>在路由器、交换机等网络设备中，转发是指根据目标地址查找路由表并<strong>将数据包发送到正确的接口</strong> ，以便将数据包传递到目标设备或下一个网络节点。转发是网络设备的核心功能之一，它确保数据包能够正确地在网络中传递，并按照预定的路径到达目标位置。</p>
 <p>转发过程通常包括查找目标地址、选择下一跳节点、更新数据包的目标地址等操作。它是网络通信中的关键步骤，确保数据能够有效地在网络中传输和路由。</p>
-<p><img src="../../assets/images/2023/08/image-9.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-9.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-9.png" alt=""></a></p>
 <p>在计算机网络中，&quot;routing&quot;（路由）指的是确定数据包从源节点到目标节点的路径或路由路径的过程。它是网络中<strong>实现数据包从源到目标的传输</strong> 的关键任务。</p>
 <p>当一个数据包从源节点发送到目标节点时，它需要经过多个中间节点或网络设备。路由是指在这些节点之间选择合适的路径，以确保数据包按预期的方式传输。这个过程涉及到网络设备（如路由器）根据路由表、路由协议或其他路由算法来决定数据包的下一跳节点。</p>
 <p>路由的目标是<strong>选择最佳路径</strong> ，以<strong>最小化延迟、最大化带宽利用率</strong> ，并避免网络拥塞和故障。路由算法可以根据不同的标准和策略进行优化，例如最短路径优先、带宽感知路由、负载均衡等。</p>
 <p>在路由过程中，路由器或其他网络设备根据目标地址和路由表进行转发决策，将数据包发送到正确的接口和下一跳节点。这样，数据包就可以通过一系列的中间节点最终到达目标节点。</p>
 <p>总而言之，路由是确定数据包传输路径的过程，它在计算机网络中起到了连接源和目标节点的关键作用。</p>
-<p><img src="../../assets/images/2023/08/image-10.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-10.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-10.png" alt=""></a></p>
 <p>在网络领域，数据包传输延迟（Package Transmission Delay）是指从源节点发送数据包到目标节点的整个传输过程中所经历的时间延迟。</p>
 <p>数据包传输延迟由以下几个主要组成部分构成：</p>
 <ol>
@@ -100,7 +100,7 @@
 <p>如果要计算整个数据包传输过程的延迟，需要考虑以上提到的所有延迟因素，并将它们相加。</p>
 <p>总传输延迟 = 处理延迟 + 排队延迟 + 传输延迟 + 传播延迟</p>
 <p>三种交换模式</p>
-<p><img src="../../assets/images/2023/08/image-11.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-11.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-11.png" alt=""></a></p>
 <h2 id="电路交换"><strong>电路交换</strong></h2>
 <p>电路交换需要建立一条专用的数据通信路径，这条路径上可能包含许多中间节点。这条通信路径在整个通信过程中将被独占，直到通信结束才会释放资源。电路交换适合实时性要求较高的大量数据传输的情况。</p>
 <p>电路交换的优点主要包括以下几个方面：</p>
@@ -199,7 +199,7 @@
 <p>a really complex system</p>
 <p>so layering is a efficient approach to implement such a system</p>
 <p>网络分层(Layered Internet Protocol Stack)</p>
-<p><img src="../../assets/images/2023/08/image-12.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-12.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-12.png" alt=""></a></p>
 <p><strong>OSI参考模型</strong> 采用的分层设计原则允许上层协议可以一直使用下层协议提供的功能和服务。</p>
 <p>具体来说:</p>
 <ul>
@@ -226,30 +226,30 @@
 <h2 id="应用层协议原理"><strong>应用层协议原理</strong></h2>
 <p><strong>研发网络应用程序的核心是写出能够运行在不同的端系统和通过网络彼此通信的程序</strong> 。例如，在网络应用程序中，有两个互相通信的不同程序：<strong>一个是运行在用户主机上的浏览器程序；另一个是运行在 Web 服务器主机上的 Web 服务器程序</strong> 。</p>
 <p>client-server architecture</p>
-<p><img src="../../assets/images/2023/08/image-21.png" alt=""></p>
-<p><img src="../../assets/images/2023/08/image-22.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-21.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-21.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-22.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-22.png" alt=""></a></p>
 <p>peer to peer architecture</p>
-<p><img src="../../assets/images/2023/08/image-24.png" alt=""></p>
-<p><img src="../../assets/images/2023/08/image-23.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-24.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-24.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-23.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-23.png" alt=""></a></p>
 <p>HTTP protocol</p>
 <p><strong>HTTP</strong>  是一种用作获取诸如 HTML 文档这类资源的<a href="https://developer.mozilla.org/zh-CN/docs/Glossary/Protocol">协议</a>。它是 Web 上进行任何数据交换的基础，同时，也是一种客户端—服务器（client-server）协议，也就是说，请求是由接受方——通常是浏览器——发起的。一个完整网页文档是由获取到的不同文档组件——像是文本、布局描述、图片、视频、脚本等——重新构建出来的。</p>
-<p><img src="../../assets/images/2023/08/image-28.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-28.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-28.png" alt=""></a></p>
 <p>HTTP 连接的两种方式：persistent and non-persistent</p>
 <p>non-persistent 示例</p>
-<p><img src="../../assets/images/2023/08/image-31.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-31.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-31.png" alt=""></a></p>
 <p>so it requires to RTTs for a single file </p>
 <p>HTTP Request message:</p>
-<p><img src="../../assets/images/2023/08/image-32.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-32.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-32.png" alt=""></a></p>
 <p>hTTP Respond message:</p>
-<p><img src="../../assets/images/2023/08/image-33.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-33.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-33.png" alt=""></a></p>
 <p>response status code:类似于404之类</p>
-<p><img src="../../assets/images/2023/08/image-34.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/08/image-34.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/08/image-34.png" alt=""></a></p>
 <p>6f计网整理</p>
 <p>OSI Layer1 :Physical Layer</p>
 <p>LAN Media:<br>using encoding to transmit data</p>
 <p>常用的编码方式包括归零制，不归零制，曼彻斯特，差分曼彻斯特<br>而常见的带通调制方式包括调幅（AM）调频（FM）调相（PM）</p>
 <p>物理媒介：<br>STP-&gt;屏蔽双绞线</p>
-<p><img src="../../assets/images/2023/10/image-24.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/10/image-24.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/10/image-24.png" alt=""></a></p>
 <p>ScTP-&gt;网屏式双绞线</p>
 <p>UTP-&gt;非屏蔽双绞线</p>
 <h3 id="stp"><a href="https://github.com/1Lucifer1/NJUSE-courses-from-YuLinLiu/blob/master/%E4%BA%92%E8%81%94%E7%BD%91%E8%AE%A1%E7%AE%97/%E7%9F%A5%E8%AF%86%E7%82%B9/2.%20Physical%20Layer.md#stp">STP</a></h3>
@@ -644,7 +644,7 @@
 <li><p>实现跨介质逻辑理解</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2023/10/image-70.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/10/image-70.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/10/image-70.png" alt=""></a></p>
 <h4 id="routers（路由器）"><a href="https://github.com/1Lucifer1/NJUSE-courses-from-YuLinLiu/blob/master/%E4%BA%92%E8%81%94%E7%BD%91%E8%AE%A1%E7%AE%97/%E7%9F%A5%E8%AF%86%E7%82%B9/4.%20Network%20Layer.md#routers%E8%B7%AF%E7%94%B1%E5%99%A8">Routers（路由器）</a></h4>
 <ul>
 <li><p>不同网段分隔</p>
@@ -664,7 +664,7 @@
 </ul>
 <p>IP Adresses and Subnets</p>
 <h3 id="ipv4-packet"><a href="https://github.com/1Lucifer1/NJUSE-courses-from-YuLinLiu/blob/master/%E4%BA%92%E8%81%94%E7%BD%91%E8%AE%A1%E7%AE%97/%E7%9F%A5%E8%AF%86%E7%82%B9/4.%20Network%20Layer.md#ipv4-packet">IPv4 Packet</a></h3>
-<p><img src="../../assets/images/2023/10/image-71.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/10/image-71.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/10/image-71.png" alt=""></a></p>
 <p>名词解释</p>
 <ul>
 <li><p>ICMP - Internet Control Message Protocol：Internet控制报文协议</p>
@@ -765,7 +765,7 @@
 </ul>
 </li>
 </ul>
-<p><img src="../../assets/images/2023/10/image-72.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/10/image-72.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/10/image-72.png" alt=""></a></p>
 <ul>
 <li><p>生存时间</p>
 <ul>
@@ -991,7 +991,7 @@
 <p>一个主机192.168.1.199/26 能否和直连主机<br>192.168.1.1/24 通信？**  不可以<strong>，</strong>因为一个是大儿子的房间，一个是四儿子的房间，无法直连通信！**</p>
 <p>From 如何理解子网掩码？ - 车小胖的回答 - 知乎 <a href="https://www.zhihu.com/question/56895036/answer/150953183">https://www.zhihu.com/question/56895036/answer/150953183</a></p>
 <p>路由器转发实例</p>
-<p><img src="../../assets/images/2023/11/image-9.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/11/image-9.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/11/image-9.png" alt=""></a></p>
 <p>如图，一段报文从A5转发到B5， 报文来到router之后，router过滤data link头在之后，打包成帧在数据链路层进行传输。之后检测网络层的地址来决定dest的网络。</p>
 <p>然后查询路由表决定使用它的哪个接口来发送数据。</p>
 <p>IP地址的静态与动态分配</p>
@@ -1168,17 +1168,17 @@
 </li>
 </ul>
 <p>为了计算 VLSM 子网，各个主机首先从地址范围分配最大的需求。需求级别应从<strong>最大到最小</strong> 列出。</p>
-<p><img src="../../assets/images/2023/11/image-10.png" alt=""></p>
-<p><img src="../../assets/images/2023/11/image-11.png" alt=""></p>
-<p><img src="../../assets/images/2023/11/image-12.png" alt=""></p>
-<p><img src="../../assets/images/2023/11/image-13.png" alt=""></p>
-<p><img src="../../assets/images/2023/11/image-14.png" alt=""></p>
-<p><img src="../../assets/images/2023/11/image-15.png" alt=""></p>
-<p><img src="../../assets/images/2023/11/image-16.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/11/image-10.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/11/image-10.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2023/11/image-11.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/11/image-11.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2023/11/image-12.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/11/image-12.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2023/11/image-13.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/11/image-13.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2023/11/image-14.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/11/image-14.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2023/11/image-15.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/11/image-15.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2023/11/image-16.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/11/image-16.png" alt=""></a></p>
 <p>注：没被用过的子网才能进一步划分</p>
 <p>路由聚集：比如将 3 个 / 24 的子网合并成一个 / 16 的网络</p>
 <p>ICMP报文</p>
-<p><img src="../../assets/images/2023/11/image-18.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/11/image-18.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/11/image-18.png" alt=""></a></p>
 <p>ICMP代表Internet控制消息协议（Internet Control Message Protocol）。它是在TCP/IP网络中用于传输控制消息和错误报告的协议。</p>
 <p>ICMP的主要功能包括：</p>
 <ol>
@@ -1196,7 +1196,7 @@
 <p>总体而言，ICMP是一种用于传输控制消息和错误报告的协议，它在TCP/IP网络中发挥重要作用，用于网络的探测、诊断和错误处理。</p>
 <p><a href="https://quasdo.oss-cn-hangzhou.aliyuncs.com/img/%E7%AC%AC4%E8%AE%B2%EF%BC%9A%E7%BD%91%E7%BB%9C%E5%B1%82%E5%8E%9F%E7%90%86%E4%B8%8E%E6%8A%80%E6%9C%AF20200416_%E9%A1%B5%E9%9D%A2_114.jpg"></a></p>
 <p>Transport Layer</p>
-<p><img src="../../assets/images/2023/11/image-17.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/11/image-17.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/11/image-17.png" alt=""></a></p>
 <p>Routing Protocols(RIP AND OSPF)</p>
 <h2 id="the-difference-between-ripv1-v2">the difference between RIPv1 v2</h2>
 <p>RIPv1 is considered as an interior gateway protocol</p>
@@ -1229,7 +1229,7 @@
 <li><p>它使用 16 跳作为<strong>无限距离的度量</strong> 。(15 跳及以内可达)</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2023/12/image-45.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/12/image-45.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/12/image-45.png" alt=""></a></p>
 <p><strong>OSPF</strong></p>
 <p>Open Shortest Path First开放最短路径优先是基于开放标准的链路状态路由协议</p>
 <p>It is described in several standards of the Internet Engineering Task Force (IETF) Internet 网络工程任务组(IETF，Internet Engineering Task Force)的多个标准中对此进行了描述:The most recent description is RFC 2328. 最新的描述是RFC 2328。(已经不是最新的了)</p>
@@ -1243,8 +1243,8 @@
 <li><p>路由器通过 SPF 树计算最佳路径，然后选择最佳路径并将其放置在<strong>路由表</strong> 中。</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2023/12/image-46.png" alt=""></p>
-<p><img src="../../assets/images/2023/12/image-47.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/12/image-46.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/12/image-46.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2023/12/image-47.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/12/image-47.png" alt=""></a></p>
 <ul>
 <li><p>上面带宽大，2跳达到，下面带宽小，1跳到达。</p>
 </li>
@@ -1264,7 +1264,7 @@
 </li>
 </ol>
 <h2 id="how-rip-updating-routing-tables">How RIP updating routing tables</h2>
-<p><img src="../../assets/images/2024/01/image-22.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-22.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-22.png" alt=""></a></p>
 <p>1.对新接收到的路由表进行更新，全部&quot;距离&quot;+1，且&quot;下一跳路由器&quot;都写成发送方路由器的名称(这里是C给B发的路由表，所以下一跳名称填C)</p>
 <h3 id="b收到c发来的路由信息（新表）">B收到C发来的路由信息（新表）</h3>
 <div class="table-wrap"><table>
@@ -1384,7 +1384,7 @@
 </tbody></table></div>
 <h2 id="how-vlan-communicate-with-each-other">How VLAN communicate with each other</h2>
 <p>A VLAN is a Virtual <a href="https://www.makeuseof.com/wan-vs-lan/">Local Area Network</a>. It&#39;s a logical grouping of devices on a network, usually based on location or function.</p>
-<p><img src="../../assets/images/2024/01/image-23.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-23.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-23.png" alt=""></a></p>
 <p>A VLAN is created by adding a tag, or header, to each Ethernet frame. This <strong>tag</strong> tells the network <em>which VLAN the frame should be sent to</em>. </p>
 <p>Devices in different VLANs <strong>can&#39;t see each other&#39;s traffic</strong> unless connected to a router configured to allow it.</p>
 <p>对于一般的转发（广播）而言，会把packet转发到除了接收接口以外的全部端口，</p>
@@ -1393,7 +1393,7 @@
 <p>况且使用路由器分割广播域的话，所能分割的个数完全取决于路由器的网络接口个数，使得用户无法自由地根据实际需要分割广播域。</p>
 <p>与路由器相比，二层交换机一般带有多个网络接口。因此如果能使用它分割广播域，那么无疑运用上的灵活性会大大提高。</p>
 <p>用于在二层交换机上分割广播域的技术，就是VLAN。通过利用VLAN，我们可以自由设计广播域的构成，提高网络设计的自由度。</p>
-<p><img src="../../assets/images/2024/01/image-24.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-24.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-24.png" alt=""></a></p>
 <p>但是，VLAN生成的逻辑上的交换机是互不相通的。因此，在交换机上设置VLAN后，如果未做其他处理，VLAN间是无法通信的。</p>
 <p>明明接在同一台交换机上，但却偏偏无法通信——这个事实也许让人难以接受。但它既是VLAN方便易用的特征，又是使VLAN令人难以理解的原因。</p>
 <p>因此为了做到VLAN间通信，必须研究<strong>VLAN的访问链接(Access Link)</strong></p>
@@ -1408,22 +1408,22 @@
 <p>(2)设定访问链接(决定各端口属于哪一个VLAN)</p>
 <p>设定访问链接的手法，可以是事先固定的、也可以是根据所连的计算机而动态改变设定。前者被称为“静态VLAN”、后者自然就是“动态VLAN”了。</p>
 <p>静态VLAN基于端口</p>
-<p><img src="../../assets/images/2024/01/image-25.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-25.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-25.png" alt=""></a></p>
 <p>动态VLAN</p>
 <p>另一方面，动态VLAN则是根据每个端口所连的计算机，随时改变端口所属的VLAN。这就可以避免上述的更改设定之类的操作。动态VLAN可以大致分为3类：</p>
 <p>(1)基于MAC地址的VLAN(MAC Based VLAN)</p>
 <p>(2)基于子网的VLAN(Subnet Based VLAN)</p>
 <p>(3)基于用户的VLAN(User Based VLAN)</p>
-<p><img src="../../assets/images/2024/01/image-26.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-26.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-26.png" alt=""></a></p>
 <p>为什么需要Trunk？</p>
 <p><strong>VLAN的汇聚链接(Trunk Link)</strong></p>
 <p>1.需要设置跨越多台交换机的VLAN时……</p>
 <p>到此为止，我们学习的都是使用单台交换机设置VLAN时的情况。那么，如果需要设置跨越多台交换机的VLAN时又如何呢?</p>
 <p>在规划企业级网络时，很有可能会遇到隶属于同一部门的用户分散在同一座建筑物中的不同楼层的情况，这时可能就需要考虑到如何跨越多台交换机设置VLAN的问题了。假设有如下图所示的网络，且需要将不同楼层的A、C和B、D设置为同一个VLAN。</p>
-<p><img src="../../assets/images/2024/01/image-27.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-27.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-27.png" alt=""></a></p>
 <p>这时最关键的就是“交换机1和交换机2该如何连接才好呢?”</p>
 <p>最简单的方法，自然是在交换机1和交换机2上各设一个红、蓝VLAN专用的接口并互联了。</p>
-<p><img src="../../assets/images/2024/01/image-28.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-28.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-28.png" alt=""></a></p>
 <p>但是，这个办法从扩展性和管理效率来看都不好。例如，在现有网络基础上再新建VLAN时，为了让这个VLAN能够互通，就需要在交换机间连接新的网线。建筑物楼层间的纵向布线是比较麻烦的，一般不能由基层管理人员随意进行。并且，VLAN越多，楼层间(严格地说是交换机间)互联所需的端口也越来越多，交换机端口的利用效率低是对资源的一种浪费、也限制了网络的扩展。</p>
 <p>为了避免这种低效率的连接方式，人们想办法让交换机间互联的网线集中到一根上，这时使用的就是汇聚链接(Trunk Link)。</p>
 <p><strong>VLAN间路由</strong></p>
@@ -1432,17 +1432,17 @@
 <p>(1)将路由器与交换机上的每个VLAN分别连接</p>
 <p>(2)不论VLAN有多少个，路由器与交换机都只用一条网线连接</p>
 <p>最容易想到的，当然还是“把路由器和交换机以VLAN为单位分别用网线连接”了。将交换机上用于和路由器互联的每个端口设为访问链接(Access Link)，然后分别用网线与路由器上的独立端口互联。如下图所示，交换机上有2个VLAN，那么就需要在交换机上预留2个端口用于与路由器互联;路由器上同样需要有2个端口;两者之间用2条网线分别连接。</p>
-<p><img src="../../assets/images/2024/01/image-29.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-29.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-29.png" alt=""></a></p>
 <p>上图的解法存在扩展性的问题，当VLAN一多路由器的LAN接口将成问题</p>
 <p>因此同样采用汇聚接口的办法解决</p>
-<p><img src="../../assets/images/2024/01/image-30.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-31.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-30.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-30.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-31.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-31.png" alt=""></a></p>
 <p><strong>通信实例</strong></p>
 <p>首先考虑计算机A与同一VLAN内的计算机B之间通信时的情形。</p>
 <p>计算机A发出ARP请求信息，请求解析B的MAC地址。交换机收到数据帧后，检索MAC地址列表中与收信端口同属一个VLAN的表项。结果发现，计算机B连接在端口2上，于是交换机将数据帧转发给端口2，最终计算机B收到该帧。收发信双方同属一个VLAN之内的通信，一切处理均在交换机内完成。</p>
-<p><img src="../../assets/images/2024/01/image-32.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-32.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-32.png" alt=""></a></p>
 <p>接下来是这一讲的核心内容，不同VLAN间的通信。让我们来考虑一下计算机A与计算机C之间通信时的情况。</p>
-<p><img src="../../assets/images/2024/01/image-33.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-33.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-33.png" alt=""></a></p>
 <p>计算机A从通信目标的IP地址(192.168.2.1)得出C与本机不属于同一个网段。因此会向设定的默认网关(DefaultGateway，GW)转发数据帧。在发送数据帧之前，需要先用ARP获取路由器的MAC地址。</p>
 <p>得到路由器的MAC地址R后，接下来就是按图中所示的步骤发送往C去的数据帧。①的数据帧中，目标MAC地址是路由器的地址R、但内含的目标IP地址仍是最终要通信的对象C的地址。</p>
 <p>交换机在端口1上收到①的数据帧后，检索MAC地址列表中与端口1同属一个VLAN的表项。由于汇聚链路会被看作属于所有的VLAN，因此这时交换机的端口6也属于被参照对象。这样交换机就知道往MAC地址R发送数据帧，需要经过端口6转发。</p>
@@ -1485,7 +1485,7 @@
 </ol>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-34.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-34.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-34.png" alt=""></a></p>
 <ol>
 <li><p>收到packet，确定路由表确认路由表看能够转发</p>
 </li>
@@ -1510,15 +1510,15 @@
 </ol>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-35.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-35.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-35.png" alt=""></a></p>
 <p>对于ACL而言，后面的mask0表示匹配，1表示无视</p>
-<p><img src="../../assets/images/2024/01/image-36.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-36.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-36.png" alt=""></a></p>
 <p>CIDR（子网聚合与超网划分）</p>
-<p><img src="../../assets/images/2024/01/ME90RZPPFSRH9BFM6SE_tmb.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/E7MA2F5CWDRM0YS69Q.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/ME90RZPPFSRH9BFM6SE_tmb.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/ME90RZPPFSRH9BFM6SE_tmb.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/E7MA2F5CWDRM0YS69Q.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/E7MA2F5CWDRM0YS69Q.png" alt=""></a></p>
 <h2 id="cidr表示法">CIDR表示法</h2>
 <p>CIDR使用一个<strong>斜线后跟一个数字</strong> 来表示前缀长度。例如，<code>192.168.0.0/16</code>表示前16位为网络部分，剩余的位数为主机部分</p>
-<p><img src="../../assets/images/2024/01/image-37.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-37.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-37.png" alt=""></a></p>
 <p>例题：</p>
 <h3 id="例题1">例题1</h3>
 <p>将以下IP地址划分为合适的CIDR块：</p>
@@ -1617,13 +1617,13 @@
 </ol>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-38.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-38.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-38.png" alt=""></a></p>
 <h3 id="establish-connection-tcp建立可靠连接">Establish Connection TCP:建立可靠连接</h3>
-<p><img src="../../assets/images/2024/01/image-39.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-40.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-41.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-42.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-43.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-39.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-39.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-40.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-40.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-41.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-41.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-42.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-42.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-43.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-43.png" alt=""></a></p>
 <ol>
 <li><p>发送段后，<strong>暂时保留备份</strong> </p>
 <ol>
@@ -1645,12 +1645,12 @@
 </li>
 </ol>
 <p>ARQ实例（automatic Repeat reQuest）</p>
-<p><img src="../../assets/images/2024/01/image-44.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-44.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-44.png" alt=""></a></p>
 <h2 id="tcp释放链接">TCP:释放链接</h2>
-<p><img src="../../assets/images/2024/01/image-45.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-46.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-47.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-48.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-45.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-45.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-46.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-46.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-47.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-47.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-48.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-48.png" alt=""></a></p>
 <h3 id="结束后必须等待2msl？">结束后必须等待2MSL？</h3>
 <ol>
 <li><p>为了确保A发送的最后一个ACK可以到达B</p>
@@ -1658,7 +1658,7 @@
 <li><p>防止出现任何无效的连接请求段：等待2 MSL之后，我们可以确保连接上的所有段均已消失</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-49.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-49.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-49.png" alt=""></a></p>
 <h3 id="udp">UDP</h3>
 <ol>
 <li><p>UDP用于：</p>
@@ -1697,7 +1697,7 @@
 </ol>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-50.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-50.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-50.png" alt=""></a></p>
 <ol>
 <li><p>NAT需要一个路由器来实现</p>
 </li>
@@ -1726,7 +1726,7 @@
 <li><p>内部主机发送报文给网关，网关根据NAT Table进行翻译，转换成内部全局地址，然后进行转发</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-51.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-51.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-51.png" alt=""></a></p>
 <ol>
 <li><p>优点：由于并非每个内部主机都需要同时进行外部访问，因此您可以使用少量的全局唯一地址池来服务相对大量的私有寻址主机。</p>
 </li>

@@ -49,9 +49,9 @@
 <p>当项目中添加<code>Spring Cloud</code>的依赖时，<code>SpringApplication</code>的<code>run</code>方法启动的就会是两个容器，即两个<code>ApplicationContext</code>。原本的应用启动流程也有所变化。</p>
 <p><code>Spring Cloud</code>的<code>BootstrapApplicationListener</code>监听<code>ApplicationEnvironmentPreparedEvent</code>事件，在监听到事件时开启一个新的<code>ApplicationContext</code>容器，我们可以称这个<code>ApplicationContext</code>容器为<code>Spring Cloud</code>的<code>Bootstrap</code>容器。</p>
 <p><code>Bootstrap</code>容器被用来注册<code>spring.factories</code>配置文件中配置的所有<code>BootstrapConfiguration</code>，并在<code>Bootstrap</code>容器初始化完成后将其<code>Bean</code>工厂作为原本<code>Spring Boot</code>启动的<code>ApplicationContext</code>容器的<code>Bean</code>工厂的父工厂。</p>
-<p><img src="../../assets/images/2025/05/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/05/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/05/image.png" alt=""></a></p>
 <p>在stackoverflow上也有这样的回答：</p>
-<p><img src="../../assets/images/2025/05/image-1.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/05/image-1.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/05/image-1.png" alt=""></a></p>
 <p>下面是一个例子： <strong>bootstrap.yml</strong></p>
 <pre><code>spring:
 </code></pre>

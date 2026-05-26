@@ -54,7 +54,7 @@
 </li>
 </ol>
 <p>在JDK8之后，永久代被元空间取代，具体示意图如下：</p>
-<p><img src="../../assets/images/2025/05/image-2.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/05/image-2.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/05/image-2.png" alt=""></a></p>
 <h2 id="内存分配">内存分配</h2>
 <p>在考虑垃圾回收之前，我们首先来接触一下对象内存的分配规则以及转化</p>
 <p>大多数情况下，<strong>对象优先在eden（新生代）中进行分配。</strong> 当Eden区没有足够空间分配时，虚拟机会发起一次Minor GC。</p>
@@ -68,11 +68,11 @@
 <li><p><strong>缺点</strong> ：不能解决循环引用的问题，即两个对象相互引用，但不再被其他任何对象引用，这时引用计数器不会为0，导致对象无法被回收。</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2025/05/image-3.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/05/image-3.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/05/image-3.png" alt=""></a></p>
 <h3 id="2可达性分析算法（实际使用的gc）">2.可达性分析算法（实际使用的GC）</h3>
 <p>这个算法的基本思想就是通过一系列的称为 <strong>“GC Roots”</strong>  的对象作为起点，从这些节点开始向下搜索，节点所走过的路径称为引用链，当一个对象到 GC Roots 没有任何引用链相连的话，则证明此对象是不可用的，需要被回收。</p>
 <p>下图中的 <code>Object 6 ~ Object 10</code> 之间虽有引用关系，但它们到 GC Roots 不可达，因此为需要被回收的对象。</p>
-<p><img src="../../assets/images/2025/05/image-4.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/05/image-4.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/05/image-4.png" alt=""></a></p>
 <p><strong>哪些对象可以作为 GC Roots 呢？</strong></p>
 <ul>
 <li><p>虚拟机栈(栈帧中的局部变量表)中引用的对象</p>
@@ -98,7 +98,7 @@
 <p>问题：</p>
 <p><strong>效率问题</strong> ：标记和清除两个过程效率都不高。</p>
 <p><strong>空间问题</strong> ：标记清除后会产生大量不连续的内存碎片。</p>
-<p><img src="../../assets/images/2025/05/image-5.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/05/image-5.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/05/image-5.png" alt=""></a></p>
 <p>如果按照前者的理解，整个标记-清除过程大致是这样的：</p>
 <ol>
 <li><p>当一个对象被创建时，给一个标记位，假设为 0 (false)；</p>
@@ -117,7 +117,7 @@
 <li><p><strong>不适合老年代</strong> ：如果存活对象数量比较大，复制性能会变得很差。</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2025/05/image-6.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/05/image-6.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/05/image-6.png" alt=""></a></p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

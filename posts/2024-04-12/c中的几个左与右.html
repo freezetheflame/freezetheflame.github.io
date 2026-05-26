@@ -91,7 +91,7 @@
 <p>非类rvalue的类型永远不会被cv-qualified，即它们不会被声明为const或volatile。因为不必要。而rvalue引用可以绑定到const或volatile的非类对象。当rvalue引用绑定到这样的对象时，这些cv-qualification必须被保留。</p>
 <p>我们考虑了右值引用类型两种的解决办法：一种是iBaby传统的rvalue视为带有一大堆限制的rvalue，但要在rvalue的规范中添加各种警告和限制，以便那些来自rvalue引用的rvalue具有特殊特性。这种方法可以被称为“有趣的rvalue”（funny rvalue）方法。</p>
 <p>所以建议采用一种替代方案：必须看成左值，不过 需要一些例外把它们可以当做右值来处理，比如之前提到的一些情况</p>
-<p><img src="../../assets/images/2024/04/image-3.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-3.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-3.png" alt=""></a></p>
 <p>在C++11及之后的版本中，引入了右值引用（rvalue reference）和与之相关的概念，包括xvalues和glvalues。以下是一些例子，用以说明lvalues、xvalues和右值引用之间的区别和关系：</p>
 <h3 id="lvalue（左值）的例子：">Lvalue（左值）的例子：</h3>
 <pre><code>int variable = 10; &lt;em&gt;// variable是一个lvalue，因为它是一个命名的对象。&lt;/em&gt;
@@ -595,7 +595,7 @@ return static_cast&lt;_Tp&amp;&amp;&gt;(__t);
 <p>有两个函数：<br>第一个，参数是左值引用，可以接受左值。<br>第二个，参数是右值引用，可以接受右值。</p>
 <p>反正不管怎么着，都是一个引用，那就都是别名，也就是谁读取std::forward，都直接可以得到std::foward所赋值的参数。</p>
 <h1 id="c的stdmove与stdforward原理大白话总结">C++的std::move与std::forward原理大白话总结</h1>
-<p><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/original.png" alt=""></p>
+<p class="img-wrap"><a href="https://csdnimg.cn/release/blogv2/dist/pc/img/original.png" target="_blank" title="点击查看大图"><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/original.png" alt=""></a></p>
 <p><a href="https://blog.csdn.net/newchenxf">newchenxf</a><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/newCurrentTime2.png" alt="">于 2021-06-18 18:28:12 发布</p>
 <p><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/articleReadEyes2.png" alt="">阅读量4.5k 收藏 58</p>
 <p><img src="https://csdnimg.cn/release/blogv2/dist/pc/img/newHeart2023Black.png" alt="">点赞数 15</p>

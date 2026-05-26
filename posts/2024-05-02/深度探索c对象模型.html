@@ -47,10 +47,10 @@
 <p>最简单的模型设计中国，把一个个指向成员的slot放在模型中，付出的是执行期的效率以及空间，members按照声明的顺序把指针存在一个point对象中</p>
 <h4 id="表格驱动对象模型">表格驱动对象模型</h4>
 <p>为了对于一切的classes的所有objects都有一致的表达方式，另一种方式是把所有的members相关的信息全部抽出来，放在一个data member table中以及一个member function table，member data直接持有data本身</p>
-<p><img src="../../assets/images/2024/05/c%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B.drawio.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/c%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B.drawio.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/c%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B.drawio.png" alt=""></a></p>
 <h4 id="实际的c对象模型">实际的c++对象模型</h4>
 <p>这一模型设计继承了最简单的对象模型设计，并且对于内存和存取时间进行了对应的优化</p>
-<p><img src="../../assets/images/2024/05/%E6%94%B9%E8%BF%9B%E5%90%8E%E5%AE%9E%E9%99%85%E4%BD%BF%E7%94%A8%E7%9A%84c%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B.drawio.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/%E6%94%B9%E8%BF%9B%E5%90%8E%E5%AE%9E%E9%99%85%E4%BD%BF%E7%94%A8%E7%9A%84c%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B.drawio.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/%E6%94%B9%E8%BF%9B%E5%90%8E%E5%AE%9E%E9%99%85%E4%BD%BF%E7%94%A8%E7%9A%84c%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B.drawio.png" alt=""></a></p>
 <ul>
 <li><p>C++对象模型有以下几点</p>
 <ul>
@@ -142,7 +142,7 @@ return x;
 <p>但是，一个指向ZooAnimal的指针是如何地与一个指向整数的指针或者一个指向template Array的指针有所不同呢？</p>
 <p>以内存需求的观点来讲其实没有什么不同！其中存在的差异，既不在其指针表示法不同，也不再其内容（表示的地址）不同，而在于其寻址出来的object的类型不同。也就是说，<strong>指针类型会教到编译器如何解释某个特定地址中的内存内容及其大小</strong></p>
 <p>比如说在这个ZooAnimal的类型实例中就可以判断出对应的实例所横跨的地址空间</p>
-<p><img src="../../assets/images/2024/05/%E7%8B%AC%E7%AB%8Bclass%E7%9A%84pointer%E5%92%8Cobject%E5%B8%83%E5%B1%80.drawio.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/%E7%8B%AC%E7%AB%8Bclass%E7%9A%84pointer%E5%92%8Cobject%E5%B8%83%E5%B1%80.drawio.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/%E7%8B%AC%E7%AB%8Bclass%E7%9A%84pointer%E5%92%8Cobject%E5%B8%83%E5%B1%80.drawio.png" alt=""></a></p>
 <h2 id="第二章：构造函数语意学">第二章：构造函数语意学</h2>
 <h2 id="第三章：data语意学">第三章：Data语意学</h2>
 <h2 id="第四章：function语意学">第四章：Function语意学</h2>

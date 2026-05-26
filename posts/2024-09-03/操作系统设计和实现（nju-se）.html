@@ -61,7 +61,7 @@
 </li>
 </ul>
 <h3 id="计算机的物理地址">计算机的物理地址</h3>
-<p><img src="../../assets/images/2024/09/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/09/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/09/image.png" alt=""></a></p>
 <p>由于初代cpu寻址能力限制，早期PC的物理地址空间将从<code>0x00000000</code>开始，到<code>0x000FFFFF</code>结束，而不是<code>0xFFFFFFFF</code>（32位）。标记为<code>Low Memory</code>的<code>640KB</code>空间是早期PC能够使用的唯一随机访问内存（RAM）。<br>早期PC的物理地址空间将从<code>0x00000000</code>开始，到<code>0x000FFFFF</code>结束，而不是<code>0xFFFFFFFF</code>（32位）。<strong>标记为<code>Low Memory</code>的<code>640KB</code>空间是早期PC能够使用的唯一随机访问内存（RAM）。</strong></p>
 <p>在早期的PC中，BIOS保存在真正的只读存储器（ROM）中，但现在的PC将BIOS存储在可更新的闪存中。 <strong>BIOS主要负责对系统进行基本的初始化操作，如激活显卡、检查内存安装量等。</strong>  执行这个初始化之后，<strong>BIOS从一些适当的位置（比如硬盘）加载操作系统，并将机器的控制权传递给操作系统。</strong></p>
 <p>随着技术的发展，Intel最终使用<code>80286</code>和<code>80386</code>处理器突破了1MB的寻址，它们分<strong>别支持16MB和4GB的物理地址空间</strong> ，但PC架构师仍然保留了原始的1MB物理地址空间布局，以确保与现有软件的向后兼容性。因此，现代pc在物理内存中有一个从<code>0x000A0000</code>到<code>0x00100000</code>的一个洞，将RAM划分为 “<code>low memory</code>” 或 “<code>conventional memory</code>” （前640KB）和 “<code>extended memory</code>” （其他的部分）。</p>
@@ -84,7 +84,7 @@
 </li>
 </ul>
 <p>而BIOS的全过程概括来说就是下面这张图。</p>
-<p><img src="../../assets/images/2024/09/image-1.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/09/image-1.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/09/image-1.png" alt=""></a></p>
 <p>POST（自检）过程简单来说就是上面的初始化和检查各种外设。</p>
 <p>自举过程就是上面提到过的，把MBR的内容从磁盘调入内存地址为0x7c00的地方，然后检查魔数。</p>
 <p>在自举的最后，<strong>关闭保护模式，回到实模式</strong> ，跳转到Stage1执行，而Stage1就是我们前面说的MBR（即bootloader）。</p>

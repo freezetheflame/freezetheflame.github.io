@@ -451,7 +451,7 @@ void g()
     f(&#39;1&#39;);
 }</p>
 <h2 id="c输入输出">C++输入输出</h2>
-<p><img src="../../assets/images/2024/07/image-27.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/07/image-27.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/07/image-27.png" alt=""></a></p>
 <p>在流式输入输出中，主要是以下的库函数：</p>
 <div class="table-wrap"><table>
 <thead>
@@ -1677,7 +1677,7 @@ void SetNickName();//新定义了一个private方法，父类对应方法被隐�
 <li><p>setWeight重名:两个基类有相同部分，我们会拆分基类</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2024/07/image-28.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/07/image-28.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/07/image-28.png" alt=""></a></p>
 <ul>
 <li><p>之后我们拆分出来setWeigth()(Base Class Decomposition)</p>
 </li>
@@ -1727,11 +1727,11 @@ class D: B, C;</p>
 </ol>
 <p>并且除此之外，内存模型也在一定程度上发生了变化：</p>
 <p> 当使用虚拟继承时，原本的父类成员 会被替换为 一个<strong>虚基表指针</strong> ，这个指针<strong>指向一张虚基表</strong> ，虚基表里存放 <strong>虚基类与虚基表指针的偏移量</strong> 。</p>
-<p><img src="../../assets/images/2024/07/image-29.png" alt=""></p>
-<p><img src="../../assets/images/2024/07/image-30.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/07/image-29.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/07/image-29.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/07/image-30.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/07/image-30.png" alt=""></a></p>
 <h3 id="关于虚函数（感谢cc杂记：虚函数的实现的基本原理---malecrab---博客园-cnblogscom）">关于虚函数（感谢<a href="https://www.cnblogs.com/malecrab/p/5572730.html">C/C++杂记：虚函数的实现的基本原理 - malecrab - 博客园 (cnblogs.com)</a>）</h3>
 <p>简单地说，每一个含有虚函数（无论是其本身的，还是继承而来的）的类都至少有一个与之对应的虚函数表，其中存放着该类所有的虚函数对应的函数指针。例：</p>
-<p><img src="../../assets/images/2024/07/image-31.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/07/image-31.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/07/image-31.png" alt=""></a></p>
 <p>其中：</p>
 <ul>
 <li><p>B的虚函数表中存放着B::foo和B::bar两个函数指针。</p>
@@ -1741,10 +1741,10 @@ class D: B, C;</p>
 </ul>
 <p> <em>提示：为了描述方便，本文在探讨对象内存布局时，将忽略内存对齐对布局的影响。</em></p>
 <p>从编译器的角度来说，B的虚函数表很好构造，D的虚函数表构造过程相对复杂。下面给出了构造D的虚函数表的一种方式（仅供参考）：<br><img src="https://images2015.cnblogs.com/blog/898333/201606/898333-20160609210418246-1188626035.png" alt=""></p>
-<p><img src="../../assets/images/2024/07/image-32.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/07/image-32.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/07/image-32.png" alt=""></a></p>
 <p> <em>提示：该过程是由编译器完成的，因此也可以说：虚函数替换过程发生在编译时。</em></p>
 <p><strong>调用过程</strong></p>
-<p><img src="../../assets/images/2024/07/image-34.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/07/image-34.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/07/image-34.png" alt=""></a></p>
 <p>编译器只知道pb是B*类型的指针，并不知道它指向的具体对象类型 ：pb可能指向的是B的对象，也可能指向的是D的对象。</p>
 <p>但对于“pb-&gt;bar()”，编译时能够确定的是：此处operator-&gt;的另一个参数是B::bar（因为pb是B*类型的，编译器认为bar是B::bar），而B::bar和D::bar在各自虚函数表中的偏移位置是相等的。</p>
 <p>无论pb指向哪种类型的对象，只要能够确定被调函数在虚函数中的偏移值，待运行时，能够确定具体类型，并能找到相应vptr了，就能找出真正应该调用的函数。</p>
@@ -1762,11 +1762,11 @@ class D: B, C;</p>
 <p>所以很像一种“盲人摸象”的既视感，只要知道偏移量，并且拿稳了vptr，进行偏移就能找到对应的实例函数而非虚函数了</p>
 <h3 id="多重继承">多重继承</h3>
 <p>当一个类继承多个类，且多个基类都有虚函数时，子类对象中将包含多个虚函数表的指针（即多个vptr），例：</p>
-<p><img src="../../assets/images/2024/07/image-35.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/07/image-35.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/07/image-35.png" alt=""></a></p>
 <p>其中：D自身的虚函数与B基类共用了同一个虚函数表，因此也称B为D的主基类（primary base class）。</p>
 <p>虚函数替换过程与前面描述类似，只是多了一个虚函数表，多了一次拷贝和替换的过程。</p>
 <p>虚函数的调用过程，与前面描述基本类似，区别在于基类指针指向的位置可能不是派生类对象的起始位置，以如下面的程序为例：</p>
-<p><img src="../../assets/images/2024/07/image-36.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/07/image-36.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/07/image-36.png" alt=""></a></p>
 <h2 id="c友元（类与函数）">C++友元（类与函数）</h2>
 <p>在程序里，有些私有属性 也想让类外特殊的一些函数或者类进行访问，就需要用到友元的技术</p>
 <p><strong>友元的目的</strong>  就是让一个函数或者类 访问另一个类中的私有成员</p>

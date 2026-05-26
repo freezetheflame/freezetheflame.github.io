@@ -33,7 +33,7 @@
         <p>explanation cartoon recommended:<a href="https://poloclub.github.io/transformer-explainer/">Transformer Explainer: LLM Transformer Model Visually Explained</a></p>
 <p>参考文章：</p>
 <p><a href="https://zhuanlan.zhihu.com/p/703292893">(99+ 封私信 / 81 条消息) 常学常新：《Attention Is All You Need》万字解读！ - 知乎</a><br><a href="https://sebastianraschka.com/blog/2023/self-attention-from-scratch.html">Understanding and Coding the Self-Attention Mechanism of Large Language Models From Scratch</a></p>
-<p><img src="../../assets/images/2025/09/image-29.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/09/image-29.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/09/image-29.png" alt=""></a></p>
 <p>Attension机制是支撑Transformer网络结构的重要机制，摒弃了传统的<a href="https://zhida.zhihu.com/search?content_id=244417806&content_type=Article&match_order=1&q=%E5%BE%AA%E7%8E%AF%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C&zhida_source=entity">循环神经网络</a>（RNN）和<a href="https://zhida.zhihu.com/search?content_id=244417806&content_type=Article&match_order=1&q=%E5%8D%B7%E7%A7%AF%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C&zhida_source=entity">卷积神经网络</a>（CNN）中的循环和卷积操作。</p>
 <p>在Attention is All you Need这篇原论文种作者获得了以下的成果总结：<br>通过在两项机器翻译任务上的实验，我们发现这种模型不仅在翻译质量上更胜一筹，而且在并行处理能力和训练效率上都有显著提升。在<a href="https://zhida.zhihu.com/search?content_id=244417806&content_type=Article&match_order=1&q=WMT+2014&zhida_source=entity">WMT 2014</a>英语到德语的翻译任务中，我们的模型<a href="https://zhida.zhihu.com/search?content_id=244417806&content_type=Article&match_order=1&q=BLEU&zhida_source=entity">BLEU</a>得分达到了28.4，相较于之前的最佳成绩，包括那些集成了多个模型的结果，我们的得分提高了2个点（BLEU）。在英语到法语的翻译任务中，我们的模型仅用3.5天和8个GPU就训练出了达到41.8 BLEU得分的单一模型，这一成本远低于文献中报道的最佳模型。此外，我们还证明了Transformer模型不仅在大规模数据集上表现出色，即使在数据有限的情况下，也能成功应用于英语句法分析任务，显示出了极强的泛化能力。</p>
 <p>首先在了解transformer架构之前先需要了解一下基础概念和历史解决方案</p>
@@ -48,7 +48,7 @@
 <p>CNN的层次结构使其能够从低级特征到高级语义特征逐步提取信息，这种逐层提取和组合特征的方式，使得CNN在计算机视觉任务中取得了显著成功。随着深度学习的发展，CNN的变种如ResNet、Inception等也被广泛应用于各种图像处理任务中。</p>
 <h2 id="self-attention">Self-Attention</h2>
 <p>The concept of “attention” in deep learning <a href="https://arxiv.org/abs/1409.0473">has its roots in the effort to improve Recurrent Neural Networks (RNNs)</a> for handling longer sequences or sentences. For instance, consider translating a sentence from one language to another. <strong>Translating a sentence word-by-word does not work effectively.</strong></p>
-<p><img src="https://sebastianraschka.com/images/blog/2023/self-attention-from-scratch/sentence.png" alt=""></p>
+<p class="img-wrap"><a href="https://sebastianraschka.com/images/blog/2023/self-attention-from-scratch/sentence.png" target="_blank" title="点击查看大图"><img src="https://sebastianraschka.com/images/blog/2023/self-attention-from-scratch/sentence.png" alt=""></a></p>
 <p>To overcome this issue, <strong>attention mechanisms</strong> were introduced to give access to all sequence elements at each time step. The key is to be selective and determine which words are most important in a specific context.</p>
 <p>Note that there are many variants of self-attention. A particular focus has been on making self-attention more efficient. However, most papers still implement the original scaled-dot product attention mechanism discussed in this paper since it usually results in superior accuracy and because self-attention is rarely a computational bottleneck for most companies training large-scale transformers.</p>
 <p>我们一起来进行一次完整的attention encoding首先</p>
@@ -82,7 +82,7 @@ print(embedded_sentence.shape)</p>
 <p>torch.Size([6, 16])</p>
 <h3 id="defining-the-weight-matrices">Defining the Weight Matrices</h3>
 <p>Self-attention <strong>utilizes three weight matrices</strong> , referred to as Wq, Wk, and Wv, which are adjusted as model parameters during training. These matrices serve to project the inputs into query, key, and value components of the sequence, respectively.</p>
-<p><img src="../../assets/images/2025/09/image-30.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/09/image-30.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/09/image-30.png" alt=""></a></p>
 <p>Here, both q(i) and k(i) are vectors of dimension dk. The projection matrices Wq and Wk have a shape of dk×d, while Wv has the shape dv×d.</p>
 <p>Since we are computing the dot-product between the query and key vectors, these two vectors have to contain the same number of elements (dq=dk). However, the number of elements in the value vector v(i), which determines the size of the resulting context vector, is arbitrary.</p>
 <p>So, for the following code walkthrough, we will set dq=dk=24 and use dv=28, initializing the projection matrices as follows:</p>
@@ -94,7 +94,7 @@ W_query = torch.nn.Parameter(torch.rand(d_q, d))
 W_key = torch.nn.Parameter(torch.rand(d_k, d))
 W_value = torch.nn.Parameter(torch.rand(d_v, d))</p>
 <h3 id="computing-the-unnormalized-attention-weights">Computing the Unnormalized Attention Weights</h3>
-<p><img src="https://sebastianraschka.com/images/blog/2023/self-attention-from-scratch/query.png" alt="query"></p>
+<p class="img-wrap"><a href="https://sebastianraschka.com/images/blog/2023/self-attention-from-scratch/query.png" target="_blank" title="点击查看大图"><img src="https://sebastianraschka.com/images/blog/2023/self-attention-from-scratch/query.png" alt="query"></a></p>
 <p>举一个计算的例子</p>
 <pre><code>x_2 = embedded_sentence[1]
 </code></pre>
@@ -116,11 +116,11 @@ torch.Size([28])</p>
 print(&quot;keys.shape:&quot;, keys.shape)
 print(&quot;values.shape:&quot;, values.shape)</p>
 <p>As illustrated in the figure above, we compute ωi,j as the dot product between the query and key sequences, ωij=q(i)⊤k(j).</p>
-<p><img src="../../assets/images/2025/09/image-31.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/09/image-31.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/09/image-31.png" alt=""></a></p>
 <h3 id="computing-the-attention-scores">Computing the Attention Scores</h3>
 <p>The subsequent step in self-attention is to normalize the unnormalized attention weights, ω, to obtain the normalized attention weights, α, by applying the softmax function. Additionally, 1/√dk is used to scale ω before normalizing it through the softmax function, as shown below:</p>
 <p>相当于使用softmax完成激活以及归一化</p>
-<p><img src="../../assets/images/2025/09/image-32.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/09/image-32.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/09/image-32.png" alt=""></a></p>
 <pre><code>import torch.nn.functional as F
 </code></pre>
 <p>attention_weights_2 = F.softmax(omega_2 / d_k**0.5, dim=0)
@@ -128,7 +128,7 @@ print(attention_weights_2)</p>
 <pre><code>tensor([0.2912, 0.0106, 0.0982, 0.0625, 0.4917, 0.0458])
 </code></pre>
 <p>Finally, the last step is to compute the context vector z(2), which is an attention-weighted version of our original query input x(2), including all the other input elements as its context via the attention weights:</p>
-<p><img src="../../assets/images/2025/09/image-33.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/09/image-33.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/09/image-33.png" alt=""></a></p>
 <pre><code>context_vector_2 = attention_weights_2.matmul(values)
 </code></pre>
 <p>print(context_vector_2.shape)

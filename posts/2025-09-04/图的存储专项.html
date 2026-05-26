@@ -118,7 +118,7 @@ private static class Edge {
 <p>- 邻接矩阵：查找边的时间复杂度为O(1)，但空间复杂度为O(V^2)，其中V是顶点数。<br>- 邻接表：空间复杂度为O(V+E)，其中E是边数。查找边的时间复杂度为O(度数)。<br>- 边列表：空间复杂度为O(E)，适合稀疏图。查找边的时间复杂度为O(E)。</p>
 <p>还有一个比邻接矩阵更适合表达稀疏矩阵的结构：</p>
 <h3 id="链式前向星（httpszhuanlanzhihucomp426128224）">链式前向星（<a href="https://zhuanlan.zhihu.com/p/426128224">https://zhuanlan.zhihu.com/p/426128224</a>）</h3>
-<p><img src="../../assets/images/2025/09/image-19.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/09/image-19.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/09/image-19.png" alt=""></a></p>
 <p>链式前向星用一种链表的方式实现了邻接表的存储，并且可以完成简单的出边遍历，所以整体上还是很好用的，如下是一个可靠实现：</p>
 <pre><code>#include &lt;iostream&gt;
 </code></pre>

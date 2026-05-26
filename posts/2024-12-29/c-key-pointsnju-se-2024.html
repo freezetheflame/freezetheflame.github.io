@@ -148,7 +148,7 @@ int main() {
 }</p>
 <p>常为public，也可定义为private，用于以下情况：<br>单例模式 (为了防止外部直接创建类的实例)<br>工厂模式 (必须通过工厂方法来创建实例)<br>有时，一个类可能不打算被直接实例化，而是作为基类或用于其他目的<br>实现不可变类<br>控制对象生命周期：在某些情况下，对象的创建和销毁需要特定的控制。通过将构造函<br>数设为私有，类可以控制其对象的创建</p>
 <p><strong>重载构造</strong></p>
-<p><img src="../../assets/images/2024/12/image-57.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-57.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-57.png" alt=""></a></p>
 <p><strong>初始化表</strong></p>
 <p>即：方式的语法糖，先于构造函数体执行——减轻compiler负担<br>按类数据成员申明次序：初始化顺序是按照<strong>成员变量在类中声明的顺序</strong> ，而不是按照初始化表中的顺序<br>就是你自己写的初始化顺序是没用的，不要用后声明的成员变量赋值先声明的在构造函数中尽量使用成员初始化表取代赋值动作<br>const 成员/reference 成员/对象成员 (常量成员或引用成员必须在声明时或在构造函数的成员初始化表中初始化)<br>效率高<br>数据成员太多是不采用本条原则（降低可维护性）</p>
 <pre><code>ClassName::ClassName(参数列表) : 成员变量1(初始值1), 成员变量2(初始值2), ... {
@@ -158,7 +158,7 @@ int main() {
 <h3 id="析构函数">析构函数</h3>
 <p>对象消亡时,系统自动调用<br>什么情况定义为private：阻止外部销毁，如单例模式<br>资源管理类：例如智能指针，确保资源只能通过特定的接口释放（强制自主控制对象存储分配）</p>
 <p>基类析构函数：如果基类不应该是可实例化的，可以将其析构函数设为private</p>
-<p><img src="../../assets/images/2024/12/image-58.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-58.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-58.png" alt=""></a></p>
 <p>对于父类子类的析构函数，需要使用虚析构函数，并在子类重写。如果有需要析构的动态数组，请重写实现。</p>
 <pre><code>#include &lt;iostream&gt;
 </code></pre>
@@ -426,7 +426,7 @@ int main() {
 }</p>
 <p>void show() const 其实是 void show(const A* const this)<br><strong>即const修饰的其实是类的this指针</strong></p>
 <p>注意：如果类中存在指针类型的数据成员即便是const函数只能保证不修改该指针的值，并不<br>能保证不修改指针指向的对象</p>
-<p><img src="../../assets/images/2024/12/image-60.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-60.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-60.png" alt=""></a></p>
 <h3 id="静态成员">静态成员</h3>
 <p>同一个类的不同对象如何共享变量？<br>放在全局数据区可以共享，但缺乏数据保护，同时会导致名污染 How to do?<br>静态成员其实就是全局变量和全局函数，但带有访问控制</p>
 <p>遵循类访问控制<br><strong>一定要在类外进行定义</strong></p>
@@ -448,7 +448,7 @@ int main() {
     return 0;
 }</p>
 <h3 id="友元">友元</h3>
-<p><img src="../../assets/images/2024/12/image-61.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-61.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-61.png" alt=""></a></p>
 <p>注意：友元不具有传递性<br>如果一个函数是多个类的友元，这些类之间并不会互相成为对方的友元。每个类的友元关系都<br>是独立声明的，不会自动扩展到其他类。</p>
 <p><strong>友元函数</strong></p>
 <p>友元类是一个类，其所有成员函数都可以访问另一个类的私有和保护成员</p>
@@ -572,8 +572,8 @@ int main() {
 <p><strong>Automatic proofs</strong> within artificial intelligence</p>
 <p>Based on axioms, inference rules, and queries</p>
 <p>prolog</p>
-<p><img src="../../assets/images/2024/12/image-8.png" alt=""></p>
-<p><img src="../../assets/images/2024/12/image-9.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-8.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-8.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-9.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-9.png" alt=""></a></p>
 <p><strong>C 和 C++混合编程应该注意的问题</strong><br>（1）名变换:若要调⽤C语⾔库中的函数，要附加关键字“extern &quot;C&quot; ”；按照 C 语⾔⽅式编译和连接，限制<br>C++编译器做 name mangling(名变换)，确保 C++和 C 编译器产⽣兼容的 obj ⽂件;<br>（2）静态初始化:C++静态的类对象和定义在全局的、命名空间中的或⽂件体中 的类对象的构造函数通常<br>在 main 被执⾏前就被调⽤，只要可能，⽤ C++写 main()，即使要⽤ C 写 Main 也⽤ C++写;<br>（3）内存动态分配:new/delete 调⽤ C++的函数库，malloc/free 调⽤ C 的函数 库，⼆者要匹配，防⽌内存<br>泄露;<br>（4） 数据结构兼容:将在两种语⾔间传递的东西限制在⽤ C 编译的数据结构的范 围内;这些结构的 C++版<br>本可以包含⾮虚成员函数，不能有虚函数。<br>（5）因为C++是C的超集，且C是结构化编程语⾔，⽽C++⽀持⾯向对象编程语⾔，所以在混合编程时，<br>不应当出现class等⾯向对象的关键字；</p>
 <h2 id="主题三：类型体操（类型转换与继承）">主题三：类型体操（类型转换与继承）</h2>
 <h3 id="类型转换">类型转换</h3>
@@ -916,7 +916,7 @@ int main() {
     return 0;
 }</p>
 <h3 id="override">override</h3>
-<p><img src="../../assets/images/2024/12/image-65.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-65.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-65.png" alt=""></a></p>
 <p>纯虚函数：纯虚函数是声明时在函数原型后加上=0 (往往只声明，不实现)</p>
 <p>纯虚函数：只有函数接口会被继承<br>只有函数接口会被继承<br>子类必须继承函数接口，<strong>必须提供实现代码</strong><br>一般虚函数：函数的接口及缺省实现代码都会被继承<br>子类必须继承函数接口<br>可以继承缺省实现代码<br>非虚函数：函数的接口和其实现代码都会被继承<br>会同时继承接口和实现代码</p>
 <pre><code>class Base {
@@ -986,7 +986,7 @@ int main() {
 </tbody></table></div>
 <h3 id="多继承">多继承</h3>
 <p>如果直接基类有公共的基类，则该公共基类中的成员变量在多继承的派生类中有多个副本</p>
-<p><img src="../../assets/images/2024/12/image-66.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-66.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-66.png" alt=""></a></p>
 <p>C如何解决名冲突问题?<br>设计理念: (Base-Class Decomposition)将共同的属性抽象出一个父类<br>实现机制: 虚继承</p>
 <pre><code>class A;
 </code></pre>
@@ -1033,7 +1033,7 @@ int main() {
 </li>
 </ol>
 <h2 id="主题六：模板元编程与非oop的多态">主题六：模板元编程与非OOP的多态</h2>
-<p><img src="../../assets/images/2024/12/image-10.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-10.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-10.png" alt=""></a></p>
 <p>在编译期这个代码就可以使用模板实例化展开计算得到对应结果</p>
 <h3 id="constexpr">constexpr</h3>
 <p><code>constexpr</code> 是 C++11 引入的一个关键字，用于指示表达式或函数在编译时求值。它允许编译器在编译时计算常量值，从而提高程序的性能和安全性。以下是 <code>constexpr</code> 的主要特点和在模板元编程中的作用：</p>
@@ -1134,7 +1134,7 @@ public:
 <p>继承是有权限控制的(不写是默认private的，基类中的任何元素都访问不到)</p>
 <p>class Student{ };<br>class Undergraduate_Student : public Student{ };</p>
 <p><strong>注意友元是不被继承的</strong></p>
-<p><img src="../../assets/images/2024/12/image-62.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-62.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-62.png" alt=""></a></p>
 <p>编译器会把ptr作为B类使用（除非使用dynamic_cast）</p>
 <p>派生类的友元函数不能访问基类的protected成员（派生类可以访问），private当然更不行了</p>
 <p><strong>派生类对象初始化</strong><br>基类和派生类共同完成</p>
@@ -1252,8 +1252,8 @@ int main() {
 </ul>
 <p>需要<strong>额外的内存空间存储对象可以调用的相应虚函数</strong><br>对象的内存空间中含有指针，指向其<strong>虚函数表</strong><br>每个对象有多少虚函数是不确定的<br>编译时获得虚函数表，这样就知道如何确定应调用的函数<br>实例化一个类的对象的时候, 会使用一个指针记录这个类的虚函数表的首地址</p>
 <p>一些重要例子：（必须掌握）</p>
-<p><img src="../../assets/images/2024/12/image-63.png" alt=""></p>
-<p><img src="../../assets/images/2024/12/image-64.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-63.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-63.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-64.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-64.png" alt=""></a></p>
 <ol>
 <li><p>此时的A f是A的构造函数中调用的，此时<strong>还没进行B的构造</strong> ，所以即使f是虚函数，也<br>不会调用B中的 (直到构造函数返回后，对象方可正常使用)</p>
 </li>
@@ -1279,7 +1279,7 @@ int main() {
 <p>= () [] -&gt;不能作为全局函数重载</p>
 <p>不可被重载的操作符: . .* :: ?:</p>
 <p>永远不要重载 &amp;&amp;和 | | =&gt;破坏了短路机制</p>
-<p><img src="../../assets/images/2024/12/image-59.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-59.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-59.png" alt=""></a></p>
 <pre><code>#include &lt;functional&gt;
 </code></pre>
 <p>#include <iostream>
@@ -1493,7 +1493,7 @@ int main() {
 <p>catch( var ) {&lt;语句序列&gt;} </p>
 <p>类型：异常类型，匹配规则同函数重载 catch的异常类型是严格匹配的 </p>
 <p>变量：存储异常对象，可省略 try后可以跟多个catch语句块</p>
-<p><img src="../../assets/images/2024/12/image-67.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/12/image-67.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/12/image-67.png" alt=""></a></p>
 <h2 id="主题十：一些初始化">主题十：一些初始化</h2>
 <h3 id="函数参数列表初始化">函数参数列表初始化</h3>
 <p>形似这样：</p>

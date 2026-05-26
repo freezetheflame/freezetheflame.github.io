@@ -35,7 +35,7 @@
 <p>Reddit上面有这样一个讨论：为什么 LLMs 要量化而不是用低精度进行训练？（<a href="https://www.reddit.com/r/LocalLLaMA/comments/1ccmsmu/why_are_llms_quantized_instead_of_being_trained/">为什么 LLMs 要量化而不是用较低精度进行训练？：r/LocalLLaMA --- Why are LLMs quantized instead of being trained with lower precision? : r/LocalLLaMA</a>）</p>
 <p>其实原因解释起来也很直接：由于精度不足，<strong>梯度会爆炸</strong> 。这也是为什么通常使用 BF16，因为 FP16 不够稳定</p>
 <p>所以对于一个模型来说，更高的参数精度可以带来更好（其实是更稳定更可预测，更好是直觉）的模型效果。在IEEE定义下，我们知道一个浮点数可以分为三个部分：符号位，指数位和小数位，指数位影响精度范围，小数位影响实际的精度</p>
-<p><img src="../../assets/images/2025/10/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/10/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/10/image.png" alt=""></a></p>
 <h2 id="一些常见的浮点数精度">一些常见的浮点数精度</h2>
 <ul>
 <li><p><strong>雙精度（FP64）</strong> ：64位浮點數，由1位符號位、11位指數位和52位小數位組成。</p>
@@ -61,8 +61,8 @@
 <p><strong>多精度計算</strong> ：使用不同精度進行計算，選擇最適合的一種。</p>
 <p>特別關注的除了<strong><strong>FP32</strong></strong> 、<strong><strong>FP16 之外，</strong></strong> nVidia有介紹了A100開始的TF32精度，由於我們多數仍使用nVidia作為計算的硬體，這個TF32非常值得參考與關注(當然你不一定有A100以上的卡片，但仍然應該了解一下該架構):</p>
 <p><a href="https://developer.nvidia.com/blog/accelerating-ai-training-with-tf32-tensor-cores">https://developer.nvidia.com/blog/accelerating-ai-training-with-tf32-tensor-cores</a></p>
-<p><img src="../../assets/images/2025/10/image-1.png" alt=""></p>
-<p><img src="../../assets/images/2025/10/image-2.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/10/image-1.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/10/image-1.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2025/10/image-2.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/10/image-2.png" alt=""></a></p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

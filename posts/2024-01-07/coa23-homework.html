@@ -97,7 +97,7 @@
 <h2 id="hw1（cpu运算与速度刻画）">hw1（CPU运算与速度刻画）</h2>
 <p><strong>CPI</strong> 计算</p>
 <p>其含义为“平均每条指令所需要的时钟周期的数量”</p>
-<p><img src="../../assets/images/2024/01/image-52.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-52.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-52.png" alt=""></a></p>
 <ol>
 <li><p>CPIi就是每一个具体指令的。</p>
 </li>
@@ -110,12 +110,12 @@
 </ol>
 <p><strong>MIPS计算</strong></p>
 <p>，每秒能够处理的百万条指令数，越大越好</p>
-<p><img src="../../assets/images/2024/01/image-53.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-53.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-53.png" alt=""></a></p>
 <p>即指令条数(Ic)/时间（注意百万级别的转换）或者频率/CPI（频率为一秒多少个时钟周期，一般呈现为CPU时钟频率）</p>
 <p>有MFLOPS这个平衡（Million Floating Point Operations Per Second）</p>
-<p><img src="../../assets/images/2024/01/image-54.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-54.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-54.png" alt=""></a></p>
 <p><strong>Benchmarks</strong></p>
-<p><img src="../../assets/images/2024/01/image-55.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-55.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-55.png" alt=""></a></p>
 <p>Ri:是第i个测试程序的高级语言指令的执行速度。</p>
 <p>4. 【2010 统考真题】下列选项中，能缩短程序执行时间的措施是（ ）。</p>
 <p>I. 提高 CPU 时钟频率 II. 优化数据通路结构 III. 对程序进行编译优化</p>
@@ -125,7 +125,7 @@
 <p>D. I、II、III</p>
 <p>D</p>
 <p>数据通路的功能是实现 CPU 内部的运算器和寄存器及寄存器之间的数据交换，优化数据通路结构，可以有效提高计算机系统的吞吐量，从而加快程序的执行，II 正确。</p>
-<p><img src="../../assets/images/2024/01/image-56.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-56.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-56.png" alt=""></a></p>
 <p>400</p>
 <p>基准程序的CPI = 2 × 0.5 + 3 × 0.2 + 4 × 0.1 + 5 × 0.2 = 3。计算机的主频为 1.2GHz,即 1200MHz，因此该机器的 MIPS = 1200/3 = 400。</p>
 <ol start="10">
@@ -165,18 +165,18 @@
 </li>
 </ol>
 <p>浮点数操作</p>
-<p><img src="../../assets/images/2024/01/image-57.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-57.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-57.png" alt=""></a></p>
 <p>假定变量 int i = 1234567890、float f = 1.23456789e10，sizeof(int)=4，判断以下<br>表达式的结果（True / False）：  </p>
 <ol>
 <li>i == (int)(float)i；i == (int)(double)i<br>False；True</li>
 </ol>
 <p>第一个表达式：因为 IEEE754 的 float 类型中，尾数的小数部分只有 23 个二进位和一位隐藏位，共 24 位有效位数，理论上 float 的十进制有效位数为 7 位，而 i 中有 9 位十进制有效位，用二进制表示为 111010110111111000000111 110B，从二进制有效值的编码来看，将 i 转换为 float 类型时会发生 3 位有效数字的丢失，再转换为 int 类型时，其值无法还原了。<br>第二个表达式：因为 IEEE754 的 double 类型中，尾数的小数部分有效位数为 52+1=53个二进位，而 int 类型的有效位数只有 31 个二进位，因此对于任何一个 int 类型的变量，转换为 double 后，其精度不会有损失，再转换回 int 类型时，其值不变。<br>2) f == (float)(int)f；f == (float)(double)f<br>False；True<br>第一个表达式：第一个表达式：因为变量 f 的值超过了 int 类型可表示的最大值，因<br>而将 f 转换为 int 类型后再转换回 float 类型时，其值已经改变了。<br>第二个表达式：因为 double 类型的精度比 float 类型高，任何 float 类型的变量转换<br>为 double 后再转换回 float 类型时，其值不变。</p>
-<p><img src="../../assets/images/2024/01/image-58.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-58.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-58.png" alt=""></a></p>
 <p>从运行结果来看，61.419998 和 61.420002 是两个可表示数，两者之间相差<br>0.000004。当输入数据是一个不可表示数时，机器将其转换为最邻近的可表示数。<br>因为 61 = 111101B = 1.11101B×25，如果将 float 型数据的规格化正数的表示范围<br>以 2^i (-126≤i≤127) 为分割点划分成若干区间，61.419998 应该位于区间 [2^5，2^6]，<br>该区间相邻可表示数之间的间隔为 2^-23 × 2^5 = 2^-18 = 0.0000038… ≈ 0.000004，<br>从上述分析结果来看，该区间相邻两个可表示数之间的间隔就是 0.000004。因此，在<br>61.419998 前面的可表示数为 61.419994，后面的可表示数为 61.420002。<br>从直观的角度看，输入 61.419997 和 61.419999 时，其最靠近的可表示数为 61.419998；<br>而 61.420001 的最邻近可表示数为 61.420002。<br>但在特殊的中点值情况下，如输入为 61.42 时，十进制形式的 61.420000 位于可表<br>示数 61.419998 和 61.420002 的中点。这时与机器的舍入机制有关，需要根据机器内部<br>的二进制表示来判断。</p>
 <p>目前几乎所有机器中 float 型变量都是采用 IEEE754 单精度浮点数格式表示，其二进<br>制有效位数为 24 位，因此能精确表示的十进制<strong>有效位数为 6 位</strong> ：<br>对于题干中出现的例子，61.419998 位于区间 [2^5，2^6]，该区间相邻可表示数之间<br>的间隔为 2^-23 × 2^5 = 2^-18 = 0.0000038…，间隔大小没有超过第 7 位有效数字。<br>但对于某些特殊情况，区间内可表示数的间隔的值超过该指数区间的第 7 位有效数字时，则<br>不能保证第 7 位精确表示。例如，9.007203e15 = 9007203e9 位于区间 [2^53，2^54]，该<br>区间相邻可表示数之间的间隔为 2^-23 × 2^53 = 2^30 = 1.073741824e9，间隔超过了第<br>七位有效数字。反映在二进制中时，该值的第 24 位为 0，因此后续的值被舍弃，于是出现<br>了第 7 位有效数字不准确的情况。这种情况只会出现在两个可表示数的间隔大于第七位有<br>效数字时，两个可表示数位于刚好四舍五入的左右两端，且小的可表示数更接近实际数字。</p>
-<p><img src="../../assets/images/2024/01/image-59.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-59.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-59.png" alt=""></a></p>
 <p>计算区间的间隔可以采用2^-23*2^c,c为当前区间左的数字</p>
-<p><img src="../../assets/images/2024/01/image-60.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-60.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-60.png" alt=""></a></p>
 <p>NBCD：</p>
 <p>符号位置:</p>
 <ol>
@@ -243,7 +243,7 @@
 <li>为什么？因为如果能拿到原来的C，那么以上所有的事情都没有意义。</li>
 </ul>
 <p>1.奇偶校验——用一位额外位来表示这个数据中1是奇数个还是偶数个</p>
-<p><img src="../../assets/images/2024/01/image-61.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-61.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-61.png" alt=""></a></p>
 <p>Disadvantage(奇偶校验法的缺点)</p>
 <ul>
 <li><p>Cannot find the errors when the number of error bits is even(如果错误的位数是偶数的话，我们是无法发现错误的)</p>
@@ -277,7 +277,7 @@
 </li>
 </ol>
 <p>海明码是一种多重奇偶校验码，它通过在数据位之间插入多个校验位来扩大码距，实现对数据编码的检错和纠错。海明码是基于偶校验的，每个校验位都对应一组数据位，这些数据位的位置是校验位的二进制表示中包含 1 的位数。例如，校验位 P1 对应的数据位是 H3, H5, H7, H9, …，因为这些位置的二进制表示中都有第 1 位为 1。校验位的值是通过对它所对应的数据位进行异或运算得到的，使得每一组校验位和数据位中 1 的个数为偶数。当接收到编码数据时，可以通过对每一组校验位和数据位再次进行异或运算，得到一个错误向量，这个错误向量的二进制表示就是出错的位置。如果错误向量为 0，说明没有错误；如果错误向量不为 0，说明有一位错误，可以通过取反来纠正。如果有两位或以上的错误，海明码无法纠正，只能检测出错误。</p>
-<p><img src="../../assets/images/2024/01/image-62.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-62.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-62.png" alt=""></a></p>
 <p>（该图为所需的索引表）</p>
 <p>下面是一个例子，假设数据为 01101001，需要编码成海明码：</p>
 <ul>
@@ -390,7 +390,7 @@
 </ul>
 <p>再举一个例子</p>
 <p>我们假设有一个8位数据为01101010，我们使用偶校验生成汉明码</p>
-<p><img src="../../assets/images/2024/01/image-63.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-63.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-63.png" alt=""></a></p>
 <p>The 12 bits content when store 0110<strong>0</strong> 101<strong>0</strong> 0<strong>1</strong> 1</p>
 <ul>
 <li><p>所以我们的额外信息并不是随意加入到校验信息的后面的，而是加入到之前的对应表上的对应位置上，从而有力的保证了确定问题位置</p>
@@ -433,11 +433,11 @@
 <p>有出现错误，接收到的信息是什么？</p>
 <p>示例：000000000</p>
 <p><strong>100011111</strong></p>
-<p><img src="../../assets/images/2024/01/image-64.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-64.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-64.png" alt=""></a></p>
 <h2 id="hw4">hw4</h2>
 <p>加法器：</p>
-<p><img src="../../assets/images/2024/01/image-65.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-66.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-65.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-65.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-66.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-66.png" alt=""></a></p>
 <ol>
 <li><p>速度比较慢。</p>
 </li>
@@ -445,8 +445,8 @@
 </li>
 </ol>
 <p>Solution——先行记录加法器</p>
-<p><img src="../../assets/images/2024/01/image-67.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-68.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-67.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-67.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-68.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-68.png" alt=""></a></p>
 <p>新的计算方法:(并行运算)</p>
 <ul>
 <li><p>所有的Pi、Gi都是可以同时计算的，代价是:1ty</p>
@@ -465,10 +465,10 @@
 </ul>
 </li>
 </ul>
-<p><img src="../../assets/images/2024/01/image-69.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-69.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-69.png" alt=""></a></p>
 <p>但是计算电路过于复杂</p>
 <p>进一步的解决方法:部分先行加法器</p>
-<p><img src="../../assets/images/2024/01/image-70.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-70.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-70.png" alt=""></a></p>
 <p>【最有道理的一集】</p>
 <ol>
 <li><p>最后算出的是最前面的加法部分</p>
@@ -486,9 +486,9 @@
 </li>
 </ol>
 <p>宏观视野的加法</p>
-<p><img src="../../assets/images/2024/01/image-71.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-71.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-71.png" alt=""></a></p>
 <p>判定溢出的办法：</p>
-<p><img src="../../assets/images/2024/01/image-72.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-72.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-72.png" alt=""></a></p>
 <p>6. 【2016 统考真题】有如下 C 语言程序段：</p>
 <p>short si= -32767;</p>
 <p>unsigned short usi = si;</p>
@@ -594,12 +594,12 @@
 <li><p>Data are transferred from I/O module to processor 数据从I/O模块传输到处理器</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-73.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-73.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-73.png" alt=""></a></p>
 <p>并行接口</p>
 <p>有多条线路连接I/O模块和外围设备，同时传输多个位，就像一个字的所有位通过数据总线同时传输一样</p>
-<p><img src="../../assets/images/2024/01/image-74.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-74.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-74.png" alt=""></a></p>
 <p>串行接口</p>
-<p><img src="../../assets/images/2024/01/image-75.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-75.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-75.png" alt=""></a></p>
 <p>为什么目前多用<strong>串行总线</strong> ？</p>
 <ol>
 <li><p>并行总线对于时钟要求高，并且数据线长度不能太长。时钟漂移(时间对不齐会出问题)带来问题</p>
@@ -607,9 +607,9 @@
 <li><p>便宜:如果使用并行总线，那么每根线之间需要防止串线。</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-76.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-76.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-76.png" alt=""></a></p>
 <p>-编程式IO：处理器执行一个程序并且遇到一个跟IO有关的指令是，需要通过适当的IO模块发出一个命令来执行该指令</p>
-<p><img src="../../assets/images/2024/01/image-77.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-77.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-77.png" alt=""></a></p>
 <p>问题:只要有I/O操作，cpu就<strong>一直要忙</strong> ，过程参考右侧小字</p>
 <ul>
 <li>也就是意味着I/O占用率会比较高</li>
@@ -653,7 +653,7 @@
 </li>
 </ol>
 <p>开关中断（即屏蔽一些中断）</p>
-<p><img src="../../assets/images/2024/01/image-78.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-78.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-78.png" alt=""></a></p>
 <ol>
 <li><p>为什么要有从Execute instruction到前面的箭头?</p>
 <ul>
@@ -675,7 +675,7 @@
 <li><p>Assume there are 4 interrupt sources in an interrupt system, whose <strong>response priorities</strong> are L1&gt;L2&gt;L3&gt;L4 and <strong>processing priorities</strong> are L1&gt;L4&gt;L3&gt;L2. If the L1, L3 and L4 interrupts occur at the same time when the main program executes, and L2 interrupt occurs in the procedure of processing L3 interrupt, write the <strong>mask words(屏蔽字)</strong> and the procedure of all interrupt service programs. 我们假设在中断系统中一共有4种终端设备，他们的响应优先级为L1&gt;L2&gt;L3&gt;L4，并且处理优先级为L1&gt;L4&gt;L3&gt;L2,假设L1、L3、L4在主程序运行的时候同时发生了中断请求，而L2的中断请求发生在处理L3中断的时候，请写出当前中断处理程序的过程以及屏蔽字。</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-79.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-79.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-79.png" alt=""></a></p>
 <ol start="3">
 <li><p>屏蔽字是由处理优先级来进行处理的</p>
 <ul>
@@ -696,9 +696,9 @@
 </li>
 </ol>
 <p><a href="https://so.csdn.net/so/search?q=%E4%B8%AD%E6%96%AD&spm=1001.2101.3001.7020">中断</a>响应优先级是针对同时到达的中断请求先处理谁的规定。比如A、B同时向CPU发出中断请求，而中断响应优先级是A&gt;B，那么CPU就会先处理A，再处理B。</p>
-<p><img src="../../assets/images/2024/01/image-80.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-80.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-80.png" alt=""></a></p>
 <p>中断处理<a href="https://so.csdn.net/so/search?q=%E4%BC%98%E5%85%88%E7%BA%A7&spm=1001.2101.3001.7020">优先级</a>是解决中断嵌套情况下优先处理谁的问题。比如A、B两个中断的中断处理优先级是B&gt;A，如果当CPU正在处理中断请求A时，B向CPU发送了中断请求，那么CPU会先暂停处理A，转而处理B，B结束后再继续处理A。</p>
-<p><img src="../../assets/images/2024/01/image-81.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-81.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-81.png" alt=""></a></p>
 <p>在同一个系统中中断响应优先级A&gt;B和中断处理优先级B&gt;A是不冲突的。因为它们针对的情况不可能同时发生，A、B同时到达由中断响应优先级决定先执行谁，A、B不同时到达在发生中断嵌套时由中断处理优先级决定先执行谁。</p>
 <p>DMA读取全流程：</p>
 <p>处理器通过发送以下信息向DMA模块发出命令：读/写、I/O设备地址、内存中的起始位置、字数<br>处理器继续其他工作，从而保证了处理器可以被相对更少的占用。<br>DMA模块在不经过处理器的情况下，将<strong>整个数据块一次一个字</strong> 直接传送到存储器或从存储器中传送出去<br>当传输完成时，DMA模块向处理器发送一个中断信号  </p>
@@ -706,8 +706,8 @@
 <ul>
 <li>因为DMA连接的是比较高速的I/O设备，如果不及时相应，则容易<strong>数据溢出</strong> 。</li>
 </ul>
-<p><img src="../../assets/images/2024/01/image-82.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-83.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-82.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-82.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-83.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-83.png" alt=""></a></p>
 <p>Example</p>
 <p>假设CPU的时钟频率为500MHz，硬盘以4字块(32位/字)传输数据，传输速度为32Mbps。如果使用中断驱动的I/O，每个块传输需要500个时钟周期(包括中断响应和处理)，CPU在硬盘I/O中使用的时间百分比是多少？</p>
 <ul>
@@ -731,21 +731,21 @@
 </ul>
 <p><strong>Control Unit Operation</strong></p>
 <p>取指、间址、执行、中断 比这些更小的“op”被称作微操作</p>
-<p><img src="../../assets/images/2024/01/image-84.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-84.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-84.png" alt=""></a></p>
 <ol>
 <li>取指周期</li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-85.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-85.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-85.png" alt=""></a></p>
 <p>内存读操作冲突 MAR &lt;- (PC)必须优先于 MBR &lt;- Memory执行，因为内存读取操作需要使用到在MAR中存储的内存地址。</p>
 <p>冲突必须要被避免：(MBR &lt;- Memory) and (IR &lt;- MBR) should not occur during the same time unit MBR &lt;- Memory 和 IR &lt;- MBR不可以在同一个时间单元上发生</p>
 <p>2.间址周期</p>
 <p>如果指令指定了间接地址，则间接循环必须在执行循环之前完成</p>
-<p><img src="../../assets/images/2024/01/image-86.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-86.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-86.png" alt=""></a></p>
 <p>3.中断周期</p>
 <p>在执行周期之后，进行测试以确定是否发生了任何启用的中断</p>
-<p><img src="../../assets/images/2024/01/image-87.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-87.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-87.png" alt=""></a></p>
 <p>4.指令周期</p>
-<p><img src="../../assets/images/2024/01/image-88.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-88.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-88.png" alt=""></a></p>
 <p>2. 【2012 统考真题】某计算机的控制器采用微程序控制方式，微指令中的操作控制字段采用字段直接编码法，共有 33 个微命令，构成 5 个互斥类，分别包含 7、3、12、5 和 6 个微命令，则操作控制字段至少有( )。</p>
 <p>A.5 位</p>
 <p>B.6 位</p>
@@ -796,7 +796,7 @@
 <p><strong>总线数据传输率=时钟频率/每个总线包含的时钟数×每个总线周期传输的字节数</strong></p>
 <p><strong>指令流水线</strong></p>
 <p>为了进一步的加速，流水线必须有更多的阶段——六级流水线进一步延长</p>
-<p><img src="../../assets/images/2024/01/image-107.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-107.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-107.png" alt=""></a></p>
 <ul>
 <li><p>不是所有指令都包含6个阶段</p>
 </li>
@@ -805,8 +805,8 @@
 <li><p>若6个阶段不全是相等的时间，则会在各个流水阶段涉及某种等待</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2024/01/image-108.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-109.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-108.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-108.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-109.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-109.png" alt=""></a></p>
 <p>三类冒险：</p>
 <ul>
 <li><p>结构冒险（Structure hazard） / 硬件资源冲突</p>
@@ -823,49 +823,49 @@
 <li><p>解决：使用多个<strong>不同</strong> 的硬件资源，或者<strong>分时使用</strong> 同一个硬件资源</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2024/01/image-110.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-110.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-110.png" alt=""></a></p>
 <p>数据冒险：所需要的数据尚未生成</p>
-<p><img src="../../assets/images/2024/01/image-111.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-111.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-111.png" alt=""></a></p>
 <p>解决：1.插入nop指令隔断</p>
-<p><img src="../../assets/images/2024/01/image-112.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-112.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-112.png" alt=""></a></p>
 <p>2.插入bubble</p>
-<p><img src="../../assets/images/2024/01/image-113.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-113.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-113.png" alt=""></a></p>
 <p>3。转发or旁路</p>
-<p><img src="../../assets/images/2024/01/image-114.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-114.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-114.png" alt=""></a></p>
 <p>仔细观察我们可以发现，当运算完成后在 Exec/Mem 流水段寄存器中已经存在后面指令可能需要用到的数据，我们可以不等Wr阶段写回寄存器而是在硬件上稍加改动直接将流水段寄存器中的数据送往下一指令的ALU输入端，这种操作称为 <strong>转发（Forwarding）或旁路（Bypassing）</strong> ，可以理解为 “抄近道” 了。</p>
 <p>4.交换指令顺序</p>
-<p><img src="../../assets/images/2024/01/image-115.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-115.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-115.png" alt=""></a></p>
 <p>控制冒险：指令的执行顺序更改</p>
-<p><img src="../../assets/images/2024/01/image-116.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-116.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-116.png" alt=""></a></p>
 <ol start="7">
 <li>【2013 统考真题】某 CPU 主频为 1.03GHz,采用 4 级指令流水线，每个流水段的执行需要 1 个时<br>钟周期。假定 CPU 执行了 100 条指令，在其执行过程中，没有发生任何流水线阻塞，此时流水线的<br>吞吐率为( )。<br>A.0.25×10^9 条指令/秒<br>B. 0.97×10^9 条指令/秒<br>C.1.0×10^9 条指令/秒<br>D.1.03×10^9 条指令/秒</li>
 </ol>
 <p>采用 4 级流水执行 100 条指令，在执行过程中共用 4+(100-1)=103 个时钟周期，如下图所示。CPU 的主<br>频是 1.03GHz,即每秒有 1.03G 个时钟周期。流水线的吞吐率为 1.03G*100/103 = 1.0×10^9 条指令/秒。</p>
-<p><img src="../../assets/images/2024/01/image-117.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-117.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-117.png" alt=""></a></p>
 <ol start="9">
 <li>【2017 统考真题】下列关于指令流水线数据通路的叙述中，错误的是( )。<br>A.包含生成控制信号的控制部件<br>B.包含算术逻辑运算部件(ALU)<br>C.包含通用寄存器组和取指部件<br>D.由组合逻辑电路和时序逻辑电路组合而成<br>A<br>数据在功能部件之间传送的路径被称为数据通路，包括数据通路上流经的部件，如程序计<br>数器、ALU、通用寄存器、状态寄存器、异常和中断处理逻辑等。数据通路由控制部件控制，控制部件<br>根据每条指令功能的不同生成对数据通路的控制信号。因此，不包括控制部件。</li>
 </ol>
 <p><strong>寻址方式：</strong></p>
 <p>1 立即寻址：</p>
-<p><img src="../../assets/images/2024/01/image-118.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-118.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-118.png" alt=""></a></p>
 <p>2。直接寻址</p>
-<p><img src="../../assets/images/2024/01/image-119.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-119.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-119.png" alt=""></a></p>
 <p>3。间接寻址</p>
-<p><img src="../../assets/images/2024/01/image-120.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-120.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-120.png" alt=""></a></p>
 <p>4.寄存器寻址</p>
-<p><img src="../../assets/images/2024/01/image-121.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-121.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-121.png" alt=""></a></p>
 <p>5.寄存器间接寻址</p>
-<p><img src="../../assets/images/2024/01/image-122.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-122.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-122.png" alt=""></a></p>
 <p>6。偏移寻址（相对寻址）</p>
-<p><img src="../../assets/images/2024/01/image-123.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-123.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-123.png" alt=""></a></p>
 <p>7.基址寄存器寻址</p>
-<p><img src="../../assets/images/2024/01/image-124.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-124.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-124.png" alt=""></a></p>
 <p>8。变址寻址</p>
-<p><img src="../../assets/images/2024/01/image-125.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-125.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-125.png" alt=""></a></p>
 <ol start="13">
 <li>控制器如图所示。假定它的控制存储器是 24 位宽。微指令格式的控制部分分成两个字段。一个 13位的微操作字段用来指定将要完成的微操作。一个地址选择字段用来指明能引起微指令转移的条件，这些条件是基于 8 个标志来建立的。<br>a) 地址选择字段有多少位？<br>b) 地址字段有多少位？<br>c) 控制存储器容量为多少（单位：字节）？</li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-126.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-126.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-126.png" alt=""></a></p>
 <p>a) 地址选择字段共有 8 个标志，log28=3，故需要 3 位</p>
 <p>b) 地址字段位数为 24-13-3=8 位</p>
 <p>c) 地址为 8 位，表示微指令的条数最大为 2 8 =256 条，所以控制存储器的容量为 256 * 24/8 =</p>
@@ -882,7 +882,7 @@
 <ol start="4">
 <li>【2013 统考真题】假设变址寄存器 R 的内容为 1000H，指令中的形式地址为 2000H；地址 1000H 中<br>的内容为 2000H，地址 2000H 中的内容为 3000H，地址 3000H 中的内容为 4000H，则变址寻址方式<br>下访问到的操作数是( )。<br>A.1000H B. 2000H C. 3000H D.4000H<br>D<br>根据变址寻址的方法，变址寄存器的内容(1000H)与形式地址的内容(2000H)相加，得到操作数的实际地<br>址(3000H),根据实际地址访问内存，获取操作数 4000H,如下图所示。</li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-127.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-127.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-127.png" alt=""></a></p>
 <ol start="6">
 <li><p>【2016 统考真题】某指令格式如下所示。<br>其中 M 为寻址方式，I 为变址寄存器编号，D 为形式地址。若采用先变址后间址的寻 址方式，则操作<br>数的有效地址是( )。<br>A. I+D B.(I)+D C.((I)+D) D.((I))+D<br>C</p>
 </li>
@@ -898,16 +898,16 @@
 <p>程序计数器 PC 给出下一条指令字的访存地址（指令在内存中的地址），它取决于存储器的<br>字数（4GB/32bit=2^30），因此 PC 的位数至少是 30 位，指令寄存器 IR 用于接收取得的指<br>令，它取决于指令字长（32bit），因此 IR 的位数至少为 32 位。</p>
 <p>key:</p>
 <p>21. 某计算机指令系统采用定长指令字格式，指令字长 16 位，每个操作数的地址码长 6 位。指令分为2 地址、1 地址和 0 地址三类。如果 2 地址的指令有 k2 条，0 地址的指令有 k0 条，那么 1 地址的指令最多有多少条？（提示：任何指令不能有二义性，即任何指令无法同时用 2-、1-、0-地址法中两种或两种以上方式解释。）</p>
-<p><img src="../../assets/images/2024/01/image-128.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-128.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-128.png" alt=""></a></p>
 <h2 id="hw8">hw8</h2>
 <p>假设一个分页虚拟存储系统的虚拟地址为 40 位，物理地址为 36 位，页大小为 16KB，按字节编址。<br>若页表中的有效位、存储保护位、修改位、使用位共占 4 位，磁盘地址不在页表中。则该存储系统<br>中每个程序的页表大小为多少（单位：MB）？（说明：1.假设每个程序都能使用全部的虚拟内存；<br>2.页表项的长度必须为字节的整数倍）<br>256</p>
 <p>按字节编址，故：<br>虚拟主存页面个数：2^(40-14)=2^26<br>物理主存页面数：2^(36-14)=2^22<br>页表项的最小长度：22+4=26<br>根据说明 2，取 32 位（4B）<br>页表大小：2^26*4B=256MB</p>
-<p><img src="../../assets/images/2024/01/image-129.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-129.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-129.png" alt=""></a></p>
 <p>从虚拟内存到页表到主存的过程就是如图所示</p>
-<p><img src="../../assets/images/2024/01/image-130.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-131.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-132.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-133.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-130.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-130.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-131.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-131.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-132.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-132.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-133.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-133.png" alt=""></a></p>
 <p>请问：</p>
 <p>1。虚拟地址中的哪几位表示虚拟页号？</p>
 <p>页大小 128B，所以低 7 位为页内偏移量，从而高 9 位为虚拟页号</p>
@@ -924,16 +924,16 @@
 <ol>
 <li>考虑一个单片磁盘，它有如下参数：旋转速率是 7200rpm，一面上的磁道数是 30000，每<br>道扇区数是 600，寻道时间是每越过一百个磁道用时 1ms。假定开始时磁头位于磁道 0，<br>收到一个存取随机磁道上随机扇区的请求。<br>a) 平均寻道时间是多少（精度：小数点后 2 位，单位：s）？<br>b) 平均旋转延迟是多少（精度：小数点后 2 位，单位：ms）？<br>c) 一个扇区的传送时间是多少（精度：小数点后 4 位，单位：ms）？<br>d) 完成访问请求的总的平均时间是多少（精度：小数点后 2 位，单位：ms）？</li>
 </ol>
-<p><img src="../../assets/images/2024/01/image-134.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-135.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-134.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-134.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-135.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-135.png" alt=""></a></p>
 <p>磁盘IO时间的组成：</p>
-<p><img src="../../assets/images/2024/01/image-136.png" alt=""></p>
-<p><img src="../../assets/images/2024/01/image-137.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-136.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-136.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-137.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-137.png" alt=""></a></p>
 <ol start="3">
 <li>假设有一个磁盘，每面有 200 个磁道，盘面总存储容量为 1.6MB，磁盘旋转一周时间为<br>25ms，每道有 4 个区，每两个区之间有一个间隙，磁头通过每个间隙需要 1.25ms。请问：<br>从该磁盘上读取数据时的最大数据传输率是多少（精度：小数点后 2 位，单位：Mbps）？</li>
 </ol>
 <p>由题意可知先计算每个磁道的容量位0.064Mb,每个区则是0.016Mb，速度最快肯定是不跨区因此直接</p>
-<p><img src="../../assets/images/2024/01/image-138.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/01/image-138.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/01/image-138.png" alt=""></a></p>
 <ol start="5">
 <li>【2013 统考真题】某磁盘的转速为 10000 转/分，平均寻道时间是 6ms，磁盘传输速率<br>是 20MB/s，磁盘控制器延迟为 0.2ms，读取一个 4KB 的扇区所需的平均时间约为（ ）。<br>A. 9ms<br>B. 9.4ms<br>C. 12ms<br>D. 12.4ms<br>B<br>磁盘转速是 10000 转/分，转一圈的时间为 6ms，因此平均查询扇区的时间为 3ms，平均<br>寻道时间为 6ms，读取 4KB 扇区信息的时间为 4KB/(20MB/s)=0.2ms，信息延迟的时间为<br>0.2ms，总时间为 3+6＋0.2+0.2= 9.4ms。</li>
 </ol>

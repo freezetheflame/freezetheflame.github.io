@@ -47,7 +47,7 @@
 <li><p>多对多（多个用户线程映射到多个内核线程）</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2025/03/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/03/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/03/image.png" alt=""></a></p>
 <h3 id="程序计数器的作用">程序计数器的作用</h3>
 <p>程序计数器主要有下面两个作用：</p>
 <ol>
@@ -85,7 +85,7 @@
 <li><p>TERMINATED：终止状态，表示该线程已经运行完毕。</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2025/03/image-1.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/03/image-1.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/03/image-1.png" alt=""></a></p>
 <p>在操作系统层面，线程有 READY 和 RUNNING 状态；而在 JVM 层面，只能看到 RUNNABLE 状态（图源：<a href="https://howtodoinjava.com/">HowToDoInJava</a>：<a href="https://howtodoinjava.com/Java/multi-threading/Java-thread-life-cycle-and-thread-states/">Java Thread Life Cycle and Thread States</a>），所以 Java 系统一般将这两个状态统称为 <strong>RUNNABLE（运行中）</strong>  状态 。</p>
 <h3 id="什么是线程上下文切换？">什么是线程上下文切换？</h3>
 <p>线程在执行过程中会有自己的运行条件和状态（也称上下文），比如上文所说到过的程序计数器，栈信息等。当出现如下情况的时候，线程会从占用 CPU 状态中退出。</p>
@@ -165,8 +165,8 @@
 </blockquote>
 <p>在 Java 中，<code>volatile</code> 关键字可以禁止指令进行重排序优化。</p>
 <p>因此具体到java并发编程，<code>volatile</code> 关键字可以保证变量的可见性，如果我们将变量声明为 <strong><code>volatile</code></strong>  ，这就指示 JVM，这个变量是共享且不稳定的，每次使用它都到主存中进行读取。</p>
-<p><img src="../../assets/images/2025/03/image-2.png" alt=""></p>
-<p><img src="../../assets/images/2025/03/image-3.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/03/image-2.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/03/image-2.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2025/03/image-3.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/03/image-3.png" alt=""></a></p>
 <p> 如果我们将变量声明为 <strong><code>volatile</code></strong>  ，在对这个变量进行读写操作的时候，会通过插入特定的 <strong>内存屏障</strong>  的方式来禁止指令重排序。</p>
 <p>example:<strong>双重校验锁实现对象单例（线程安全）</strong> ：</p>
 <pre><code>public class Singleton {
@@ -313,7 +313,7 @@ return
 <p>当执行 <code>monitorenter</code> 指令时，线程试图获取锁也就是获取 <strong>对象监视器  <code>monitor</code></strong> 的持有权。</p>
 <p>在 Java 虚拟机(HotSpot)中，Monitor 是基于 C++实现的，由<a href="https://github.com/openjdk-mirror/jdk7u-hotspot/blob/50bdefc3afe944ca74c3093e7448d6b889cd20d1/src/share/vm/runtime/objectMonitor.cpp">ObjectMonitor</a>实现的。每个对象中都内置了一个 <code>ObjectMonitor</code>对象。</p>
 <p>另外，<code>wait/notify</code>等方法也依赖于<code>monitor</code>对象，这就是为什么只有在同步的块或者方法中才能调用<code>wait/notify</code>等方法，否则会抛出<code>java.lang.IllegalMonitorStateException</code>的异常的原因。</p>
-<p><img src="../../assets/images/2025/03/image-4.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/03/image-4.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/03/image-4.png" alt=""></a></p>
 <p><code>synchronized</code> 修饰的方法并没有 <code>monitorenter</code> 指令和 <code>monitorexit</code> 指令，取而代之的是 <code>ACC_SYNCHRONIZED</code> 标识，该标识指明了该方法是一个同步方法。JVM 通过该 <code>ACC_SYNCHRONIZED</code> 访问标志来辨别一个方法是否声明为同步方法，从而执行相应的同步调用。</p>
 <p>如果是实例方法，JVM 会尝试获取实例对象的锁。如果是静态方法，JVM 会尝试获取当前 class 的锁。</p>
 <h3 id="reentrantlock"><a href="https://javaguide.cn/java/concurrent/java-concurrent-questions-02.html#reentrantlock-%E6%98%AF%E4%BB%80%E4%B9%88">ReentrantLock </a></h3>

@@ -33,7 +33,7 @@
         <p>stimulated by https setting</p>
 <p>What is Nginx?</p>
 <p>nginx [engine x] is an HTTP and reverse proxy server, a mail proxy server, and a generic TCP/UDP proxy server, originally written by <a href="http://sysoev.ru/en/">Igor Sysoev</a>. For a long time, it has been running on many heavily loaded Russian sites including <a href="http://www.yandex.ru/">Yandex</a>, <a href="http://mail.ru/">Mail.Ru</a>, <a href="http://vk.com/">VK</a>, and <a href="http://www.rambler.ru/">Rambler</a>. According to Netcraft, nginx served or proxied <a href="https://news.netcraft.com/archives/2023/05/26/may-2023-web-server-survey.html">21.18% busiest sites in May 2023</a>. Here are some of the success stories: <a href="https://blogs.dropbox.com/tech/2017/09/optimizing-web-servers-for-high-throughput-and-low-latency/">Dropbox</a>, <a href="https://openconnect.netflix.com/en/software/">Netflix</a>, <a href="https://www.nginx.com/case-studies/nginx-wordpress-com/">Wordpress.com</a>, <a href="http://blog.fastmail.fm/2007/01/04/webimappop-frontend-proxies-changed-to-nginx/">FastMail.FM</a>.</p>
-<p><img src="../../assets/images/2023/06/v2-e1826bab1d07df8e97d61aa809b94a10_r.jpg" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/06/v2-e1826bab1d07df8e97d61aa809b94a10_r.jpg" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/06/v2-e1826bab1d07df8e97d61aa809b94a10_r.jpg" alt=""></a></p>
 <p>这是我在官网找到的定义，意思就是：就是个轻型的HTTP server罢了<br>所以问题回到一个很呆的位置：</p>
 <p><strong>HTTP server是什么？它是怎么工作的？</strong></p>
 <p>于是我去问了Claude</p>
@@ -50,10 +50,10 @@
 <p>HTTP</p>
 <p><strong>HTTP</strong> 是一种用作获取诸如 HTML 文档这类资源的<a href="https://developer.mozilla.org/zh-CN/docs/Glossary/Protocol">协议</a>。它是 Web 上进行任何数据交换的基础，同时，也是一种客户端—服务器（client-server）协议，也就是说，请求是由接受方——通常是浏览器——发起的。一个完整网页文档是由获取到的不同文档组件——像是文本、布局描述、图片、视频、脚本等——重新构建出来的。（from MDN）</p>
 <p>客户端与服务端之间通过交换一个个独立的消息（而非数据流）进行通信。由客户端——通常是个浏览器——发出的消息被称作 <em>请求</em> （request），由服务端发出的应答消息被称作 <em>响应</em> （response）。</p>
-<p><img src="../../assets/images/2023/06/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/06/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/06/image.png" alt=""></a></p>
 <p>HTTP 是一个客户端—服务器协议：请求由一个实体，即用户代理（user agent），或是一个可以代表它的代理方（proxy）发出。大多数情况下，这个用户代理都是一个网页浏览器，不过它也可能是任何东西，比如一个爬取网页来充实、维护搜索引擎索引的机器爬虫。</p>
 <p>每个请求都会被发送到一个服务端，它会处理这个请求并提供一个称作 <em>响应</em> 的回复。在客户端与服务端之间，还有许许多多的被称为<a href="https://developer.mozilla.org/zh-CN/docs/Glossary/Proxy_server">代理</a>的实体，履行不同的作用，例如充当网关或<a href="https://developer.mozilla.org/zh-CN/docs/Glossary/Cache">缓存</a>。</p>
-<p><img src="../../assets/images/2023/06/image-1.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2023/06/image-1.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2023/06/image-1.png" alt=""></a></p>
 <p>客户端：用户代理</p>
 <p> <em>用户代理</em> 是任何能够代表用户行为的工具。这类工具以浏览器为主，不过，它也可能是工程师和 Web 开发人员调试应用所使用的那些程序。</p>
 <p>浏览器<strong>总是</strong> 首先发起请求的那个实体，永远不会是服务端（不过，后来已经加入了一些机制，能够模拟出由服务端发起的消息）。</p>

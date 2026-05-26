@@ -45,11 +45,11 @@
 <li><p><strong>BSSDF</strong> （<strong>双向散射表面分布函数</strong> ）由BSSTDF和BSSRDF共同定义。也称为<strong>BSDF</strong> （<strong>双向散射分布函数</strong> ）。</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2024/04/image-5.png" alt=""></p>
-<p><img src="../../assets/images/2024/04/image-6.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-5.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-5.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-6.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-6.png" alt=""></a></p>
 <h2 id="brdf">BRDF</h2>
 <p>BRDF的全称是Bidirectional reflectance distribution function，表示的一半是在同一个界面的一个点上发生的光的折射、散射等变换</p>
-<p><img src="../../assets/images/2024/04/image-7.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-7.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-7.png" alt=""></a></p>
 <p>其中 <img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/103168b86f781fe6e9a4a87b8ea1cebe0ad4ede8" alt="{\\\\displaystyle L}"> 是辐射率，或每单位投影面积的每单位立体角的功率， <img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/4232c9de2ee3eec0a9c0a19b15ab92daa6223f9b" alt="{\\\\displaystyle E}"> 是辐照度，或每单位表面积的功率， <img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/d7f1cbab9315aa0f5290e429d9b2366f560dc39f" alt="{\\\\displaystyle \\\\theta _{\\\\text{i}}}"> 是 <img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/338e740bb10ba3af5c78c0b5392eee030de464b9" alt="{\\\\displaystyle \\\\omega _{\\\\text{i}}}"> 和表面法线 <img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/4a720c341f39f52fd96028dab83edd34d400be46" alt="{\\\\displaystyle \\\\mathbf {n} }"> 之间的角度。指数 <img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/f61e457710228cfc3000c1cdffe1dd3279057716" alt="{\\\\displaystyle {\\\\text{i}}}"> 表示入射光，而指数 <img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/d3e490df93ae1cdb301d263787e5d3216e8e9d92" alt="{\\\\displaystyle {\\\\text{r}}}"> 表示反射光。</p>
 <p>Considering the dependence of a BRDF on the incoming and outgoing directions, the wavelength of light under consideration, and the positional variance, a general BRDF in functional notation can be written as</p>
 <p>[latex]
@@ -63,7 +63,7 @@ $$BRDF_{\\lambda}(\\theta_i,\\phi_i,\\theta_o,\\phi_o,u,v)$$</p>
 $$\\mathbf{v}=(v_x,v_y,v_z)$$</p>
 <p>While this notation is useful for performing many types of computations, it can be a bit <strong>cumbersome</strong> when used to parameterize BRDFs.</p>
 <p>Instead, the spherical coordinate representation of a vector is generally preferred.</p>
-<p><img src="../../assets/images/2024/04/image-8.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-8.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-8.png" alt=""></a></p>
 <p>[latex]
 $$spherical \\rightarrow cartesian 
 \\begin{cases} v_x = \\cos(\\phi)\\sin(\\theta) \\\\
@@ -77,7 +77,7 @@ $$1=\\sqrt{
 v_x^{2}+v_y^{2}+v_z^{2}}$$</p>
 <h3 id="differential-solid-angles微分立体角">Differential Solid Angles微分立体角</h3>
 <p>当我们谈论光从某个方向到达（或离开）表面时，更恰当的说法是到达或穿过某个空间区域的光量。这样做的原因是光是根据流经一个区域的流量来衡量的。</p>
-<p><img src="../../assets/images/2024/04/image-9.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-9.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-9.png" alt=""></a></p>
 <p>The concept of a differential solid angle is a bit theoretical and can be a little tricky to understand at first, but the simplest way to understand its definition is to think of it as the area of a small rectangular region on a unit sphere.</p>
 <p>[latex]
 $$d\\omega = (height)(width) \\\\
@@ -97,10 +97,10 @@ $$</p>
 <p>BRDF一共可以分为两类：isotropic BRDFs and anisotropic BRDFs.</p>
 <p>BRDF重要的两个特性则是 reciprocity and conservation of energy.</p>
 <p>In general, most real-world BRDFs are probably <strong>more isotropic than anisotropic</strong> though many real-world surfaces have <strong>subtle anisotropy</strong>.比起细微的各向异性，各向同性在现实世界中更加广泛</p>
-<p><img src="../../assets/images/2024/04/image-10.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-10.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-10.png" alt=""></a></p>
 <p>能量的转换则如图所示，所有能量在最终究竟还是守恒的。</p>
 <p>That is, if the incoming and outgoing directions are swapped, the value of the BRDF does not change.还遵循光路的可逆性原理</p>
-<p><img src="../../assets/images/2024/04/image-11.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-11.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-11.png" alt=""></a></p>
 <p>所有的散射的光线的总能量不能超过最初始到达表面的光的量</p>
 <p>[latex]
 $$\\sum_{out} BRDF_\\lambda(\\theta_i,\\phi_i,\\theta_o,\\phi_o)\\cos(\\theta_o)d\\omega_o \\le 1$$</p>
@@ -108,14 +108,14 @@ $$\\sum_{out} BRDF_\\lambda(\\theta_i,\\phi_i,\\theta_o,\\phi_o)\\cos(\\theta_o)
 <p>[latex]
 $$\\int\\limits_{\\Omega} BRDF_\\lambda(\\theta_i,\\phi_i,\\theta_o,\\phi_o)\\cos(\\theta_o)d\\omega_o \\le 1$$</p>
 <h3 id="brdf光照等式">BRDF光照等式</h3>
-<p><img src="../../assets/images/2024/04/image-12.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-12.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-12.png" alt=""></a></p>
 <p>Specifically, when considering the continuous space of incoming directions, the amount of light reflected in the outgoing direction is the integral of the amount of light reflected in the outgoing direction from each incoming direction.这个东西很显然可以用一个积分表达</p>
 <p>[latex]
 $$ L_o = \\int \\limits_{\\Omega}L_{o\\ due\\ to\\ i}(\\omega_i,\\omega_o)d\\omega_i $$</p>
 <p>For each incoming direction, the amount of reflected light in the outgoing direction is defined in terms of the BRDF. Suppose that Li is the light intensity incoming from a specific direction wi. The intensity of the light reflected in the outgoing direction is defined by modulating the intensity of the light arriving at the surface point with the corresponding BRDF. Specifically,</p>
 <p>[latex]
 $$ L_o = BRDF(\\theta_i,\\phi_i,\\theta_o,\\phi_o)E_i$$</p>
-<p><img src="../../assets/images/2024/04/image-13.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-13.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-13.png" alt=""></a></p>
 <p>由于每个到达表面的物体存在一定的角度，所以我们考虑转换成BRDF表达并且附加对应的角度，即把Ei转换成Li的表达</p>
 <p>[latex]
 $$ L_o = BRDF(\\theta_i,\\phi_i,\\theta_o,\\phi_o)L_i\\cos(\\theta_i)$$</p>
@@ -160,12 +160,12 @@ $$ I_{out} = I_{in}(k_d(\\textbf{L$\\cdot$N})+k_s(\\textbf{R$\\cdot$V})^n)$$</p>
 <li><p>BRDF Models (the difference between analytical models and acquired data sets)</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2024/04/image-14.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-14.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-14.png" alt=""></a></p>
 <h2 id="layered-bsdfs">Layered BSDFs</h2>
 <p>我们知道真实世界的物体往往是multiple layer的， 比如皮肤， 大理石等等， Naive combination of BSDF lobes does not accurately model scattering between interfaces</p>
-<p><img src="../../assets/images/2024/03/image-67.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/03/image-67.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/03/image-67.png" alt=""></a></p>
 <p>比如说一块木板有光泽，不是因为木板本身能镜面反射，而是以为木板表面的一层材质可以反光</p>
-<p><img src="../../assets/images/2024/03/image-68.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/03/image-68.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/03/image-68.png" alt=""></a></p>
 <p>也就是说在多个layer上有不同的反射发生，可以是diffuse的，也可以是specular的</p>
 
         <div class="button-row">

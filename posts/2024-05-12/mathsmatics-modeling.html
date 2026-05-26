@@ -54,14 +54,14 @@
 <h2 id="2非线性规划以及其他规划方式">2.非线性规划以及其他规划方式</h2>
 <h3 id="21非线性规划">2.1非线性规划</h3>
 <p>非线性规划即规划的函数非线性的意思</p>
-<p><img src="../../assets/images/2024/05/image-21.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-21.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-21.png" alt=""></a></p>
 <p>调用格式：</p>
 <p>[x, fval, exitflag, output, lambda, grad,<br>hessian]=fmincon(‘fun’, X0, A, b, Aeq, beq, VLB, VUB, ‘nonlcon’, options)</p>
 <p>其中，大部分参数同线性规划；</p>
 <p>‘fun’为用M-文件定义的目标函数F(x)；</p>
 <p>‘nonlcon’为用M-文件定义的非线性向量函数[ C(x), Ceq(x) ]</p>
 <p>举个建模的例子：</p>
-<p><img src="../../assets/images/2024/05/image-22.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-22.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-22.png" alt=""></a></p>
 <h3 id="主程序：">主程序：</h3>
 <pre><code>x0 = rand(2,1);
 </code></pre>
@@ -147,14 +147,14 @@ end</p>
 <p>聚类分析的实质是根据多种因素，根据在数据中发现的描述对象及其关系的信息，将数据对象分组。目的是，组内的对象相互之间是相似的（相关的），而不同组中的对象是不同的（不相关的）。组内相似性越大，组间差距越大，说明聚类效果越好。</p>
 <p>我们很多时候逛电商网站都会收到一些推销活动的通知，但是我们之前也没关注过那个商品，这些电商网站是为什么决定给我们推销这个商品的呢？这是因为电商网站，可以根据用户的年龄、性别、地址以及历史数据等等信息，将其分为，比如“年轻白领”、“一家三口”、“家有一老”、”初得子女“等等类型，然后你属于其中的某一类，电商网站根据这类用户的特征向其发起不同的优惠活动。那在利用用户的这些数据将用户分为不同的类别时，就会用到聚类分析。</p>
 <p>每个聚类中的都具有“一组”相似的特征，摆脱了单个特征分类的交错与不足，聚类效果的好坏依赖于两个因素：<strong>1.衡量距离的方法（distance measurement）</strong>  2.<strong>聚类算法（algorithm）</strong></p>
-<p><img src="../../assets/images/2024/05/image-23.png" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-24.png" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-25.png" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-26.png" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-27.png" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-28.png" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-29.png" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-30.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-23.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-23.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-24.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-24.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-25.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-25.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-26.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-26.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-27.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-27.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-28.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-28.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-29.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-29.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-30.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-30.png" alt=""></a></p>
 <p><strong>2.1K-均值聚类(k-means)</strong></p>
 <p>2.1.1算法</p>
 <blockquote>
@@ -162,12 +162,12 @@ end</p>
 <blockquote>
 <p>1. 选择 K 个初始质心，初始质心<strong>随机选择</strong> 即可，每一个质心为一个类（除了第一次的知心，剩下的质心都是求出来的）<br>2. 把每个观测指派到离它最近的质心，与质心形成新的类<br>3. 重新计算每个类的质心，<strong>所谓质心就是一个类中的所有观测的平均向量</strong> （这里称为向量，是因为每一个观测都包含很多变量，所以我们把一个观测视为一个多维向量，维数由变量数决定）。<br>4. 重复2. 和 3.<br>5. 直到质心不在发生变化时或者到达<strong>最大迭代次数</strong> 时</p>
 </blockquote>
-<p><img src="https://pic1.zhimg.com/80/v2-c36eeda092af902403e8b0abe5d23f08_720w.webp" alt=""></p>
-<p><img src="https://pic3.zhimg.com/80/v2-ff3d2534de29a141623689a36a113abe_720w.webp" alt=""></p>
-<p><img src="https://pic4.zhimg.com/80/v2-31f13cfc67e3e85dec3e1ed1009c1d03_720w.webp" alt=""></p>
-<p><img src="https://pic4.zhimg.com/80/v2-b8a8070f3de949e37e77af1a44f014ef_720w.webp" alt=""></p>
-<p><img src="https://pic1.zhimg.com/80/v2-89a7686f84cb57c3f04ae2d315411748_720w.webp" alt=""></p>
-<p><img src="https://pic1.zhimg.com/80/v2-d6454524962a012b0a4451970b3f9b30_720w.webp" alt=""></p>
+<p class="img-wrap"><a href="https://pic1.zhimg.com/80/v2-c36eeda092af902403e8b0abe5d23f08_720w.webp" target="_blank" title="点击查看大图"><img src="https://pic1.zhimg.com/80/v2-c36eeda092af902403e8b0abe5d23f08_720w.webp" alt=""></a></p>
+<p class="img-wrap"><a href="https://pic3.zhimg.com/80/v2-ff3d2534de29a141623689a36a113abe_720w.webp" target="_blank" title="点击查看大图"><img src="https://pic3.zhimg.com/80/v2-ff3d2534de29a141623689a36a113abe_720w.webp" alt=""></a></p>
+<p class="img-wrap"><a href="https://pic4.zhimg.com/80/v2-31f13cfc67e3e85dec3e1ed1009c1d03_720w.webp" target="_blank" title="点击查看大图"><img src="https://pic4.zhimg.com/80/v2-31f13cfc67e3e85dec3e1ed1009c1d03_720w.webp" alt=""></a></p>
+<p class="img-wrap"><a href="https://pic4.zhimg.com/80/v2-b8a8070f3de949e37e77af1a44f014ef_720w.webp" target="_blank" title="点击查看大图"><img src="https://pic4.zhimg.com/80/v2-b8a8070f3de949e37e77af1a44f014ef_720w.webp" alt=""></a></p>
+<p class="img-wrap"><a href="https://pic1.zhimg.com/80/v2-89a7686f84cb57c3f04ae2d315411748_720w.webp" target="_blank" title="点击查看大图"><img src="https://pic1.zhimg.com/80/v2-89a7686f84cb57c3f04ae2d315411748_720w.webp" alt=""></a></p>
+<p class="img-wrap"><a href="https://pic1.zhimg.com/80/v2-d6454524962a012b0a4451970b3f9b30_720w.webp" target="_blank" title="点击查看大图"><img src="https://pic1.zhimg.com/80/v2-d6454524962a012b0a4451970b3f9b30_720w.webp" alt=""></a></p>
 <p><strong>2.2层次聚类(Hierarchical)</strong></p>
 <p>其核心思想是，把每一个单个的观测都视为一个类，而后计算各类之间的距离，选取最相近的两个类，将它们合并为一个类。新的这些类再继续计算距离，合并到最近的两个类。如此往复，最后就只有一个类。然后用<strong>树状图</strong> 记录这个过程，这个树状图就包含了我们所需要的信息。</p>
 <p>2.2.1算法</p>
@@ -179,10 +179,10 @@ end</p>
 <p>2.2.2例子</p>
 <p>有一组数据D={a,b,c,d,e} 给了它们之间的距离矩阵。</p>
 <p>首先，每一个例子都是一个类：</p>
-<p><img src="https://pic2.zhimg.com/80/v2-03c82301082aa96acab1cd4be3d14b99_720w.webp" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-31.png" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-32.png" alt=""></p>
-<p><img src="../../assets/images/2024/05/image-33.png" alt=""></p>
+<p class="img-wrap"><a href="https://pic2.zhimg.com/80/v2-03c82301082aa96acab1cd4be3d14b99_720w.webp" target="_blank" title="点击查看大图"><img src="https://pic2.zhimg.com/80/v2-03c82301082aa96acab1cd4be3d14b99_720w.webp" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-31.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-31.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-32.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-32.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-33.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-33.png" alt=""></a></p>
 <p><strong>2.3根据密度的聚类</strong></p>
 <p>其核心思想是在数据空间中找到分散开的密集区域，简单来说就是<strong>画圈</strong> ，其中要定义两个参数，一个是圈的最大半径，<strong>一个是一个圈里面最少应该容纳多少个点</strong> 。</p>
 <p>2.3.1算法</p>
@@ -194,7 +194,7 @@ end</p>
 <p>剩下的用的少一些的聚类算法：<a href="https://zhuanlan.zhihu.com/p/37856153">一篇文章透彻解读聚类分析（附数据和R代码） - 知乎 (zhihu.com)</a></p>
 <h3 id="箱线图补充">箱线图补充</h3>
 <p><a href="https://so.csdn.net/so/search?q=%E7%AE%B1%E7%BA%BF%E5%9B%BE&spm=1001.2101.3001.7020">箱线图</a>（Boxplot）也称<strong>箱须图</strong> （Box-whisker <a href="https://so.csdn.net/so/search?q=Plot&spm=1001.2101.3001.7020">Plot</a>），是利用数据中的五个统计量：最小值、第一四分位数、中位数、第三四分位数与最大值来描述数据的一种方法，它也可以粗略地看出数据是否具有有对称性，分布的分散程度等信息，特别可以用于对几个样本的比较。<strong>箱形图最大的优点就是不受异常值的影响，能够准确稳定地描绘出数据的离散分布情况，同时也利于数据的清洗。</strong></p>
-<p><img src="../../assets/images/2024/05/image-34.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-34.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-34.png" alt=""></a></p>
 <p>绘制方式：</p>
 <pre><code># 绘制箱线图
 </code></pre>
@@ -204,7 +204,7 @@ fig_ratings.add_trace(go.Box(y=restaurants_df[&#39;aggregated_rating_count&#39;]
 fig_ratings.update_layout(title=&#39;Statistical Summary of Restaurant Ratings&#39;, 
                           yaxis_title=&#39;Value&#39;, xaxis_title=&#39;Rating Type&#39;)
 fig_ratings.show()</p>
-<p><img src="../../assets/images/2024/05/image-35.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-35.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-35.png" alt=""></a></p>
 <p>学会了聚类分析方法咱接着看论文</p>
 <p>论文里面通过BES得到了网络浏览的数据，我们将针对这些数据进行聚类分析<br>论文采取的是一种优化的Kmeans聚类算法，称为FCM</p>
 <p>FCM（Fuzzy C-Means，模糊C均值）算法是一种用于数据聚类的模糊逻辑方法。它是一种改进的K-均值聚类算法，允许一个数据点以不同的概率属于多个类别。FCM算法在许多领域都有应用，包括图像分割、模式识别、数据分析等。</p>
@@ -266,7 +266,7 @@ $$ c_j = \\frac{\\sum_{i=1}^{n} u_{ij}^m x_i}{\\sum_{i=1}^{n} u_{ij}^{m-1}} $$</
 </li>
 </ul>
 <p>在文章中，FCM算法被用于分析用户的<strong>风险指数</strong> ，通过模糊聚类的方式将用户分为不同的风险等级，这有助于更细致地区分用户的潜在风险，并为反恐措施提供数据支持。</p>
-<p><img src="../../assets/images/2024/05/image-36.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-36.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-36.png" alt=""></a></p>
 <p><a href="https://www.kaggle.com/code/prateekk94/fuzzy-c-means-clustering-on-iris-dataset/notebook">Fuzzy C-Means Clustering on Iris Dataset (kaggle.com)</a></p>
 <p>这边是Kaggle上面基于Fuzzy C-Means Clustering的一篇实战，这一篇的分析更加深入本质，以此为结</p>
 <h2 id="4启发式算法">4.启发式算法</h2>

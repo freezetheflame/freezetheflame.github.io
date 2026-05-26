@@ -237,7 +237,7 @@ public static void main(String[] args) {
 }</p>
 <p>by the way……</p>
 <h3 id="最小环（using-floyd）">最小环（using floyd）</h3>
-<p><img src="../../assets/images/2025/04/image-46.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-46.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-46.png" alt=""></a></p>
 <pre><code>int val[MAXN + 1][MAXN + 1];  // 原图的邻接矩阵
 </code></pre>
 <p>int floyd(const int &amp;n) {
@@ -259,7 +259,7 @@ public static void main(String[] args) {
 <h3 id="bellmanford-算法">Bellman–Ford 算法<a href="https://oi-wiki.org//graph/shortest-path/#bellmanford-%E7%AE%97%E6%B3%95"></a></h3>
 <p>Bellman–Ford 算法是一种基于松弛（relax）操作的最短路算法，可以求出有负权的图的最短路，并可以对最短路不存在的情况进行判断。</p>
 <p>在国内 OI 界，你可能听说过的「SPFA」，就是 Bellman–Ford 算法的一种实现。</p>
-<p><img src="../../assets/images/2025/04/image-47.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-47.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-47.png" alt=""></a></p>
 <pre><code>class Edge:
 def __init__(self, u=0, v=0, w=0):
     self.u = u
@@ -320,7 +320,7 @@ bool spfa(int n, int s) {
   return true;
 }</p>
 <h3 id="dijkstra-算法">Dijkstra 算法<a href="https://oi-wiki.org//graph/shortest-path/#dijkstra-%E7%AE%97%E6%B3%95"></a></h3>
-<p><img src="../../assets/images/2025/04/image-48.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-48.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-48.png" alt=""></a></p>
 <p>两种实现：</p>
 <pre><code>struct edge {
 </code></pre>

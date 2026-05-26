@@ -149,7 +149,10 @@ function processMarkdownFile(filePath) {
   const htmlContent = marked.parse(content)
     // Wrap tables in scrollable containers for overflow handling
     .replace(/<table>/g, '<div class="table-wrap"><table>')
-    .replace(/<\/table>/g, '</table></div>');
+    .replace(/<\/table>/g, '</table></div>')
+    // Wrap standalone images in clickable links (open full-res in new tab)
+    .replace(/<p><img src="([^"]+)" alt="([^"]*)"(\/?)><\/p>/g,
+      '<p class="img-wrap"><a href="$1" target="_blank" title="点击查看大图"><img src="$1" alt="$2"$3></a></p>');
   const fullHtml = createHtmlTemplate(filePath, title, htmlContent, frontmatter.tags || [], frontmatter.date || '');
   fs.writeFileSync(filePath.replace(/\.md$/, '.html'), fullHtml);
   console.log(`Converted ${filePath}`);

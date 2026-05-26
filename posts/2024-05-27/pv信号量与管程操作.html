@@ -46,7 +46,7 @@
 </ul>
 <p>总而言之：<strong>P操作负责分配资源，没有资源的时候就等着（进入阻塞队列）。V操作负责释放资源，在阻塞队列不为空的时候唤醒某个进程进入临界区</strong> 。</p>
 <p>【PV】四个进程Pi（i=0…3）和四个信箱Mj（j=0…3），进程间借助相邻信箱传递消息，即Pi每次从Mi中取一条消息，经加工后送入M[(i+1) mod 4]，其中M0、M1、M2、M3分别可存放3、3、2、2个消息。初始状态下，M0装了三条消息，其余为空。试以P、V操作为工具，写出Pi（i=0…3）的同步工作算法。</p>
-<p><img src="../../assets/images/2024/05/image-86.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-86.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-86.png" alt=""></a></p>
 <p>大致思路是：先从自己的信箱里取出一个（P操作-1）然后加工处理完，通知上一个人可以投递了（V+1）。然后申请投递下一家的信箱（P操作），允许后信息加入该队列，并增加下家信箱中已有信息的个数（V操作）</p>
 <pre><code>Sput0:=0 sput1:=3 sput2:=2 sput3:=2 // Mi中目前可放的信息数
 </code></pre>
@@ -94,7 +94,7 @@ While(true){
 }</p>
 <h3 id="使用pv操作解决三个常见问题">使用PV操作解决三个常见问题</h3>
 <p> <em>a.生产者-消费者（缓冲区问题）</em></p>
-<p><img src="../../assets/images/2024/05/image-87.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-87.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-87.png" alt=""></a></p>
 <p>生产者一消费者问题(producer-consumerproblem)是指若干进程通过有限的共享缓冲区交换数据时的缓冲区资源使用问题。假设“生产者”进程不断向共享缓冲区写人数据(即生产数据)，而“消费者”进程不断从共享缓冲区读出数据(即消费数据)；共享缓冲区共有n个；任何时刻只能有一个进程可对共享缓冲区进行操作。所有生产者和消费者之间要协调，以完成对共享缓冲区的操作。</p>
 <pre><code>生产者进程结构：
 </code></pre>
@@ -118,7 +118,7 @@ do{<br>     P(full) ;<br>     P(mutex) ;  </p>
 <p> <em>b.作者读者问题</em></p>
 <p>读者一写者问题(readers-writersproblem)是指多个进程对一个共享资源进行读写操作的问题。</p>
 <p>假设“读者”进程可对共享资源进行读操作，“写者”进程可对共享资源进行写操作；任一时刻“写者”最多只允许一个，而“读者”则允许多个。即对共享资源的读写操作限制关系包括：“读—写，互斥、“写一写”互斥和“读—读”允许。</p>
-<p><img src="../../assets/images/2024/05/image-88.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-88.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-88.png" alt=""></a></p>
 <p>我们可认为<strong>写者之间、写者与第一个读者之间</strong> 要对共享资源进行互斥访问，而后续读者不需要互斥访问。为此，可设置两个信号量Wmutex、Rmutex和一个公共变量Rcount。其中：Wmutex表示“允许写”，初值是1；公共变量Rcount表示“正在读”的进程数，初值是0；Rmutex表示对Rcount的互斥操作，初值是1。</p>
 <pre><code>int count = 0; // 记录正在访问的进程数量
 </code></pre>
@@ -262,7 +262,7 @@ return 0;
 </li>
 </ol>
 <p>在Hoare管程中，因为管程是互斥进入的，所以当一个进程试图进入一个已被占用的管程时，应该在管程的入口处等待。为此，在管程的入口处设置了一个进程等待队列，如果出现了P进程唤醒了Q，那么P等待Q执行，如果进程Q执行，又唤醒了进程R，那么Q等待R执行，这就是HOARE语义。因此我们会看到管程中可能会出现多个进程。为了管理这些管程内的等待队列，在管程内就专门设置了一个进程等待队列，这个队列里的进程会比入口等待队列的进程的优先级高。</p>
-<p><img src="../../assets/images/2024/05/image-85.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/05/image-85.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/05/image-85.png" alt=""></a></p>
 <p>Hoare模型里面，T2线程通知完T1线程后，T2马上阻塞，T1马上执行；等T1执行完之后再唤醒T2线程，也能保证同一时刻只有一个线程在执行，<strong>但是T2多了一次阻塞唤醒操作</strong> 。</p>
 <p>用管程解决生产者消费者问题</p>
 <pre><code>#include &lt;iostream&gt;
@@ -467,7 +467,7 @@ public class Main {
 </ul>
 <p>两种方法各有优劣，可以根据具体情况选择合适的方法来实现读者进程的同步。</p>
 <p>生产者消费者的管程解决：</p>
-<p><img src="../../assets/images/2024/06/image-102.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/06/image-102.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/06/image-102.png" alt=""></a></p>
 <p>注意“进程同步和进程互斥”两类问题的不同分析方式</p>
 
         <div class="button-row">

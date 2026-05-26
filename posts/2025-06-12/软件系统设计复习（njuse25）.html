@@ -33,23 +33,23 @@
         <h2 id="quality-attributes">Quality Attributes</h2>
 <h3 id="availability可用性">Availability可用性</h3>
 <p>def:系统在给定时间段内能够正常运行并提供服务的能力，通常以百分比（如99.9%）表示。</p>
-<p><img src="../../assets/images/2025/06/image-7.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-7.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-7.png" alt=""></a></p>
 <p>针对availability，有SLA（与客户签订协议），planning for failure等方式稳固。</p>
 <p>以下是对应general的 scenario</p>
-<p><img src="../../assets/images/2025/06/image-8.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-8.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-8.png" alt=""></a></p>
 <p>对应的tactics:</p>
-<p><img src="../../assets/images/2025/06/image-9.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-9.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-9.png" alt=""></a></p>
 <h3 id="interoperability（互操作性）">Interoperability（互操作性）</h3>
 <p>def:系统与不同厂商或技术的其他系统协同工作以交换和使用信息的能力。（强调正确交换并且能正确解释）</p>
-<p><img src="../../assets/images/2025/06/image-10.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-10.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-10.png" alt=""></a></p>
 <h3 id="modifiablity">Modifiablity</h3>
 <p>def:系统能够适应需求变化或功能扩展的能力，通常涉及架构的灵活性。强调的是变更所需的时间和金钱成本，包含扩展是否会影响别的功能或者质量属性。</p>
-<p><img src="../../assets/images/2025/06/image-11.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-11.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-11.png" alt=""></a></p>
 <h2 id="add30方法">ADD3.0方法</h2>
 <h2 id="architecture-pattern">Architecture Pattern</h2>
 <h3 id="pipe-and-filter模式">Pipe-and-Filter模式</h3>
 <p>Pipe-and-Filter模式是一种软件架构模式，特别适用于数据流处理系统。它通过一系列转换组件（称为过滤器，Filters）将输入数据逐步转换为输出数据，这些过滤器通过管道（Pipes）连接。模式的核心思想是将数据处理分解为多个独立步骤，每个步骤由一个过滤器负责执行，从而实现模块化、可重用性和并行处理。</p>
-<p><img src="../../assets/images/2025/06/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image.png" alt=""></a></p>
 <h4 id="概述">概述</h4>
 <p>数据从系统的外部输入通过一系列转换逐步处理，最终生成外部输出。这些转换由过滤器执行，过滤器通过管道连接。管道负责数据的传输，而过滤器负责数据的转换和处理。</p>
 <h4 id="主要元素">主要元素</h4>
@@ -108,7 +108,7 @@
 </li>
 </ul>
 <h3 id="client-server-pattern">Client-Server Pattern</h3>
-<p><img src="../../assets/images/2025/06/image-1.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-1.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-1.png" alt=""></a></p>
 <p>客户端-服务器模式（Client-Server Pattern）是一种分布式系统架构模式，广泛用于网络应用程序中。它通过将系统功能划分为客户端（Client）和服务器（Server）两个主要角色，客户端负责发起请求并与用户交互，而服务器负责提供服务和处理请求。</p>
 <h4 id="概述-1">概述</h4>
 <p>客户端主动与服务器发起交互，调用所需的服務，并等待结果。這種模式適用于需要集中式資源管理或遠程服務調用的場景，例如Web應用、數據庫訪問或文件共享系統。</p>
@@ -242,8 +242,8 @@
 </li>
 </ol>
 <h3 id="service-oriented-pattern">Service-Oriented Pattern</h3>
-<p><img src="../../assets/images/2025/06/image-2.png" alt=""></p>
-<p><img src="../../assets/images/2025/06/image-3.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-2.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-2.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-3.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-3.png" alt=""></a></p>
 <p>该图展示了一个基于面向服务架构（Service-Oriented Architecture, SOA）的系统，具体以“Adventure Builder”为例。该系统通过服务提供者（Service Providers）和服务消费者（Service Consumers）之间的协作，实现了分布式功能。以下是图的详细解释：</p>
 <hr>
 <h4 id="系统概述">系统概述</h4>
@@ -524,9 +524,9 @@
 <hr>
 <h3 id="总结-1">总结</h3>
 <p>Map-Reduce模式通过Map和Reduce的协作，实现了大规模数据的并行处理，特别适合大数据分析场景。其无状态设计和基础设施支持确保了扩展性和容错能力，但对数据规模和分割的要求较高，不适合小数据集或复杂多Reduce任务。</p>
-<p><img src="../../assets/images/2025/06/image-4.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-4.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-4.png" alt=""></a></p>
 <h3 id="multi-tier-pattern">Multi-Tier Pattern</h3>
-<p><img src="../../assets/images/2025/06/image-5.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-5.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-5.png" alt=""></a></p>
 <p>多层模式（Multi-Tier Pattern）是一种软件架构模式，旨在将系统的执行结构组织为多个逻辑分组，称为“层”（Tiers）。这种模式通过将组件按功能、执行环境或运行时目的分组，增强系统的模块化、可维护性和可扩展性，特别是在分布式系统中。</p>
 <h4 id="概述-3">概述</h4>
 <p>许多系统的执行结构被组织为一组逻辑组件的分组，每个分组称为一个“层”。这些层的划分可以基于多种标准，例如组件类型、共享相同的执行环境，或具有相同的运行时目的。这种分层设计常见于企业级应用和Web系统。</p>
@@ -648,7 +648,7 @@
 </ul>
 </li>
 </ol>
-<p><img src="../../assets/images/2025/06/image-6.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-6.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-6.png" alt=""></a></p>
 <h3 id="架构模式与策略（architecture-patterns-and-tactics）">架构模式与策略（Architecture Patterns and Tactics）</h3>
 <h4 id="英文版本-english-version">英文版本 (English Version)</h4>
 <ul>

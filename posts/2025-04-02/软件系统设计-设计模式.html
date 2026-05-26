@@ -32,39 +32,39 @@
         </div>
         <h2 id="桥接模式（bridge-pattern）">桥接模式（Bridge Pattern）</h2>
 <p><strong>Bridge</strong>  is a structural design pattern that lets you split a large class or a set of closely related classes into two separate hierarchies—abstraction and implementation—which can be developed independently of each other.</p>
-<p><img src="../../assets/images/2025/04/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image.png" alt=""></a></p>
 <p>理解桥接模式，需要理解如何分离抽象化和实现化，使得二者脱耦，可以独立变化</p>
 <p>Adding new shape types and colors to the hierarchy will grow it exponentially. For example, to add a triangle shape you’d need to introduce two subclasses, one for each color. And after that, adding a new color would require creating three subclasses, one for each shape type. The further we go, the worse it becomes.</p>
 <p>The Bridge pattern attempts to solve this problem by<strong>switching from inheritance to the object composition.</strong> What this means is that you extract one of the dimensions into a separate class hierarchy, so that the original classes will reference an object of the new hierarchy, instead of having all of its state and behaviors within one class</p>
-<p><img src="../../assets/images/2025/04/image-1.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-1.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-1.png" alt=""></a></p>
 <p>In a worst-case scenario, this app might look like a giant spaghetti bowl, where hundreds of conditionals connect different types of GUI with various APIs all over the code.</p>
-<p><img src="../../assets/images/2025/04/image-2.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-2.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-2.png" alt=""></a></p>
 <h2 id="装饰模式（decorator）">装饰模式（decorator）</h2>
 <p>Imagine that you’re working on a notification library which lets other programs notify their users about important events.</p>
 <p>The initial version of the library was based on the <code>Notifier</code> class that had only a few fields, a constructor and a single <code>send</code> method. The method could accept a message argument from a client and send the message to a list of emails that were passed to the notifier via its constructor. A third-party app which acted as a client was supposed to create and configure the notifier object once, and then use it each time something important happened.</p>
-<p><img src="../../assets/images/2025/04/image-4.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-4.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-4.png" alt=""></a></p>
 <p>At some point, you realize that users of the library expect more than just email notifications. Many of them would like to receive an SMS about critical issues. Others would like to be notified on Facebook and, of course, the corporate users would love to get Slack notifications.</p>
-<p><img src="../../assets/images/2025/04/image-3.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-3.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-3.png" alt=""></a></p>
 <p>How hard can that be? You extended the <code>Notifier</code> class and put the additional notification methods into new subclasses. Now the client was supposed to<strong>instantiate the desired notification class</strong> and use it for all further notifications.</p>
 <p>But then someone reasonably asked you, “Why can’t you<strong>use several notification types at once</strong>? If your house is on fire, you’d probably want to be informed through every channel.”</p>
-<p><img src="../../assets/images/2025/04/image-5.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-5.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-5.png" alt=""></a></p>
 <p>One of the ways to overcome these caveats is by using <em>Aggregation</em>  or <em>Composition</em><br> instead of <em>Inheritance</em>. Both of the alternatives work almost the same way: one object <em>has a</em>  reference to another and delegates it some work, whereas with inheritance, the object itself <em>is</em>  able to do that work, inheriting the behavior from its superclass.</p>
 <p>With this new approach you can easily substitute the linked “helper” object with another, changing the behavior of the container at runtime. An object can use the behavior of various classes, having references to multiple objects and delegating them all kinds of work. Aggregation/composition is the key principle behind many design patterns, including Decorator. On that note, let’s return to the pattern discussion.</p>
-<p><img src="../../assets/images/2025/04/image-6.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-6.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-6.png" alt=""></a></p>
 <h2 id="观察者模式observer">观察者模式(Observer)</h2>
 <p>Imagine that you have two types of objects: a <code>Customer</code> and a <code>Store</code>. The customer is very interested in a particular brand of product (say, it’s a new model of the iPhone) which should become available in the store very soon.</p>
-<p><img src="../../assets/images/2025/04/image-7.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-7.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-7.png" alt=""></a></p>
 <p>The customer could visit the store every day and check product availability. But while the product is still en route, most of these trips would be pointless.</p>
-<p><img src="https://refactoring.guru/images/patterns/diagrams/observer/solution1-en.png" alt="Subscription mechanism"></p>
+<p class="img-wrap"><a href="https://refactoring.guru/images/patterns/diagrams/observer/solution1-en.png" target="_blank" title="点击查看大图"><img src="https://refactoring.guru/images/patterns/diagrams/observer/solution1-en.png" alt="Subscription mechanism"></a></p>
 <p>That’s why it’s crucial that all subscribers implement the same interface and that the publisher communicates with them only via that interface. This interface should declare the notification method along with a set of parameters that the publisher can use to pass some contextual data along with the notification.</p>
-<p><img src="../../assets/images/2025/04/image-8.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-8.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-8.png" alt=""></a></p>
 <p>观察者模式(Observer Pattern)：定义对象间的一种一对多依赖关系，使得每当一个对象状态发生改变时，其相关依赖对象皆得到通知并被自动更新。观察者模式又叫做发布-订阅（Publish/Subscribe）模式、模型-视图（Model/View）模式、源-监听器（Source/Listener）模式或从属者（Dependents）模式。观察者模式是一种对象行为型模式。</p>
 <p>这一模式中的关键对象是观察目标和观察者，一个目标可以有任意数目的与之相依赖的观察者，一旦目标的状态发生改变，所有的观察者都将得到通知。</p>
 <p>观察者模式可以实现表示层和数据逻辑层的分离，并定义了稳定的消息更新传递机制，抽象了更新接口，使得可以有各种各样不同的表示层作为具体观察者角色。<br>并且在观察目标和观察者之间建立了一个抽象的耦合，符合开闭原则的要求</p>
 <p>缺点（fallbacks）：如果一个观察目标对象有很多直接和间接的观察者的话，将所<br>有的观察者都通知到会花费很多时间。<br>观察者模式没有相应的机制让观察者知道所观察的目标对象是怎么发生变化的，而仅仅只是知道观察目标发生了变化。</p>
-<p><img src="https://refactoring.guru/images/patterns/diagrams/observer/structure-indexed.png" alt="Structure of the Observer design pattern"></p>
+<p class="img-wrap"><a href="https://refactoring.guru/images/patterns/diagrams/observer/structure-indexed.png" target="_blank" title="点击查看大图"><img src="https://refactoring.guru/images/patterns/diagrams/observer/structure-indexed.png" alt="Structure of the Observer design pattern"></a></p>
 <p>Pseudocode（伪代码）</p>
-<p><img src="https://refactoring.guru/images/patterns/diagrams/observer/example.png" alt="Structure of the Observer pattern example"></p>
+<p class="img-wrap"><a href="https://refactoring.guru/images/patterns/diagrams/observer/example.png" target="_blank" title="点击查看大图"><img src="https://refactoring.guru/images/patterns/diagrams/observer/example.png" alt="Structure of the Observer pattern example"></a></p>
 <pre><code>// The base publisher class includes subscription management
 </code></pre>
 <p>// code and notification methods.
@@ -130,12 +130,12 @@ class Application is
             &quot;Someone has opened the file: %s&quot;)
         editor.events.subscribe(&quot;open&quot;, logger)
         emailAlerts = new EmailAlertsListener(
-            &quot;<a href="mailto:&#x61;&#x64;&#x6d;&#x69;&#x6e;&#64;&#101;&#120;&#97;&#x6d;&#x70;&#108;&#101;&#46;&#x63;&#111;&#x6d;">&#x61;&#x64;&#x6d;&#x69;&#x6e;&#64;&#101;&#120;&#97;&#x6d;&#x70;&#108;&#101;&#46;&#x63;&#111;&#x6d;</a>&quot;,
+            &quot;<a href="mailto:&#x61;&#x64;&#x6d;&#x69;&#x6e;&#64;&#x65;&#120;&#97;&#109;&#x70;&#x6c;&#101;&#46;&#x63;&#x6f;&#109;">&#x61;&#x64;&#x6d;&#x69;&#x6e;&#64;&#x65;&#120;&#97;&#109;&#x70;&#x6c;&#101;&#46;&#x63;&#x6f;&#109;</a>&quot;,
             &quot;Someone has changed the file: %s&quot;)
         editor.events.subscribe(&quot;save&quot;, emailAlerts)</p>
 <h3 id="change-manager">change manager</h3>
 <p>当目标和观察者间的依赖关系特别复杂时, 可能需要一个维护这些关系的对象。我们称这样的对象为更改管理器（Change Manager）</p>
-<p><img src="../../assets/images/2025/04/image-9.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-9.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-9.png" alt=""></a></p>
 <h3 id="观察者模式扩展">观察者模式扩展</h3>
 <p>MVC模式</p>
 <ul>
@@ -143,12 +143,12 @@ class Application is
 </ul>
 <h2 id="中介者模式（mediator）">中介者模式（Mediator）</h2>
 <p><strong>Mediator</strong>  is a behavioral design pattern that lets you reduce chaotic dependencies between objects. The pattern restricts direct communications between the objects and forces them to collaborate only via a mediator object.</p>
-<p><img src="../../assets/images/2025/04/image-10.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-10.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-10.png" alt=""></a></p>
 <h3 id="example-a-profile-dialog">example: A Profile Dialog</h3>
 <p>Say you have a dialog for creating and editing customer profiles. It consists of various form controls such as text fields, checkboxes, buttons, etc.</p>
-<p><img src="https://refactoring.guru/images/patterns/diagrams/mediator/problem1-en.png?id=86f99055b3e60bb8834dcc7222922bdf" alt="Chaotic relations between elements of the user interface"></p>
+<p class="img-wrap"><a href="https://refactoring.guru/images/patterns/diagrams/mediator/problem1-en.png?id=86f99055b3e60bb8834dcc7222922bdf" target="_blank" title="点击查看大图"><img src="https://refactoring.guru/images/patterns/diagrams/mediator/problem1-en.png?id=86f99055b3e60bb8834dcc7222922bdf" alt="Chaotic relations between elements of the user interface"></a></p>
 <p>Some of the form elements may <strong>interact with others</strong>. For instance, selecting the “I have a dog” checkbox may reveal a hidden text field for entering the dog’s name. Another example is the submit button that has to validate values of all fields before saving the data.</p>
-<p><img src="../../assets/images/2025/04/image-11.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-11.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-11.png" alt=""></a></p>
 <p><strong>模式动机</strong></p>
 <ul>
 <li><p>在面向对象的软件设计与开发过程中，根据“单一职责原则”，我们应该尽量将对象细化，使其只负责或呈现单一的职责。</p>
@@ -158,14 +158,14 @@ class Application is
 </ul>
 <p>The Mediator pattern suggests that you should cease all direct communication between the components which you want to make independent of each other. Instead, these components must collaborate indirectly, by calling a special mediator object that redirects the calls to appropriate components. As a result, the components depend only on a single mediator class instead of being coupled to dozens of their colleagues.</p>
 <p>In our example with the profile editing form, the dialog class itself may act as the mediator. Most likely, the dialog class is already aware of all of its sub-elements, so you <strong>won’t even need to introduce new dependencies</strong> into this class.</p>
-<p><img src="../../assets/images/2025/04/image-12.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-12.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-12.png" alt=""></a></p>
 <p>最显著的更改发生在实际的表单元素上。让我们考虑一下提交按钮。以前，每次用户单击该按钮时，它都必须验证所有单个表单元素的值。现在，它的唯一工作是通知对话框有关单击的信息。收到此通知后，对话框本身会执行验证或将任务传递给各个元素。因此，按钮不依赖于十几个表单元素，而只依赖于 dialog 类。</p>
 <p>You can go further and make the dependency even looser b<strong>y extracting the common interface for all types of dialogs.</strong> The interface would declare the notification method which all form elements can use to notify the dialog about events happening to those elements. Thus, our submit button should now be able to work with any dialog that implements that interface.</p>
-<p><img src="../../assets/images/2025/04/image-13.png" alt=""></p>
-<p><img src="../../assets/images/2025/04/image-14.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-13.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-13.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-14.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-14.png" alt=""></a></p>
 <p>Real-World Analogy<br>真实世界的类比</p>
 <p><img src="https://refactoring.guru/images/patterns/diagrams/mediator/live-example.png?id=aa1de3cb7b63aa623e63578a1e43399a" alt="Air traffic control tower"> <em>Aircraft pilots don’t talk to each other directly when deciding who gets to land their plane next. All communication goes through the control  tower.</em></p>
-<p><img src="../../assets/images/2025/04/image-15.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-15.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-15.png" alt=""></a></p>
 <p><strong>组件</strong> 是包含一些业务逻辑的各种类。每个组件都有一个对中介器的引用，该中介器使用中介器接口的类型声明。该组件不知道 mediator 的实际类，因此您可以通过将组件链接到不同的 mediator 来在其他程序中重用该组件。</p>
 <h3 id="pseudocode">Pseudocode</h3>
 <p>伪代码</p>
@@ -244,7 +244,7 @@ class Checkbox extends Component is
 <li><p>协调作用（行为性）：中介者可以更进一步的对同事之间的关系进行封装，同事可以一致地和中介者进行交互，而不需要指明中介者需要具体怎么做，中介者根据封装在自身内部的协调逻辑，对同事的请求进行进一步处理，将同事成员之间的关系行为进行分离和封装。该协调作用属于中介者在行为上的支持。</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2025/04/image-16.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-16.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-16.png" alt=""></a></p>
 <p>中介者模式的优点</p>
 <ul>
 <li><p>简化了对象之间的交互。</p>
@@ -263,13 +263,13 @@ class Checkbox extends Component is
 <p>在中介者模式中，通过创造出一个中介者对象，将系统中有关的对象所引用的其他对象数目减少到最少，使得一个对象与其同事之间的相互作用被这个对象与中介者对象之间的相互作用所取代。因此，中介者模式就是迪米特法则的一个典型应用</p>
 <h2 id="模板方法模式（template-method）">模板方法模式（Template Method）</h2>
 <p><strong>Template Method</strong>  is a behavioral design pattern that defines the skeleton of an algorithm in the superclass but <strong>lets subclasses override specific steps of the algorithm without changing its  structure.</strong></p>
-<p><img src="../../assets/images/2025/04/image-17.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-17.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-17.png" alt=""></a></p>
 <h3 id="example">example</h3>
 <p>Imagine that you’re creating a data mining application that analyzes corporate documents. Users feed the app documents in various formats (PDF, DOC, CSV), and it tries to extract meaningful data from these docs in a uniform format.</p>
-<p><img src="../../assets/images/2025/04/image-18.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-18.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-18.png" alt=""></a></p>
 <p>At some point, you noticed that all three classes have a lot of similar code. While the code for dealing with various data formats was entirely different in all classes, the code for data processing and analysis is almost identical. Wouldn’t it be great to get rid of the code duplication, leaving the algorithm structure intact?</p>
 <p>The Template Method pattern suggests that you<strong>break down an algorithm into a series of steps,</strong> turn these steps into methods, and put a series of calls to these methods inside a single <em>template method.</em>  The steps may either be <code>abstract</code>, or have some default implementation. To use the algorithm, the client is supposed to provide its own subclass, implement all abstract steps, and override some of the optional ones if needed (but not the template method itself).</p>
-<p><img src="../../assets/images/2025/04/image-19.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-19.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-19.png" alt=""></a></p>
 <p>正如你所看到的那样， 我们有两种类型的步骤：</p>
 <ul>
 <li><p><em>抽象步骤</em> 必须由各个子类来实现</p>
@@ -278,7 +278,7 @@ class Checkbox extends Component is
 </li>
 </ul>
 <p>还有另一种名为 <em>钩子</em> 的步骤。 <em>钩子</em> 是内容为空的可选步骤。 即使不重写钩子， 模板方法也能工作。 钩子通常放置在算法重要步骤的前后， 为子类提供额外的算法扩展点。</p>
-<p><img src="../../assets/images/2025/04/image-52.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-52.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-52.png" alt=""></a></p>
 <p>游戏中所有的种族都有几乎同类的单位和建筑。 因此你可以在不同的种族上复用相同的 AI 结构， 同时还需要具备重写一些细节的能力。 通过这种方式， 你可以重写半兽人的 AI 使其更富攻击性， 也可以让人类侧重防守， 还可以禁止怪物建造建筑。 在游戏中新增种族需要创建新的 AI 子类， 还需要重写 AI 基类中所声明的默认方法。</p>
 <pre><code>class GameAI is
 // 模板方法定义了某个算法的框架。
@@ -351,10 +351,10 @@ class MonstersAI extends GameAI is
 <li><p>在某OA系统中，系统根据对比用户在登录时输入的账<br>号和密码以及在数据库中存储的账号和密码是否一致来<br>进行身份验证，如果验证通过，则取出存储在数据库中<br>的用户权限等级（以整数形式存储），根据不同的权限<br>等级创建不同等级的用户对象，不同等级的用户对象拥<br>有不同的操作权限。现使用简单工厂模式来设计该权限<br>管理模块。</p>
 </li>
 </ul>
-<p><img src="../../assets/images/2025/04/image-53.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-53.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-53.png" alt=""></a></p>
 <h2 id="外观模式（facade-pattern）">外观模式（Facade Pattern）</h2>
 <p>引入外观角色之后，用户只需要直接与外观角色交互，用户与子系统之间的复杂关系由外观角色来实现，从而降低了系统的耦合度。</p>
-<p><img src="../../assets/images/2025/04/image-56.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-56.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-56.png" alt=""></a></p>
 <p><strong>模式分析</strong></p>
 <p>根据“单一职责原则”，在软件中将一个系统划分为若干个子系统有利于降低整个系统的复杂性，一个常见的设计目标是使子系统间的通信和相互依赖关系达到最小，而达到该目标的途径之一就是引入一个外观对象，它为子系统的访问提供了一个简单而单一的入口。</p>
 <p><strong>模式优缺点</strong></p>
@@ -386,28 +386,28 @@ class MonstersAI extends GameAI is
 <p>面向对象技术可以很好地解决一些灵活性或可扩展性问题，但在很多情况下需要在系统中增加类和对象的<br>个数。当对象数量太多时，将导致运行代价过高，带来性能下降等问题。</p>
 <p>假如你希望在长时间工作后放松一下， 所以开发了一款简单的游戏： 玩家们在地图上移动并相互射击。 你决定实现一个真实的粒子系统， 并将其作为游戏的特色。 大量的子弹、 导弹和爆炸弹片会在整个地图上穿行， 为玩家提供紧张刺激的游戏体验。</p>
 <p>开发完成后， 你推送提交了最新版本的程序， 并在编译游戏后将其发送给了一个朋友进行测试。 尽管该游戏在你的电脑上完美运行， 但是你的朋友却无法长时间进行游戏： 游戏总是会在他的电脑上运行几分钟后崩溃。 在研究了几个小时的调试消息记录后， 你发现导致游戏崩溃的原因是内存容量不足。 朋友的设备性能远比不上你的电脑， 因此游戏运行在他的电脑上时很快就会出现问题。</p>
-<p><img src="../../assets/images/2025/04/image-57.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-57.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-57.png" alt=""></a></p>
 <p>仔细观察 <code>粒子</code>Particle类， 你可能会注意到颜色 （color） 和精灵图 （sprite）这两个成员变量所消耗的内存要比其他变量多得多。 更糟糕的是， 对于所有的粒子来说， 这两个成员变量所存储的数据几乎完全一样 （比如所有子弹的颜色和精灵图都一样）。</p>
-<p><img src="../../assets/images/2025/04/image-58.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-58.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-58.png" alt=""></a></p>
 <p>享元模式建议不在对象中存储外在状态， 而是将其传递给依赖于它的一个特殊方法。 程序只在对象中保存内在状态， 以方便在不同情景下重用。 这些对象的区别仅在于其内在状态 （与外在状态相比， 内在状态的变体要少很多）， 因此你所需的对象数量会大大削减。</p>
-<p><img src="../../assets/images/2025/04/image-59.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-59.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-59.png" alt=""></a></p>
 <p>那么外在状态会被移动到什么地方呢？ 总得有类来存储它们， 对不对？ 在大部分情况中， 它们会被移动到容器对象中， 也就是我们应用享元模式前的聚合对象中。</p>
 <p>在我们的例子中， 容器对象就是主要的 <code>游戏</code>Game对象， 其会将所有粒子存储在名为 <code>粒子</code>particles的成员变量中。 为了能将外在状态移动到这个类中， 你需要创建多个数组成员变量来存储每个粒子的坐标、 方向矢量和速度。 除此之外， 你还需要另一个数组来存储指向代表粒子的特定享元的引用。 这些数组必须保持同步， 这样你才能够使用同一索引来获取关于某个粒子的所有数据。</p>
-<p><img src="../../assets/images/2025/04/image-60.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-60.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-60.png" alt=""></a></p>
 <h3 id="享元与不可变性">享元与不可变性</h3>
 <p>由于享元对象可在不同的情景中使用， 你必须确保其状态不能被修改。 享元类的状态只能由构造函数的参数进行一次性初始化， 它不能对其他对象公开其设置器或公有成员变量。</p>
 <p>def:享元模式(Flyweight Pattern)：运用共享技术有效地支持大量细粒度对象的复用。系统只使用少量的对象，而这些对象都很相似，状态变化很小，可以实现对象的多次复用。由于享元模式要求能够共享的对象必须是细粒度对象，因此它又称为轻量级模式，它是一种对象结构型模式。</p>
 <p>享元模式的核心在于享元工厂类，享元工厂类的作用在于提供一个用于存储享元对象的享元池，用户需要<br>对象时，首先从享元池中获取，如果享元池中不存在，则创建一个新的享元对象返回给用户，并在享元池中保存该新增对象。</p>
 <p>在本例中， <strong>享元</strong> 模式能有效减少在画布上渲染数百万个树状对象时所需的内存。</p>
-<p><img src="../../assets/images/2025/04/image-61.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-61.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-61.png" alt=""></a></p>
 <h2 id="代理模式（proxy-pattern）">代理模式（Proxy Pattern）</h2>
 <p><strong>代理模式</strong> 是一种结构型设计模式， 让你能够提供对象的替代品或其占位符。 代理控制着对于原对象的访问， 并允许在将请求提交给对象前后进行一些处理。</p>
 <p>为什么要控制对于某个对象的访问呢？ 举个例子： 有这样一个消耗大量系统资源的巨型对象， 你只是偶尔需要使用它， 并非总是需要。</p>
-<p><img src="../../assets/images/2025/04/image-62.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-62.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-62.png" alt=""></a></p>
 <p>你可以实现延迟初始化： 在实际有需要时再创建该对象。 对象的所有客户端都要执行延迟初始代码。 不幸的是， 这很可能会带来很多重复代码。</p>
 <p>代理模式建议新建一个与原服务对象接口相同的代理类， 然后更新应用以将代理对象传递给所有原始对象客户端。 代理类接收到客户端请求后会创建实际的服务对象， 并将所有工作委派给它。</p>
 <p><strong>代理模式结构</strong></p>
-<p><img src="../../assets/images/2025/04/image-63.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/04/image-63.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/04/image-63.png" alt=""></a></p>
 <ol>
 <li><p><strong>服务接口</strong> （Service Interface） 声明了服务接口。 代理必须遵循该接口才能伪装成服务对象。</p>
 </li>

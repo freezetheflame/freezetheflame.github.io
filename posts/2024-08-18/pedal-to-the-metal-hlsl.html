@@ -431,7 +431,7 @@ return true;
 </tr>
 </tbody></table></div>
 <p>所有的可编程着色器阶段使用通用着色器核心来实现相同的基础功能。此外，顶点着色阶段、几何着色阶段和像素着色阶段则提供了独特的功能，例如几何着色阶段可以生成新的图元或删减图元，像素着色阶段可以决定当前像素是否被抛弃等。下图展示了数据是怎么流向一个着色阶段，以及通用着色器核心与着色器内存资源之间的关系：</p>
-<p><img src="../../assets/images/2024/08/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/08/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/08/image.png" alt=""></a></p>
 <p><strong>Input Data</strong> ：顶点着色器从输入装配阶段获取数据；几何着色器则从上一个着色阶段的输出获取等等。通过给形参引入可以使用的系统值可以提供额外的输入</p>
 <p><strong>Output Data</strong> ：着色器生成输出的结果然后传递给管线的下一个阶段。有些输出会被通用着色器核心解释成特定用途（如顶点位置、渲染目标对应位置的值），另外一些输出则由应用程序来解释。</p>
 <p><strong>Shader Code</strong> ：着色器代码可以从内存读取，然后用于执行代码中所期望的内容。</p>

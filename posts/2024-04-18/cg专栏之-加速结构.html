@@ -31,7 +31,7 @@
           <span class="tag">CG</span>
         </div>
         <p>在图形学中，尤其是使用光线追踪技术时，比较重要、并且也必须要处理的问题就是：如何以比较快的速度求出光线与渲染物体之间的交点,在简单的一些光追场景这自然是无需担心的。但是到了真正的应用场景，比如说一些包含大量独立物体的世界中，如下图这样一个场景，一共就有10.7M的三角形面，你可以想象一下一共需要多少次求交运算吗？</p>
-<p><img src="../../assets/images/2024/04/image-15.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-15.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-15.png" alt=""></a></p>
 <p>所以这时候就需要考虑如何</p>
 <p>本文参考文章：<a href="https://zhuanlan.zhihu.com/p/349594815">从零开始学图形学：通俗讲解简单加速结构——k-d tree, SAH, BVH - 知乎 (zhihu.com)</a><br><a href="https://blog.csdn.net/weixin_44683202/article/details/128671467">计算机图形学十三加速结构_opengl 空间加速结构-CSDN博客</a></p>
 <p>根据最基础的whitted style ray_tracing从摄像机发射射线，在反射、折射的材质上反弹，在每个反弹点上计算能量，回溯时加起来做着色。需要解决的核心问题自然就是：如何判断射线与三角形相交</p>

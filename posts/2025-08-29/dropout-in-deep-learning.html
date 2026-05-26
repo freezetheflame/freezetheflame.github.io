@@ -34,7 +34,7 @@
 <p>因此dropout的主要目的就是用随机、减少参数量的办法来避免过拟合</p>
 <p>这个方法在AlexNet中被完整验证和推广，作者为Alex Krizhevsky等</p>
 <p>为了更好地理解，让我们将使用 dropout 的神经网络与小组学习会话进行比较，在小组学习会话中，不同的学生（神经元）被随机要求在每个会话期间离开房间。剩下的学生仍然必须一起解决问题，这加强了每个人对材料的理解。</p>
-<p><img src="../../assets/images/2025/08/image-3.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/08/image-3.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/08/image-3.png" alt=""></a></p>
 <p><strong>How Does Dropout Work?   Dropout 是如何工作的？</strong></p>
 <ol>
 <li><p><strong>During Training:</strong> At each training iteration, dropout randomly disables a fraction (e.g., 50%) of neurons in the network. This effectively creates a new, smaller neural network with fewer neurons for that iteration. As a result, the model learns to work without depending on any one specific neuron, which reduces overfitting.<br><strong>在训练期间：</strong> 在每次训练迭代中，dropout 随机禁用一个分数（例如，50%）的神经元。这有效地创建了一个新的，更小的神经网络，具有更少的神经元用于该迭代。因此，模型学习工作而不依赖于任何一个特定的神经元，这减少了过度拟合。</p>

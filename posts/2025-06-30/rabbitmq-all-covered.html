@@ -32,16 +32,16 @@
         </div>
         <p>RabbitMQ is a message broker: it <strong>accepts and forwards messages.</strong> You can think about it as a post office: when you put the mail that you want posting in a post box, you can be sure that the letter carrier will eventually deliver the mail to your recipient. In this analogy, RabbitMQ is a post box, a post office, and a letter carrier.</p>
 <p> <em>Producing</em> means<strong>nothing more than sending</strong>. A program that sends messages is a  <em>producer</em> :(一个生产者就长下面这样）</p>
-<p><img src="../../assets/images/2025/06/image-18.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-18.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-18.png" alt=""></a></p>
 <p> <em>A queue</em> is the name for the<strong>post box</strong> in RabbitMQ. Although messages flow through RabbitMQ and your applications, they can only be stored inside a  <em>queue</em>. A  <em>queue</em> is <strong>only bound by the host&#39;s memory &amp; disk limits</strong>（内存or磁盘均可）, it&#39;s essentially a large message buffer.</p>
 <p>Many <em>producers</em>  can send messages that go to one queue, and many <em>consumers</em>  can try to receive data from one <em>queue</em>.</p>
 <p>This is how we represent a queue:</p>
-<p><img src="../../assets/images/2025/06/image-19.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-19.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-19.png" alt=""></a></p>
 <p> <em>Consuming</em> has a similar meaning to receiving. A  <em>consumer</em> is a program that mostly waits to<strong>receive messages:</strong></p>
-<p><img src="../../assets/images/2025/06/image-20.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-20.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-20.png" alt=""></a></p>
 <h2 id="hello-world">Hello World</h2>
 <p>我们先使用amqp.node API来完成第一个，最简单的示例，即“Hello World”消息的发送，具体结构如下：</p>
-<p><img src="../../assets/images/2025/06/image-21.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-21.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-21.png" alt=""></a></p>
 <p>RabbitMQ speaks multiple protocols. This tutorial uses AMQP 0-9-1, which is an open, general-purpose protocol for messaging. There are a number of clients for RabbitMQ in <a href="https://www.rabbitmq.com/client-libraries/devtools">many different languages</a>. We&#39;ll use the <a href="http://www.squaremobius.net/amqp.node/">amqp.node client</a> in this tutorial.</p>
 <h3 id="sending">Sending</h3>
 <p>We&#39;ll call our message publisher (sender) <code>send.js</code> and our message consumer (receiver) <code>receive.js</code>. The publisher will connect to RabbitMQ, send a single message, then exit.</p>
@@ -84,7 +84,7 @@
 });</p>
 <h3 id="receiving">Receiving</h3>
 <p>That&#39;s it for our publisher. Our consumer listens for messages from RabbitMQ, so unlike the publisher which publishes a single message, we&#39;ll keep the consumer running to listen for messages and print them out.</p>
-<p><img src="../../assets/images/2025/06/image-22.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-22.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-22.png" alt=""></a></p>
 <p>模块加载和连接是类似的，不过需要定义不一样的函数用于消费</p>
 <pre><code>channel.consume(queue, function(msg) {
 </code></pre>
@@ -95,7 +95,7 @@
 <p>这里设置noAck表示消费完之后不需要对应的确认过程，因此如果出现了消费失败的情况这个消息会被直接丢弃</p>
 <h2 id="work-queues">Work Queues</h2>
 <p>工作队列 (又称任务队列) ， 背后的主要思想是<strong>避免立即执行资源密集型任务</strong> 并<strong>必须等待其完成</strong> 。相反，我们将任务安排在稍后完成。我们将任务封装为消息并将其发送到队列。后台运行的工作进程将弹出任务并最终执行该任务。当你<strong>运行多个工作进程</strong> 时，这些任务将在它们之间共享。</p>
-<p><img src="../../assets/images/2025/06/image-23.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-23.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-23.png" alt=""></a></p>
 <p>We will slightly modify the  <em>send.js</em> code from our previous example, to allow arbitrary messages to be sent from the command line. This program will schedule tasks to our work queue, so let&#39;s name it <code>new_task.js</code></p>
 <pre><code>var queue = &#x27;task_queue&#x27;;
 </code></pre>
@@ -140,12 +140,12 @@ channel.consume(queue, function(msg) {
 <h3 id="fair-dispatch">Fair Dispatch</h3>
 <p>您可能已经注意到，调度仍然没有完全按照我们的要求工作。例如，在有两个 worker 的情况下，当所有奇数消息都很重，偶数消息都很轻时，一个 worker 将一直忙碌，而另一个 worker 几乎不做任何工作。好吧，RabbitMQ 对此一无所知，并且仍然会均匀地发送消息。</p>
 <p>发生这种情况是因为 RabbitMQ 只是在消息进入队列时调度消息。它不会查看使用者的未确认消息的数量。它只是盲目地将每 n 条消息分派给第 n 个消费者。</p>
-<p><img src="../../assets/images/2025/06/image-24.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-24.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-24.png" alt=""></a></p>
 <p>为了解决这个问题，我们可以使用值为 <code>1</code> 的 <code>prefetch</code> 方法。这告诉 RabbitMQ 一次不要向 worker 提供多条消息。或者，换句话说，在工作程序处理并确认前一条消息之前，不要将新消息分派给工作程序。相反，它会将其分派给下一个仍然不忙的 worker。</p>
 <h2 id="publishsubscribe">Publish/Subscribe</h2>
 <p>在我们的日志系统中，接收器程序的每个运行副本都会收到消息。这样，我们将能够运行一个接收器并将日志定向到磁盘;同时，我们将能够运行另一个接收器并在屏幕上查看日志。</p>
 <p>RabbitMQ 中消息收发模型的核心思想是，生产者从不直接向队列发送任何消息。实际上，很多时候，生产者甚至不知道消息是否会被传送到任何队列。</p>
-<p><img src="../../assets/images/2025/06/image-25.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-25.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-25.png" alt=""></a></p>
 <p>相反，创建者只能向  <em>Exchange</em> 发送消息。一 交换是一件非常简单的事情。一方面，它接收来自 producers，另一端则将它们推送到队列中。交易所 必须确切地知道如何处理它收到的消息。应该是 附加到特定队列？它应该附加到许多队列中吗？ 或者它应该被丢弃。<strong>该规则由 <em>exchange</em> 决定</strong></p>
 <p>有几种可用的交换类型：<code>direct</code>、<code>topic</code>、<code>headers</code> 和<code>fanout </code>。我们将重点介绍最后一个 <strong>fanout</strong> 。让我们创建一个这种类型的交换，并将其命名为 <code>logs</code>：</p>
 <pre><code>ch.assertExchange(&#x27;logs&#x27;, &#x27;fanout&#x27;, {durable: false})
@@ -172,7 +172,7 @@ channel.consume(queue, function(msg) {
 <p>从现在开始，<code> 日志</code>exchange会将消息附加到我们的队列中。</p>
 <pre><code>channel.bindQueue(queue_name, &#x27;logs&#x27;, &#x27;&#x27;);
 </code></pre>
-<p><img src="../../assets/images/2025/06/image-26.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-26.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-26.png" alt=""></a></p>
 <h2 id="路由">路由</h2>
 <p>我们将为其添加一项功能 - 我们将使仅<strong>订阅消息子集</strong> 成为可能。例如，我们将能够仅将关键错误消息定向到日志文件（以节省磁盘空间），同时仍然能够在控制台上打印所有日志消息。</p>
 <p>除了之前fanout exchange的绑定队列方法之外，还有绑定可以采用额外的绑定键参数（上面代码中的空字符串）。这是我们使用 key 创建绑定的方法：</p>
@@ -182,9 +182,9 @@ channel.consume(queue, function(msg) {
 <h3 id="direct-exchange">Direct exchange</h3>
 <p>除了广播全部日志之外，我们希望将其扩展为允许根据消息的严重性筛选消息。例如，我们可能希望将日志消息写入磁盘的脚本只接收严重错误，而不会将磁盘空间浪费在警告或信息日志消息上。</p>
 <p>接下来我们将抛弃fanout的模式使用direct exchange，背后的路由算法很简单 - 消息将发送到其 <code>binding key</code> 与消息的 <code>routing key</code> 完全匹配。</p>
-<p><img src="../../assets/images/2025/06/image-27.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-27.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-27.png" alt=""></a></p>
 <h3 id="multiple-bindings多个绑定">multiple bindings多个绑定</h3>
-<p><img src="../../assets/images/2025/06/image-28.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-28.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-28.png" alt=""></a></p>
 <p>使用相同的绑定键绑定多个队列是完全合法的。在我们的示例中，我们可以在 <code>X</code> 和 <code>Q1</code> 之间添加一个绑定，绑定键为 <code>black</code>。在这种情况下，<code> 直接</code>交换的行为将类似于 <code>fanout</code>，并将消息广播到所有匹配的队列。路由键<code>为 black</code> 的消息将投递给两者 <code>问题 1</code> 和<code>问题 2</code>。</p>
 <h3 id="subscribing订阅">subscribing订阅</h3>
 <p>接收消息的工作方式与上一个教程中一样，但有一个例外 - 我们将为我们感兴趣的每个severity创建一个新的绑定。</p>
@@ -203,7 +203,7 @@ channel.sendToQueue(&#39;rpc_queue&#39;, Buffer.from(&#39;10&#39;), {
    replyTo: queue_name
 });</p>
 <h1 id="-then-code-to-read-a-response-message-from-the-callback-queue-">... then code to read a response message from the callback queue ...</h1>
-<p><img src="../../assets/images/2025/06/image-29.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-29.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-29.png" alt=""></a></p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

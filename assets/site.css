@@ -342,49 +342,43 @@ a {
   font-size: 17px;
 }
 
-.article img {
+/* Standalone images — centered, max-width, clickable to view full size */
+.article .img-wrap {
+  text-align: center;
+  margin: 24px 0;
+}
+
+.article .img-wrap a {
+  display: inline-block;
+  max-width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: zoom-in;
+  transition: box-shadow 200ms ease;
+}
+
+.article .img-wrap a:hover {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+}
+
+.article .img-wrap a::after {
+  content: "🔍 点击查看原图";
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.article .img-wrap img {
+  display: block;
   max-width: 100%;
   height: auto;
-  display: block;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
-/* Wide images get scrollable container instead of being shrunk */
-.article p:has(> img:only-child) {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin: 24px 0;
-  border-radius: 8px;
-  background:
-    linear-gradient(to right, var(--surface) 30%, transparent),
-    radial-gradient(ellipse at right, rgba(0,0,0,0.12) 0%, transparent 75%);
-  background-attachment: local, scroll;
-  background-repeat: no-repeat;
-  background-size: 100px 100%, 14px 100%;
-  background-position: left, right;
-}
-
-.article p:has(> img:only-child) img {
-  max-width: none;
-  border-radius: 0;
-}
-
-.article p:has(> img:only-child)::-webkit-scrollbar {
-  height: 6px;
-}
-
-.article p:has(> img:only-child)::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.04);
-  border-radius: 3px;
-}
-
-.article p:has(> img:only-child)::-webkit-scrollbar-thumb {
-  background: var(--line);
-  border-radius: 3px;
-}
-
-/* For images that fit — keep max-width constraint */
-.article p:not(:has(> img:only-child)) img,
+/* Inline images (inside text, lists, blockquotes) — just constrain */
+.article :not(.img-wrap) > img,
 .article li img,
 .article blockquote img {
   max-width: 100%;
@@ -393,7 +387,7 @@ a {
   border-radius: 4px;
 }
 
-/* Wrap tables and wide images in a scrollable container with shadow hint */
+/* Wrap tables in a scrollable container with shadow hint */
 .article .table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;

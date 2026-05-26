@@ -31,7 +31,7 @@
           <span class="tag">计算机基础</span>
         </div>
         <h2 id="操作系统主要功能">操作系统主要功能</h2>
-<p><img src="../../assets/images/2025/03/os-eee82952-c96f-45c9-835e-29db37c0f6d8.png" alt=" 三分恶面渣逆袭：操作系统主要功能"></p>
+<p class="img-wrap"><a href="../../assets/images/2025/03/os-eee82952-c96f-45c9-835e-29db37c0f6d8.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/03/os-eee82952-c96f-45c9-835e-29db37c0f6d8.png" alt=" 三分恶面渣逆袭：操作系统主要功能"></a></p>
 <ul>
 <li><p>负责创建和终止进程。进程是正在运行的程序实例，每个进程都有自己的地址空间和资源。</p>
 </li>
@@ -44,7 +44,7 @@
 </ul>
 <p>OS 作为用户与<a href="https://so.csdn.net/so/search?q=%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%A1%AC%E4%BB%B6&spm=1001.2101.3001.7020">计算机硬件</a>系统之间接口的含义是：OS 处于用户与计算机硬件系统之 间，用户通过 OS 来使用计算机系统。或者说，用户在 OS 帮助下，能够方便、快捷、安全、 可靠地操纵计算机硬件和运行自己的程序。应注意，OS 是一个系统软件，因而这种接口是软件接口。图 1-1 是 OS 作为接口的示意图。由图 可看出，用户可通过以下三种方式使用计算机。</p>
 <h2 id="多道批处理系统">多道批处理系统</h2>
-<p><img src="../../assets/images/2025/03/image-5.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/03/image-5.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/03/image-5.png" alt=""></a></p>
 <p>在该系统中，用户所提交的作业都先存放在外存上并排成一个队列，称为“后备 队列”；然后，由作业调度程序按一定的算法从后备队列中选择若干个作业调入内存，使它们共享 CPU 和系统中的各种资源。</p>
 <h3 id="多道批处理系统的优缺点"><strong><strong>多道批处理系统的优缺点</strong></strong></h3>
 <p>(1) 资源利用率高。由于在内存中驻留了多道程序，它们共享资源，可保持资源处于忙 碌状态，从而使各种资源得以充分利用。</p>
@@ -68,7 +68,7 @@
 <p>内核态相比用户态拥有更高的特权级别，因此能够执行更底层、更敏感的操作。不过，由于进入内核态需要付出较高的开销（需要进行一系列的上下文切换和权限检查），应该尽量减少进入内核态的次数，以提高系统的性能和稳定性。</p>
 <p>这些只能由操作系统内核态执行的指令也被叫做 <strong>特权指令</strong> 。</p>
 <p>如果计算机系统中只有一个内核态，那么所有程序或进程都必须<strong>共享系统资源</strong> ，例如内存、CPU、硬盘等，这将导致系统资源的竞争和冲突，从而影响系统性能和效率。并且，这样也会让系统的安全性降低，毕竟所有程序或进程都具有相同的特权级别和访问权限。</p>
-<p><img src="../../assets/images/2025/03/image-6.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/03/image-6.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/03/image-6.png" alt=""></a></p>
 <h3 id="用户态切换到内核态的-3-种方式：">用户态切换到内核态的 3 种方式：</h3>
 <ol>
 <li><p><strong>系统调用（Trap）</strong> ：用户态进程 <strong>主动</strong> 要求切换到内核态的一种方式，主要是为了使用内核态才能做的事情比如读取磁盘资源。系统调用的机制其核心还是使用了操作系统为用户特别开放的一个中断来实现。</p>
@@ -80,7 +80,7 @@
 </ol>
 <p>中断和异常类似，都是通过中断向量表来找到相应的处理程序进行处理。区别在于，中断来自处理器外部，不是由任何一条专门的指令造成，而异常是执行当前指令的结果。</p>
 <h2 id="系统调用">系统调用</h2>
-<p><img src="../../assets/images/2025/03/image-7.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/03/image-7.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/03/image-7.png" alt=""></a></p>
 <p>在我们运行的用户程序中，凡是与系统态级别的资源有关的操作（如文件管理、进程控制、内存管理等)，都必须通过系统调用方式向操作系统提出服务请求，并由操作系统代为完成。</p>
 <h3 id="系统调用的详细过程">系统调用的详细过程</h3>
 <ol>
@@ -91,7 +91,7 @@
 <li><p>当系统调用处理完成后，操作系统使用特权指令（如 <code>iret</code>、<code>sysret</code> 或 <code>eret</code>）切换回用户态，恢复用户态的上下文，继续执行用户程序。</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2025/03/image-8.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/03/image-8.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/03/image-8.png" alt=""></a></p>
 <h2 id="进程和线程">进程和线程</h2>
 <ul>
 <li><p><strong>进程（Process）</strong> 是指计算机中正在运行的一个程序实例。举例：你打开的微信就是一个进程。</p>

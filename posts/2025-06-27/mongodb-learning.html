@@ -44,7 +44,7 @@
 <li><p>视频直播，使用 MongoDB存储用户信息、点赞互动信息等。</p>
 </li>
 </ol>
-<p><img src="../../assets/images/2025/06/image-15.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-15.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-15.png" alt=""></a></p>
 <p>Mongo最大的特点是它支持的查询语言非常强大，其语法有点类似于面向对象的查询语言，几乎可以实现类似关系数据库单表查询的绝大部分功能，而且还支持对数据建立<code>索引</code>。首先我们从增删改查、索引、aggregate聚合三大方面来了解MongoDB的基础操作</p>
 <h2 id="crud（增删改查）">CRUD（增删改查）</h2>
 <h3 id="创建操作">创建操作</h3>
@@ -57,10 +57,10 @@
 </li>
 </ul>
 <p><strong>MongoDB 中的所有写入操作在单个<a href="https://www.mongodb.com/zh-cn/docs/manual/core/write-operations-atomicity/">文档</a>级别都具有<a href="https://www.mongodb.com/zh-cn/docs/manual/core/document/#std-label-bson-document-format">原子性</a>。</strong></p>
-<p><img src="../../assets/images/2025/06/image-13.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-13.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-13.png" alt=""></a></p>
 <h3 id="读取操作">读取操作</h3>
 <p>读取操作用于从<a href="https://www.mongodb.com/zh-cn/docs/manual/core/document/#std-label-bson-document-format">集合</a>中检索<a href="https://www.mongodb.com/zh-cn/docs/manual/core/databases-and-collections/#std-label-collections">文档</a>，即查询集合中的文档。MongoDB 提供以下方法来从集合中读取文档：</p>
-<p><img src="../../assets/images/2025/06/image-14.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-14.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-14.png" alt=""></a></p>
 <h3 id="插入行为">插入行为</h3>
 <p>如果该集合当前不存在，则插入操作将创建该集合。</p>
 <p>在MongoDB中，存储在标准集合中的每个文档都需要一个唯一的_id字段作为主键。<a href="https://www.mongodb.com/zh-cn/docs/manual/reference/glossary/#std-term-_id"></a><a href="https://www.mongodb.com/zh-cn/docs/manual/reference/glossary/#std-term-primary-key"></a>如果插入的文档省略了<code>_id</code> 字段，则MongoDB驾驶员会自动为<a href="https://www.mongodb.com/zh-cn/docs/manual/reference/bson-types/#std-label-objectid"> </a><code>_id</code>字段生成 ObjectId。</p>
@@ -77,7 +77,7 @@
 </ul>
 <p>update支持partial的更新，而replace是直接替换</p>
 <p>批量更新可以指定条件or过滤器</p>
-<p><img src="../../assets/images/2025/06/image-16.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/06/image-16.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/06/image-16.png" alt=""></a></p>
 <h3 id="删除操作">删除操作</h3>
 <p>删除操作用于从集合中删除文档。MongoDB 提供以下方法来删除集合中的文档：</p>
 <ul>
@@ -88,7 +88,7 @@
 </ul>
 <p>在 MongoDB 中，删除操作针对的是单个<a href="https://www.mongodb.com/zh-cn/docs/manual/reference/glossary/#std-term-collection">集合</a>。MongoDB 中的所有写入操作在单个文档级别都具有<a href="https://www.mongodb.com/zh-cn/docs/manual/core/write-operations-atomicity/">原子性</a>。</p>
 <p>您可以指定条件或过滤器来识别要删除的文档。这些<a href="https://www.mongodb.com/zh-cn/docs/manual/core/document/#std-label-document-query-filter">过滤器</a>使用与读取操作相同的语法。</p>
-<p><img src="https://www.mongodb.com/zh-cn/docs/manual/images/crud-annotated-mongodb-deleteMany.bakedsvg.svg" alt="The components of a MongoDB deleteMany operation."></p>
+<p class="img-wrap"><a href="https://www.mongodb.com/zh-cn/docs/manual/images/crud-annotated-mongodb-deleteMany.bakedsvg.svg" target="_blank" title="点击查看大图"><img src="https://www.mongodb.com/zh-cn/docs/manual/images/crud-annotated-mongodb-deleteMany.bakedsvg.svg" alt="The components of a MongoDB deleteMany operation."></a></p>
 <h3 id="增删改查中的重要条件表述">增删改查中的重要条件表述</h3>
 <p>在更新时，会涉及到以下三个问题：</p>
 <ul>

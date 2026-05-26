@@ -34,7 +34,7 @@
 <h2 id="纹理采样的ray-marching">纹理采样的ray marching</h2>
 <p>光线行军，算法思想很直观：首先有一个3D的体纹理，然后从相机发射n条射线，射线有一个采样的步长。当射线处在体纹理中时，每个步长采一次样，获取纹理值（实际上表示该点的密度值），计算光照，然后和该条射线当前累积的颜色值进行混合。</p>
 <p>为什么这样就可以渲染出正确的图案呢？因为光路是可逆的，从光源射出的光线经过散射，最终进入摄像机的效果等同于从摄像机发出的射线进行着色和采样，这个raytracing的道理是一样的。</p>
-<p><img src="../../assets/images/2024/06/image-27.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/06/image-27.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/06/image-27.png" alt=""></a></p>
 <p>这种算法很适合在GPU上实现，因为每条射线的计算都是独立并行的，GPU在大量并行计算上有先天的优势。为了在GPU上实现，我们需要解决的问题主要有2个：</p>
 <ol>
 <li><p>哪些片段需要raymarching。</p>
@@ -44,7 +44,7 @@
 </ol>
 <h3 id="确定ray-marching的片段">确定Ray Marching的片段</h3>
 <p>体绘制首先需要一个<strong>载体(proxy geometry)</strong> ，也就是为了确定屏幕上的哪些像素是属于某个体纹理的。这个问题很容易就让人联想到包围盒，问题也就引刃而解。</p>
-<p><img src="../../assets/images/2024/06/image-28.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/06/image-28.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/06/image-28.png" alt=""></a></p>
 <h2 id="渲染层面的ray-marching">渲染层面的ray marching</h2>
 <p>Ray Marching相当近似于光追，只不过在操作处理上有一点不同：把表面作为“距离场”处理，光追则不同：“Ray tracing is based on the principle that we can compute <strong>analytically ray-surface intersections</strong> , being with triangles or more complex surfaces.”基本都是三角形或者更复杂的表面求交，所以我们就只能展示出“我们能够计算光线表面交点的部分”</p>
 <p>Thus, Ray Marching comes into place and allows us to display any surface defined by an expression 𝑓(𝑥,𝑦,𝑧)=0 such that ‖∇𝑓‖=1, in other words a distance field</p>

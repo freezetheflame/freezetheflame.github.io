@@ -110,7 +110,7 @@
 </ul>
 <p>消除不可重入代码的方式：避免共享变量、不可重入代码期间禁用中断、信号量</p>
 <p>例子：</p>
-<p><img src="../../assets/images/2025/01/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/01/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/01/image.png" alt=""></a></p>
 <p>timer_read的竞争条件之一可能是:<br>读取硬件，然后得到值0Xffff<br>在从变量timer_hi中获取时间的高十六位数值之前，硬件再次增加，到0x0000<br>溢出触发中断，ISR运行，此时timer_hi是00001，而不是几纳秒之前的0<br>ISR返回；timer_read例程，不知道发生了中断，只是将新的0001与先前读取的定时器值<br>0Xffff，并返回0x1ffff，一个非常不正确的值</p>
 <p>——解决方案：</p>
 <p>最简单的方法是在尝试读取计时器之前停止计时器——but 丢失时间。在此期间关闭中断将消除不必要的任务，但会增加系统延迟和复杂性</p>
@@ -129,7 +129,7 @@
 <p>——有关硬件的决策会对软件产生持久的影响</p>
 <p>事关微处理器的选择，内存大小组合，外设的设计</p>
 <h3 id="嵌入式软件系统层次结构">嵌入式软件系统层次结构</h3>
-<p><img src="../../assets/images/2025/01/image-1.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/01/image-1.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/01/image-1.png" alt=""></a></p>
 <h3 id="为何要为实时系统建立模型">为何要为实时系统建立模型</h3>
 <ul>
 <li><p>辅助测试和完善最终系统</p>
@@ -148,19 +148,19 @@
 <p><strong>传统/现代嵌入式软件开发</strong></p>
 <h3 id="嵌入式软件架构模式">嵌入式软件架构模式</h3>
 <p><strong>非结构化单体架构【高耦合】</strong></p>
-<p><img src="../../assets/images/2025/01/image-3.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/01/image-3.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/01/image-3.png" alt=""></a></p>
 <p><strong>分层架构【应用层、中间层、RTOS/OS层、驱动层、硬件】</strong></p>
-<p><img src="../../assets/images/2025/01/image-4.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/01/image-4.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/01/image-4.png" alt=""></a></p>
 <p><strong>事件驱动架构</strong></p>
 <p>通常利用中断来立即响应时间</p>
 <p>通常使用消息队列，信号量和事件标志来表示系统中发生了事件</p>
-<p><img src="../../assets/images/2025/01/image-5.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/01/image-5.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/01/image-5.png" alt=""></a></p>
 <p>优点：可扩展，模块高内聚，低耦合性</p>
 <p><strong>微服务架构</strong></p>
 <p>微服务架构将应用程序构建为为业务领域开发的小型自洽服务的集合，本质山是低耦合的</p>
 <p>围绕系统的业务逻辑组织，业务逻辑是系统行为的业务规则和用例</p>
 <p>微服务本质上是低耦合的，使得微服务易于维护和可测试</p>
-<p><img src="../../assets/images/2025/01/image-6.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/01/image-6.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/01/image-6.png" alt=""></a></p>
 <h3 id="实时嵌入式软件常用的设计模式">实时嵌入式软件常用的设计模式:</h3>
 <p>单核，多核，发布和订阅模型，RTOS模式，中断处理和低功耗设计</p>
 <h3 id="数据获取存储相关的中断设计模式">数据获取/存储相关的中断设计模式</h3>

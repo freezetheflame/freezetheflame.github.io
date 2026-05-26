@@ -36,10 +36,10 @@
 <h2 id="main-features（这两个语言最主要的一些特性）">Main features（这两个语言最主要的一些特性）</h2>
 <p>这里可以分别解释一下上文提及的内容了，比如WORA是怎么实现的？</p>
 <p>对于一些我们之前接触的语言，主要是C，其实C++也比较类似，他们都是基于平台的语言，比如说你在Windows和linux上面配置的c环境并不完全相同，Windows上面你都是借助MINGW配置gcc，而linux上面可以直接安装或者装clang来代替gcc，整体的编译过程是——先借助编译器编译成o中间文件，之后经过链接之后再编译生成可执行文件</p>
-<p><img src="../../assets/images/2025/01/image-7.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/01/image-7.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/01/image-7.png" alt=""></a></p>
 <p>这是一个完整的过程。所以不同平台会有不同的中间工具转换成不同的可执行机器码。</p>
 <p>但是对于java而言并没有这样的问题。因为所有的java代码都是在jvm上执行的。JVM ，全称java virtual machine，即用于运行java文件的虚拟机，因此只要针对每个系统编写不同的jvm，那么同一份java代码就可以以相同的方式在不同的机器上运行而无需考虑跨平台。譬如Android也是运行在jvm上的，所以有时候会把安卓系统运行的缓慢归咎于jvm这样一层“中间商”，对于IOS来说并没有这样的设计。</p>
-<p><img src="../../assets/images/2025/01/image-8.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/01/image-8.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/01/image-8.png" alt=""></a></p>
 <p>从java代码编译再到字节码再到jvm运行的大致流程如下：</p>
 <p>1、<strong>编译</strong></p>
 <p>在windows环境中，打开命令窗口，切换到java文件的目录，使用 javac 命令，执行 javac xxx.java 把.java文件编译成.class文件</p>

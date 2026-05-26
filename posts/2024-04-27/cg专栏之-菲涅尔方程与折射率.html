@@ -35,7 +35,7 @@
 <p>我们去公园的池塘喂鲤鱼，当爆米花丢的比较近的时候，我们可以看见水底下成群的鲤鱼在抢吃的。但是当我们把爆米花丢的很远时，却看不见水底下那些如狼似虎的鲤鱼，只能看见水面上的倒影。</p>
 <p>近处可以看清水下，远处则能看见倒影</p>
 <p>上面这些生活中常见的现象就是菲涅尔效应</p>
-<p><img src="https://picx.zhimg.com/70/v2-967b688b3cc3542311d5a77d52744008_1440w.image?source=172ae18b&biz_tag=Post" alt="菲涅尔方程（Fresnel Equation）"></p>
+<p class="img-wrap"><a href="https://picx.zhimg.com/70/v2-967b688b3cc3542311d5a77d52744008_1440w.image?source=172ae18b&biz_tag=Post" target="_blank" title="点击查看大图"><img src="https://picx.zhimg.com/70/v2-967b688b3cc3542311d5a77d52744008_1440w.image?source=172ae18b&biz_tag=Post" alt="菲涅尔方程（Fresnel Equation）"></a></p>
 <p>那么我们怎么用跟科学的术语来描述这个它们呢？我们能够看见水底下或者玻璃后的东西，那肯定是光线发生了<strong>折射</strong> 所导致的。而对于水面上的倒影或者是玻璃变得像镜子一样这些都是因为光线发生了<strong>反射</strong> 所导致的。通过前面的现象，我们可以发现，当我们人眼离物体表面（玻璃，水或者桌子等）比较近时，此时我们的<strong>视线几乎与表面垂直</strong> ，我们可以看见更多折射过来的光（水底的鱼，玻璃外的东西）。而当们人眼离物体表面比较远时，此时我们的<strong>视线几乎与表面平行</strong> ，我们可以看见更多反射过来的光（倒影）</p>
 <p>那么在我们渲染的时候，自然要把这个现象给考虑进去，才能够达到以假乱真的目的。因此我们自然需要一个公式，能够<strong>描述</strong> 出在不同入射光的情况下，反射光与折射光所占的<strong>比例</strong> ，这个公式就是菲涅尔方程</p>
 <h2 id="菲涅尔方程">菲涅尔方程</h2>
@@ -46,13 +46,13 @@ $$R_s = \\left| \\frac{n_1\\cos\\theta_i -n_2\\cos\\theta_t}{n_1\\cos\\theta_i +
 $$R_p = \\left| \\frac{n_1\\cos\\theta_t -n_2\\cos\\theta_i}{n_1\\cos\\theta_t +n_2\\cos\\theta_i}\\right|^2$$</p>
 <p>这里我们先停一停，以上是我跟着知乎<a href="https://zhuanlan.zhihu.com/p/375746359">菲涅尔方程（Fresnel Equation） - 知乎 (zhihu.com)</a>进行的思考流程，不过对于这里的偏振概念似乎还要进一步探究</p>
 <p>我们把视野放到brown University的介绍中，</p>
-<p><img src="../../assets/images/2024/04/image-18.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-18.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-18.png" alt=""></a></p>
 <p>What happens when light, <strong>propagating in a uniform medium, encounters a smooth interface</strong><br>which is the boundary of another medium (with a different refractive index)?</p>
 <p>指的就是光在接触另一种介质的边界时会发生什么？</p>
-<p><img src="../../assets/images/2024/04/image-19.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-19.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-19.png" alt=""></a></p>
 <p>我们首先做出一些定义or规约</p>
 <p>入射面<strong>Plane of incidence</strong> 和接触面<strong>Plane of the interface</strong></p>
-<p><img src="../../assets/images/2024/04/image-21.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-21.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-21.png" alt=""></a></p>
 <p><strong>Plane of incidence</strong>(in this illustration, the yz plane) is the plane that contains the incident and reflected k-vectors.</p>
 <p><strong>Plane of the interface</strong>(y=0, the xz plane) is the plane that defines the interface between the two materials</p>
 <h3 id="s-and-p-polarizations">“S” and “P” polarizations</h3>
@@ -60,16 +60,16 @@ $$R_p = \\left| \\frac{n_1\\cos\\theta_t -n_2\\cos\\theta_i}{n_1\\cos\\theta_t +
 <ol>
 <li>“S” polarization is the <strong>perpendicular polarization</strong> , and it sticks up out of the plane of incidence</li>
 </ol>
-<p><img src="../../assets/images/2024/04/image-22.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-22.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-22.png" alt=""></a></p>
 <ol start="2">
 <li>“P” polarization is the <strong>parallel polarization</strong> , and it lies parallel to the plane of incidence.</li>
 </ol>
-<p><img src="../../assets/images/2024/04/image-23.png" alt=""></p>
-<p><img src="../../assets/images/2024/04/image-24.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-23.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-23.png" alt=""></a></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-24.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-24.png" alt=""></a></p>
 <p>In other words, The component of the E-field that lies in the xz plane is continuous as you move across the plane of the interface. Here, all E-fields are in the z-direction, which is in the plane of the interface.</p>
 <p>换言之，当您在界面平面上移动时，位于 xz 平面中的 E 场分量是连续的。在这里，所有电子场都在 z 方向上，即在界面的平面上。</p>
 <p>具体的推导过程略（可见<a href="https://www.brown.edu/research/labs/mittleman/sites/brown.edu.research.labs.mittleman/files/uploads/lecture13_0.pdf">lecture13_0.pdf (brown.edu)</a>）</p>
-<p><img src="../../assets/images/2024/04/image-25.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-25.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-25.png" alt=""></a></p>
 <p>所以这个时候我们可以试着使用反射定律修改上面的菲涅尔方程</p>
 <p>[latex]
 $$R_s = \\left| \\frac{n_1\\cos\\theta_i -n_2\\sqrt{1-\\left(\\frac{n_1}{n_2}\\sin\\theta_i\\right)^2}}{n_1\\cos\\theta_i +n_2\\cos\\theta_t}\\right|^2$$
@@ -83,10 +83,10 @@ $$R= \\frac{R_s+R_p}{2}$$</p>
 <p>[latex]
 $$\\frac{n_1}{n_2} = \\frac{\\sin i_B}{\\sin i_\\gamma}=\\frac{\\sin i_B}{\\cos i_B}=\\tan i_B$$</p>
 <p>利用菲涅尔方程，我们就可以根据不同的反射率画出 R 与 𝜃𝑖 的对应关系图，如下：</p>
-<p><img src="../../assets/images/2024/04/image-26.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-26.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-26.png" alt=""></a></p>
 <p>图中代表的是折射率为1.5的<strong>绝缘体</strong> （例如某种玻璃）的反射情况。可以发现当夹角为0时，即入射光垂直于表面，反射光的比例只有4%左右，而当夹角为90度时，即入射光平行于表面，反射比例将近100%，符合我们前面所说的菲涅尔效应。</p>
 <p>我们再来看一个<strong>导体</strong> （比如铜镜）的关系图，如下：</p>
-<p><img src="../../assets/images/2024/04/image-27.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2024/04/image-27.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/04/image-27.png" alt=""></a></p>
 <p>可以发现即使光线垂直于导体表面，但是依旧有90%的光被反射。这也证实了为什么我们可以用铜来做镜子，却没法使用玻璃来做镜子。</p>
 <p>比起菲涅尔方法，我们有一些更加简洁快速的近似方式，称之为：</p>
 <h2 id="schlick近似法">Schlick近似法</h2>

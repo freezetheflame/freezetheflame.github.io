@@ -61,7 +61,7 @@
 <p>幂等性是一个数学和计算机科学术语，用于描述无论操作执行多少次，都产生相同结果的属性。在软件行业，应用极其广泛，当我们说一个接口支持幂等时，无论调用多少次，对系统造成的结果是一致的。</p>
 <p>注意这里说的“对系统造成的结果是一致的”是指系统内部数据或状态的变更，不是指返回值。不同的系统设计，返回值可能是不一样的。</p>
 <p>举个例子，你在淘宝免密支付10元，淘宝针对这笔订单调用支付宝支付接口进行支付，无论是调用1次，还是调用100次，最终只扣了你10元。但是第二次有可能返回“重复请求”，也有可能返回“支付成功”，这个取决于接口设计。也就是支付宝内部只扣了你10元，但是接口可能返回给商户是是不同的结果。</p>
-<p><img src="../../assets/images/2025/07/image.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/07/image.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/07/image.png" alt=""></a></p>
 <h3 id="幂等性需关注几个重点"><strong>幂等性需关注几个重点</strong></h3>
 <ul>
 <li><p>幂等不仅仅只是一次（或多次）请求对资源没有副作用（比如查询数据库操作，没有增删改，因此没有对数据库有任何影响）</p>
@@ -74,7 +74,7 @@
 </li>
 </ul>
 <p>一个完整的支付流程是这样的：</p>
-<p><img src="../../assets/images/2025/07/image-2.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/07/image-2.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/07/image-2.png" alt=""></a></p>
 <p>支付流程说明</p>
 <ol>
 <li><p>用户在商城选购商品并发起支付请求；</p>
@@ -96,14 +96,14 @@
 </blockquote>
 <h3 id="如何解决幂等？">如何解决幂等？</h3>
 <h4 id="1业务幂等">1.业务幂等</h4>
-<p><img src="../../assets/images/2025/07/image-3.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/07/image-3.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/07/image-3.png" alt=""></a></p>
 <p>所谓业务幂等，就是由各域自己把唯一性的交易ID作为数据库唯一索引，这样可以保证不会重复处理。</p>
 <p>在数据库前面可以加一层缓存来提高性能，但是缓存只用于查询，查到数据认为就返回幂等成功，但是但不到，需要尝试插入数据库，插入成功后再刷新数据到缓存。</p>
 <h4 id="2通用幂等组件">2**.通用幂等组件**</h4>
 <p>每个域都要做幂等处理，那就单独出一个独立的幂等组件，各子业务系统通过引用这个公共JAR包解决。</p>
-<p><img src="../../assets/images/2025/07/image-4.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/07/image-4.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/07/image-4.png" alt=""></a></p>
 <h4 id="3通用幂等服务">3.通用幂等服务</h4>
-<p><img src="../../assets/images/2025/07/image-5.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/07/image-5.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/07/image-5.png" alt=""></a></p>
 <p>解决DB连接数不够用的第二个解决方案：幂等组件服务化。这样的坏处就是复杂度和耗时RT都会增加，而且幂等服务有可能成为瓶颈，所以一般<strong>很少这么用。</strong></p>
 <p>分布式支付系统面临的幂等性挑战核心有两点：</p>
 <ol>
@@ -140,7 +140,7 @@
 </li>
 </ol>
 <p>对于收单金额未结算，还在“待结算”账户的订单，如果出现退款情况，业务流程和上述流程差不多，只是从待结算账户进行扣款。</p>
-<p><img src="../../assets/images/2025/07/image-6.png" alt=""></p>
+<p class="img-wrap"><a href="../../assets/images/2025/07/image-6.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2025/07/image-6.png" alt=""></a></p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
