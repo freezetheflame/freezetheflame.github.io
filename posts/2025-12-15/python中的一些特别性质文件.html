@@ -30,51 +30,43 @@
           <span>2025-12-15</span>
           <span class="tag">AI</span><span class="tag">python</span>
         </div>
-        <p>\n</p>
-<h2 id="initpy"><strong>init</strong>.py</h2>
-<p>\n\n\n\n</p>
+        <h2 id="initpy"><strong>init</strong>.py</h2>
 <p>在Python工程里，当python检测到一个目录下存在__init__.py文件时，python就会把它当成一个<a href="https://zhida.zhihu.com/search?content_id=113764169&content_type=Article&match_order=1&q=%E6%A8%A1%E5%9D%97&zhida_source=entity">模块</a>(module)。Module跟C＋＋的<a href="https://zhida.zhihu.com/search?content_id=113764169&content_type=Article&match_order=1&q=%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4&zhida_source=entity">命名空间</a>和Java的Package的概念很像，都是为了科学地组织化工程，管理命名空间。</p>
-<p>\n\n\n\n</p>
 <h3 id="主要作用：">主要作用：</h3>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ol>
-<li><strong>标识目录为Python包</strong><br>即使为空文件，目录中包含<code>__init__.py</code>也会被Python视为包（适用于Python 3.3之前的版本；3.3+支持&quot;命名空间包&quot;，无需此文件）。
-\n\n\n\n</li>
-<li><strong>初始化包级代码</strong><br>当包被导入时，<code>__init__.py</code>中的代码会<strong>自动执行</strong> （例如：初始化变量、连接数据库）。
-\n\n\n\n</li>
-<li><strong>控制模块导入</strong> \n\n<ul>
-<li><strong>批量导入</strong> ：简化用户导入路径（例：<code>from mypackage import func</code> 而非 <code>from mypackage.module import func</code>）。
-\n\n\n\n</li>
-<li>**定义<code>__all__</code>**：指定<code>from package import *</code>时导入哪些模块。
-\n\n\n\n</li>
-<li><strong>隐藏内部实现</strong> ：可在<code>__init__.py</code>中导入公共接口，隐藏内部模块。
-\n\n
-\n\n\n\n</li>
+<li><p><strong>标识目录为Python包</strong><br>即使为空文件，目录中包含<code>__init__.py</code>也会被Python视为包（适用于Python 3.3之前的版本；3.3+支持&quot;命名空间包&quot;，无需此文件）。</p>
+</li>
+<li><p><strong>初始化包级代码</strong><br>当包被导入时，<code>__init__.py</code>中的代码会<strong>自动执行</strong> （例如：初始化变量、连接数据库）。</p>
+</li>
+<li><p><strong>控制模块导入</strong> </p>
+<ul>
+<li><p><strong>批量导入</strong> ：简化用户导入路径（例：<code>from mypackage import func</code> 而非 <code>from mypackage.module import func</code>）。</p>
+</li>
+<li><p>**定义<code>__all__</code>**：指定<code>from package import *</code>时导入哪些模块。</p>
+</li>
+<li><p><strong>隐藏内部实现</strong> ：可在<code>__init__.py</code>中导入公共接口，隐藏内部模块。</p>
+</li>
 </ul>
 </li>
-<li><strong>共享包级变量/函数</strong><br>在<code>__init__.py</code>中定义变量、函数或类，可在包的多个模块间共享。
-\n
-\n\n\n\n</li>
+<li><p><strong>共享包级变量/函数</strong><br>在<code>__init__.py</code>中定义变量、函数或类，可在包的多个模块间共享。</p>
+</li>
 </ol>
 <h3 id="执行顺序示例">执行顺序示例</h3>
-<p>\n\n\n\n</p>
-<pre><code>mypackage/\n├── __init__.py         # (1)\n├── module1.py          \n└── subpackage/\n    ├── __init__.py     # (2)\n    └── module2.py      # (4)
+<pre><code>mypackage/
 </code></pre>
-<p>\n\n\n\n</p>
+<p>├── <strong>init</strong>.py         # (1)
+├── module1.py<br>└── subpackage/
+    ├── <strong>init</strong>.py     # (2)
+    └── module2.py      # (4)</p>
 <p>当执行 <code>import mypackage.subpackage.module2</code> 时：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ol>
-<li><strong>先执行外层包初始化</strong> ：<code>mypackage/__init__.py</code> (1)
-\n\n\n\n</li>
-<li><strong>再执行子包初始化</strong> ：<code>mypackage/subpackage/__init__.py</code> (2)
-\n\n\n\n</li>
-<li><strong>最后导入目标模块</strong> ：<code>module2.py</code> (4)
-\n
-\n\n\n\n</li>
+<li><p><strong>先执行外层包初始化</strong> ：<code>mypackage/__init__.py</code> (1)</p>
+</li>
+<li><p><strong>再执行子包初始化</strong> ：<code>mypackage/subpackage/__init__.py</code> (2)</p>
+</li>
+<li><p><strong>最后导入目标模块</strong> ：<code>module2.py</code> (4)</p>
+</li>
 </ol>
-<p>\n</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

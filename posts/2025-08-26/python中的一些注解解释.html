@@ -30,51 +30,100 @@
           <span>2025-08-26</span>
           <span class="tag">python</span><span class="tag">基础语法</span>
         </div>
-        <p>\n</p>
-<h2 id="wraps">@wraps</h2>
-<p>\n\n\n\n</p>
+        <h2 id="wraps">@wraps</h2>
 <p><strong>functools</strong> is a standard Python module for higher-order functions (functions that act on or return other functions). wraps() is a decorator that is applied to the wrapper function of a decorator. <strong>It updates the wrapper function to look like wrapped function by copying attributes such as <strong>name</strong>, <strong>doc</strong></strong>(the docstring), etc.</p>
-<p>\n\n\n\n</p>
-<pre><code>Syntax: @functools.wraps(wrapped, assigned = WRAPPER_ASSIGNMENTS, updated = WRAPPER_UPDATES)\nParameters: \n  wrapped: The function name that is to be decorated by wrapper function. \n  assigned : Tuple to specify which attributes of the original function are assigned     directly to the matching attributes on the wrapper function. By default set to WRAPPER_ASSIGNMENTS (which assigns to the wrapper function’s __module__, __name__, __qualname__, __annotations__ and __doc__, the documentation string) \n  updated : Tuple to specify which attributes of the wrapper function are updated with the corresponding attributes from the original function. By default set to WRAPPER_UPDATES (which updates the wrapper function’s __dict__, i.e. the instance dictionary). 
+<pre><code>Syntax: @functools.wraps(wrapped, assigned = WRAPPER_ASSIGNMENTS, updated = WRAPPER_UPDATES)
 </code></pre>
-<p>\n\n\n\n</p>
+<p>Parameters: 
+  wrapped: The function name that is to be decorated by wrapper function. 
+  assigned : Tuple to specify which attributes of the original function are assigned     directly to the matching attributes on the wrapper function. By default set to WRAPPER_ASSIGNMENTS (which assigns to the wrapper function’s <strong>module</strong>, <strong>name</strong>, <strong>qualname</strong>, <strong>annotations</strong> and <strong>doc</strong>, the documentation string) 
+  updated : Tuple to specify which attributes of the wrapper function are updated with the corresponding attributes from the original function. By default set to WRAPPER_UPDATES (which updates the wrapper function’s <strong>dict</strong>, i.e. the instance dictionary). </p>
 <p>在缺失@wraps时，如下代码的输出是这样的</p>
-<p>\n\n\n\n</p>
-<pre><code>def a_decorator(func):\n    def wrapper(*args, **kwargs):\n        &quot;&quot;&quot;A wrapper function&quot;&quot;&quot;\n        # Extend some capabilities of func\n        func()\n    return wrapper\n\n@a_decorator\ndef first_function():\n    &quot;&quot;&quot;This is docstring for first function&quot;&quot;&quot;\n    print(&quot;first function&quot;)\n\n@a_decorator\ndef second_function(a):\n    &quot;&quot;&quot;This is docstring for second function&quot;&quot;&quot;\n    print(&quot;second function&quot;)\n\nprint(first_function.__name__)\nprint(first_function.__doc__)\nprint(second_function.__name__)\nprint(second_function.__doc__)
+<pre><code>def a_decorator(func):
+def wrapper(*args, **kwargs):
+    &quot;&quot;&quot;A wrapper function&quot;&quot;&quot;
+    # Extend some capabilities of func
+    func()
+return wrapper
 </code></pre>
-<p>\n\n\n\n</p>
+<p>@a_decorator
+def first_function():
+    &quot;&quot;&quot;This is docstring for first function&quot;&quot;&quot;
+    print(&quot;first function&quot;)
+@a_decorator
+def second_function(a):
+    &quot;&quot;&quot;This is docstring for second function&quot;&quot;&quot;
+    print(&quot;second function&quot;)
+print(first_function.<strong>name</strong>)
+print(first_function.<strong>doc</strong>)
+print(second_function.<strong>name</strong>)
+print(second_function.<strong>doc</strong>)</p>
 <pre><code>**wrapper  
  A wrapper function  
 wrapper  
 A wrapper function**
 </code></pre>
-<p>\n\n\n\n</p>
 <p>虽然上面的代码在逻辑上可以正常工作，但如果你正在编写一个 API 或库，并且有人想知道你的函数做什么，它的名称或只是简单地键入 help（yourFunction），请考虑这一点，<strong>它将始终显示包装函数的名称和文档字符串</strong> 。如果您对不同的函数使用相同的包装函数，这会更加混乱，因为它将为每个函数显示相同的详细信息。</p>
-<p>\n\n\n\n</p>
 <p>理想情况下，它应该显示包装函数的名称和文档字符串，而不是包装函数。手动解决方案是在返回之前在包装函数中分配__name____doc__属性。</p>
-<p>\n\n\n\n</p>
-<pre><code>def a_decorator(func):\n    def wrapper(*args, **kwargs):\n        &quot;&quot;&quot;A wrapper function&quot;&quot;&quot;\n        # Extend some capabilities of func\n        func()\n    wrapper.__name__ = func.__name__\n    wrapper.__doc__ = func.__doc__\n    return wrapper\n\n@a_decorator\ndef first_function():\n    &quot;&quot;&quot;This is docstring for first function&quot;&quot;&quot;\n    print(&quot;first function&quot;)\n\n@a_decorator\ndef second_function(a):\n    &quot;&quot;&quot;This is docstring for second function&quot;&quot;&quot;\n    print(&quot;second function&quot;)\n\nprint(first_function.__name__)\nprint(first_function.__doc__)\nprint(second_function.__name__)\nprint(second_function.__doc__)
+<pre><code>def a_decorator(func):
+def wrapper(*args, **kwargs):
+    &quot;&quot;&quot;A wrapper function&quot;&quot;&quot;
+    # Extend some capabilities of func
+    func()
+wrapper.__name__ = func.__name__
+wrapper.__doc__ = func.__doc__
+return wrapper
 </code></pre>
-<p>\n\n\n\n</p>
+<p>@a_decorator
+def first_function():
+    &quot;&quot;&quot;This is docstring for first function&quot;&quot;&quot;
+    print(&quot;first function&quot;)
+@a_decorator
+def second_function(a):
+    &quot;&quot;&quot;This is docstring for second function&quot;&quot;&quot;
+    print(&quot;second function&quot;)
+print(first_function.<strong>name</strong>)
+print(first_function.<strong>doc</strong>)
+print(second_function.<strong>name</strong>)
+print(second_function.<strong>doc</strong>)</p>
 <p>这样子拷贝过去可以解决一定问题，但是如果我们再次键入 help（yourFunction） 会怎样</p>
-<p>\n\n\n\n</p>
-<pre><code>First Function\nHelp on function first_function in module __main__:\n\nfirst_function(*args, **kwargs)\n    This is docstring for first function\n\n\nSecond Function\nHelp on function second_function in module __main__:\n\nsecond_function(*args, **kwargs)\n    This is docstring for second function
+<pre><code>First Function
 </code></pre>
-<p>\n\n\n\n</p>
+<p>Help on function first_function in module <strong>main</strong>:
+first_function(*args, **kwargs)
+    This is docstring for first function</p>
+<p>Second Function
+Help on function second_function in module <strong>main</strong>:
+second_function(*args, **kwargs)
+    This is docstring for second function</p>
 <p>如您所见，它仍然存在一个问题，即函数的签名，它显示了包装函数使用的签名（这里是通用签名）每个函数的签名。此外，如果您要实现许多装饰器，那么您必须为每个装饰器编写这些行。<br>因此，为了节省时间并提高可读性，我们可以使用 <strong>functools.wraps（） 作为包装函数的装饰器</strong> 。</p>
-<p>\n\n\n\n</p>
-<pre><code>from functools import wraps\n\ndef a_decorator(func):\n    @wraps(func)\n    def wrapper(*args, **kwargs):\n        &quot;&quot;&quot;A wrapper function&quot;&quot;&quot;\n\n        # Extend some capabilities of func\n        func()\n    return wrapper\n\n@a_decorator\ndef first_function():\n    &quot;&quot;&quot;This is docstring for first function&quot;&quot;&quot;\n    print(&quot;first function&quot;)\n\n@a_decorator\ndef second_function(a):\n    &quot;&quot;&quot;This is docstring for second function&quot;&quot;&quot;\n    print(&quot;second function&quot;)\n\nprint(first_function.__name__)\nprint(first_function.__doc__)\nprint(second_function.__name__)\nprint(second_function.__doc__)
+<pre><code>from functools import wraps
 </code></pre>
-<p>\n\n\n\n</p>
+<p>def a_decorator(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        &quot;&quot;&quot;A wrapper function&quot;&quot;&quot;
+        # Extend some capabilities of func
+        func()
+    return wrapper
+@a_decorator
+def first_function():
+    &quot;&quot;&quot;This is docstring for first function&quot;&quot;&quot;
+    print(&quot;first function&quot;)
+@a_decorator
+def second_function(a):
+    &quot;&quot;&quot;This is docstring for second function&quot;&quot;&quot;
+    print(&quot;second function&quot;)
+print(first_function.<strong>name</strong>)
+print(first_function.<strong>doc</strong>)
+print(second_function.<strong>name</strong>)
+print(second_function.<strong>doc</strong>)</p>
 <p>**Output:**<strong>输出：</strong></p>
-<p>\n\n\n\n</p>
 <pre><code>first_function  
 This is docstring for first function  
 second_function  
 This is docstring for second function
 </code></pre>
-<p>\n\n\n\n</p>
-<p>\n</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

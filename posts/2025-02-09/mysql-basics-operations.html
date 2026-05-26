@@ -30,62 +30,47 @@
           <span>2025-02-09</span>
           <span class="tag">服务器后端内容</span><span class="tag">Java</span><span class="tag">MySQL</span><span class="tag">数据库</span><span class="tag">SQL</span><span class="tag">基础语法</span>
         </div>
-        <p>\n</p>
-<h2 id="基础sql操作">基础SQL操作</h2>
-<p>\n\n\n\n</p>
+        <h2 id="基础sql操作">基础SQL操作</h2>
 <h3 id="select">SELECT</h3>
-<p>\n\n\n\n</p>
 <pre><code>SELECT * FROM Customers;
 </code></pre>
-<p>\n\n\n\n</p>
 <p>最基础的选择操作，从Customers表中选择所有列，没有其他条件</p>
-<p>\n\n\n\n</p>
-<pre><code>SELECT column1, column2, ...\nFROM table_name;
+<pre><code>SELECT column1, column2, ...
 </code></pre>
-<p>\n\n\n\n</p>
+<p>FROM table_name;</p>
 <p>这则是最全面的SELECT的参考指令</p>
-<p>\n\n\n\n</p>
-<pre><code>SELECT DISTINCT column1, column2, ...\nFROM table_name;
+<pre><code>SELECT DISTINCT column1, column2, ...
 </code></pre>
-<p>\n\n\n\n</p>
+<p>FROM table_name;</p>
 <p>DISTINCT可以选出无重复的内容</p>
-<p>\n\n\n\n</p>
 <h2 id="where">WHERE</h2>
-<p>\n\n\n\n</p>
-<pre><code>SELECT column1, column2, ...\nFROM table_name\nWHERE condition;
+<pre><code>SELECT column1, column2, ...
 </code></pre>
-<p>\n\n\n\n</p>
+<p>FROM table_name
+WHERE condition;</p>
 <p>作为SQL的conditions语句，可以附在很多句子的末尾。</p>
-<p>\n\n\n\n</p>
 <p>注意这里需要区分numeric和text两种主要field，注意引号的使用恰当。</p>
-<p>\n\n\n\n</p>
 <h2 id="and-or--not">AND OR &amp; NOT</h2>
-<p>\n\n\n\n</p>
-<pre><code>SELECT column1, column2, ...\nFROM table_name\nWHERE condition1 [AND] condition2 [AND] condition3 ...;
+<pre><code>SELECT column1, column2, ...
 </code></pre>
-<p>\n\n\n\n</p>
+<p>FROM table_name
+WHERE condition1 [AND] condition2 [AND] condition3 ...;</p>
 <p>使用方式很直白，用于连接where判断中的各个条件，注意NOT是单目即可</p>
-<p>\n\n\n\n</p>
 <h2 id="order-by">ORDER BY</h2>
-<p>\n\n\n\n</p>
-<pre><code>SELECT column1, column2, ...\nFROM table_name\nORDER BY column1, column2, ... ASC|DESC;
+<pre><code>SELECT column1, column2, ...
 </code></pre>
-<p>\n\n\n\n</p>
+<p>FROM table_name
+ORDER BY column1, column2, ... ASC|DESC;</p>
 <p>ASC和DESC分别是升序降序的含义，是ASCENDING和DESCENDING的意思</p>
-<p>\n\n\n\n</p>
 <p>example</p>
-<p>\n\n\n\n</p>
-<pre><code>SELECT * FROM Customers\nORDER BY Country ASC, CustomerName DESC;
+<pre><code>SELECT * FROM Customers
 </code></pre>
-<p>\n\n\n\n</p>
+<p>ORDER BY Country ASC, CustomerName DESC;</p>
 <h2 id="insert">INSERT</h2>
-<p>\n\n\n\n</p>
-<pre><code>INSERT INTO table_name (column1, column2, column3, ...)\nVALUES (value1, value2, value3, ...);
+<pre><code>INSERT INTO table_name (column1, column2, column3, ...)
 </code></pre>
-<p>\n\n\n\n</p>
+<p>VALUES (value1, value2, value3, ...);</p>
 <p>如果要为表的所有列添加值，则不需要在 SQL 查询中指定列名</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

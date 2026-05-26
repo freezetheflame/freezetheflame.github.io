@@ -30,83 +30,181 @@
           <span>2023-09-25</span>
           <span class="tag">Windows相关</span>
         </div>
-        <p>\n</p>
-<p>\n\n\n\n</p>
-<p>1简单背包</p>
-<p>\n\n\n\n</p>
+        <p>1简单背包</p>
 <p>我们通常使用一个二维数组表示这个背包的内容状态，比如f[num][weight]对应一定数量与重量的背包内容，然后遍历，从背包满载开始倒推。这里我们先采用二维DP的方式，虽然但是有的时候会引起MLE</p>
-<p>\n\n\n\n</p>
 <p>设 DP 状态 dp[i][j]为在只能放前i个物品的情况下，容量为j的背包所能达到的最大总价值。</p>
-<p>\n\n\n\n</p>
 <p>考虑转移。假设当前已经处理好了前 i-1个物品的所有状态，那么对于第i个物品，当其不放入背包时，背包的剩余容量不变，背包中物品的总价值也不变，故这种情况的最大价值为 f[i-1][j]；当其放入背包时，背包的剩余容量会减小w[i] ，背包中物品的总价值会增大c[i]，故这种情况的最大价值为 f[i-1][j-w[i]]+c[i]。</p>
-<p>\n\n\n\n</p>
-<pre><code>#include&lt;cstdio&gt;\nusing namespace std;\nconst int maxm=201,maxn=31;\nint m,n;\nint w[maxn],c[maxn];//weight and cost\nint f[maxn][maxm];//f[数量][质量]\nint max(int x,int y){\n\tif(x&lt;y)return y;\n\telse return x;\n}\nint main(){\n\tscanf(&quot;%d%d&quot;,&amp;m,&amp;n);\n\tfor(int i=1;i&lt;=n;i++)\n\t\tscanf(&quot;%d%d&quot;,&amp;w[i],&amp;c[i]);\n\tfor(int i=1;i&lt;=n;i++)\n\t\tfor(int v=m;v&gt;0;v--)\n\t\t\tif(w[i]&lt;=v/*可以放包里*/)f[i][v]=max(f[i-1][v],f[i-1][v-w[i]]+c[i]);//不断推导当前数目放东西收益最大\n\t\t\telse f[i][v]=f[i-1][v];\n\tprintf(&quot;%d&quot;,f[n][m]);\n\treturn 0;/*10 4\n\t2 1\n\t3 3\n\t4 5\n\t7 9*/\n}
+<pre><code>#include&lt;cstdio&gt;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>using namespace std;
+const int maxm=201,maxn=31;
+int m,n;
+int w[maxn],c[maxn];//weight and cost
+int f[maxn][maxm];//f[数量][质量]
+int max(int x,int y){
+\tif(x&lt;y)return y;
+\telse return x;
+}
+int main(){
+\tscanf(&quot;%d%d&quot;,&amp;m,&amp;n);
+\tfor(int i=1;i&lt;=n;i++)
+\t\tscanf(&quot;%d%d&quot;,&amp;w[i],&amp;c[i]);
+\tfor(int i=1;i&lt;=n;i++)
+\t\tfor(int v=m;v&gt;0;v--)
+\t\t\tif(w[i]&lt;=v/<em>可以放包里</em>/)f[i][v]=max(f[i-1][v],f[i-1][v-w[i]]+c[i]);//不断推导当前数目放东西收益最大
+\t\t\telse f[i][v]=f[i-1][v];
+\tprintf(&quot;%d&quot;,f[n][m]);
+\treturn 0;/<em>10 4
+\t2 1
+\t3 3
+\t4 5
+\t7 9</em>/
+}</p>
 <p>二维背包比较碍事，而且fi只跟fi-1有关，所以可以去除一维</p>
-<p>\n\n\n\n</p>
-<pre><code>#include&lt;cstdio&gt;\nusing namespace std;\nconst int maxm=2001,maxn=31;\nint m,n;\nint w[maxn],c[maxn];//weight &amp; cost\nint f[maxm];\nint main(){\n\tscanf(&quot;%d%d&quot;,&amp;m,&amp;n);\n\tfor(int i=1;i&lt;=n;i++)\n\t\tscanf(&quot;%d%d&quot;,&amp;w[i],&amp;c[i]);\n\tfor(int i=1;i&lt;=n;i++)\n\t\tfor(int v=m;v&gt;=w[i];v--)//只要放得下即可，并且不断压缩至正好\n\t\t\tif(f[v-w[i]]+c[i]&gt;f[v])f[v]=f[v-w[i]]+c[i];\n\tprintf(&quot;%d&quot;,f[m]);\n\treturn 0;\n\t/*10 4\n\t2 1\n\t3 3\n\t4 5\n\t7 9*/\n}
+<pre><code>#include&lt;cstdio&gt;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>using namespace std;
+const int maxm=2001,maxn=31;
+int m,n;
+int w[maxn],c[maxn];//weight &amp; cost
+int f[maxm];
+int main(){
+\tscanf(&quot;%d%d&quot;,&amp;m,&amp;n);
+\tfor(int i=1;i&lt;=n;i++)
+\t\tscanf(&quot;%d%d&quot;,&amp;w[i],&amp;c[i]);
+\tfor(int i=1;i&lt;=n;i++)
+\t\tfor(int v=m;v&gt;=w[i];v--)//只要放得下即可，并且不断压缩至正好
+\t\t\tif(f[v-w[i]]+c[i]&gt;f[v])f[v]=f[v-w[i]]+c[i];
+\tprintf(&quot;%d&quot;,f[m]);
+\treturn 0;
+\t/<em>10 4
+\t2 1
+\t3 3
+\t4 5
+\t7 9</em>/
+}</p>
 <p>在v的循环反向是为了不多放物体，因为0-1背包只能放一个</p>
-<p>\n\n\n\n</p>
 <p>2完全背包</p>
-<p>\n\n\n\n</p>
 <p>而与之相对应的完全背包则更加丰富，可以填充无数的同一个物体，代码实现如下：</p>
-<p>\n\n\n\n</p>
-<pre><code>#include&lt;cstdio&gt;\nusing namespace std;\nconst int maxm=201,maxn=31;\nint m,n;\nint w[maxn],c[maxn];\nint f[maxm];\nint main(){\n\tscanf(&quot;%d%d&quot;,&amp;m,&amp;n);\n\tfor(int i=1;i&lt;=n;i++)\n\t\tscanf(&quot;%d%d&quot;,&amp;w[i],&amp;c[i]);\n\tfor(int i=1;i&lt;=n;i++)\n\t\tfor(int v=w[i];v&lt;=m;v++)//可以逐渐填入一个w[i],两个w[i]······\n           if(f[v-w[i]]+c[i]&gt;f[v])f[v]=f[v-w[i]]+c[i];\n       printf(&quot;%d\\n&quot;,f[m]);\n       return 0;/*10 4\n2 1\n3 3\n4 5\n7 9*/\n}
+<pre><code>#include&lt;cstdio&gt;
 </code></pre>
-<p>\n\n\n\n<img src="../../assets/images/2023/09/image-25.png" alt="">\n\n\n\n</p>
-<pre><code>#include&lt;cstdio&gt;\nusing namespace std;\nconst int maxm=201,maxn=31;\nint m,n;\nint w[maxn],c[maxn];\nint f[maxm];\nint main(){\n\tscanf(&quot;%d%d&quot;,&amp;m,&amp;n);\n\tfor(int i=1;i&lt;=n;i++)\n\t\tscanf(&quot;%d%d&quot;,&amp;w[i],&amp;c[i]);\n\tfor(int i=1;i&lt;=n;i++)\n\t\tfor(int v=w[i];v&lt;=m;v++)//可以逐渐填入一个w[i],两个w[i]······\n           if(f[v-w[i]]+c[i]&gt;f[v])f[v]=f[v-w[i]]+c[i];\n       printf(&quot;%d\\n&quot;,f[m]);\n       return 0;/*10 4\n2 1\n3 3\n4 5\n7 9*/\n}
+<p>using namespace std;
+const int maxm=201,maxn=31;
+int m,n;
+int w[maxn],c[maxn];
+int f[maxm];
+int main(){
+\tscanf(&quot;%d%d&quot;,&amp;m,&amp;n);
+\tfor(int i=1;i&lt;=n;i++)
+\t\tscanf(&quot;%d%d&quot;,&amp;w[i],&amp;c[i]);
+\tfor(int i=1;i&lt;=n;i++)
+\t\tfor(int v=w[i];v&lt;=m;v++)//可以逐渐填入一个w[i],两个w[i]······
+           if(f[v-w[i]]+c[i]&gt;f[v])f[v]=f[v-w[i]]+c[i];
+       printf(&quot;%d<br>&quot;,f[m]);
+       return 0;/<em>10 4
+2 1
+3 3
+4 5
+7 9</em>/
+}</p>
+<p><img src="../../assets/images/2023/09/image-25.png" alt=""></p>
+<pre><code>#include&lt;cstdio&gt;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>using namespace std;
+const int maxm=201,maxn=31;
+int m,n;
+int w[maxn],c[maxn];
+int f[maxm];
+int main(){
+\tscanf(&quot;%d%d&quot;,&amp;m,&amp;n);
+\tfor(int i=1;i&lt;=n;i++)
+\t\tscanf(&quot;%d%d&quot;,&amp;w[i],&amp;c[i]);
+\tfor(int i=1;i&lt;=n;i++)
+\t\tfor(int v=w[i];v&lt;=m;v++)//可以逐渐填入一个w[i],两个w[i]······
+           if(f[v-w[i]]+c[i]&gt;f[v])f[v]=f[v-w[i]]+c[i];
+       printf(&quot;%d<br>&quot;,f[m]);
+       return 0;/<em>10 4
+2 1
+3 3
+4 5
+7 9</em>/
+}</p>
 <p>3多重背包</p>
-<p>\n\n\n\n</p>
 <p>多重背包的特别之处，在于对每个物品施加了个数的限制，相比于0-1背包又可以多选物品，所以相比之下状态转移方程更加丰富。</p>
-<p>\n\n\n\n</p>
-<pre><code>#include&lt;cstdio&gt;\nusing namespace std;\nint v[6002],w[6002],c[6002];\nint f[6002];\nint n,m;\nint max(int x,int y){\n\tif(x&lt;y)return y;\n\telse return x;\n}\nint main(){\n\tscanf(&quot;%d%d&quot;,&amp;n,&amp;m);\n\tfor(int i=1;i&lt;=n;i++)\n\t\tscanf(&quot;%d%d%d&quot;,&amp;v[i],&amp;w[i],&amp;c[i]);\n\tfor(int i=1;i&lt;=n;i++)\n\t\tfor(int j=m;j&gt;=0;j--)\n\t\t\tfor(int k=0;k&lt;=c[i];k++)\n\t\t\t{\tif(j-k*v[i]&lt;0)break;\n                f[j]=max(f[j],f[j-k*v[i]]+k*w[i]);\n             }\n             printf(&quot;%d&quot;,f[m]);\n            return 0;\n}\n/*5 1000\n80 20 4\n40 50 9\n30 50 7\n40 30 6\n20 20 1*/
+<pre><code>#include&lt;cstdio&gt;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>using namespace std;
+int v[6002],w[6002],c[6002];
+int f[6002];
+int n,m;
+int max(int x,int y){
+\tif(x&lt;y)return y;
+\telse return x;
+}
+int main(){
+\tscanf(&quot;%d%d&quot;,&amp;n,&amp;m);
+\tfor(int i=1;i&lt;=n;i++)
+\t\tscanf(&quot;%d%d%d&quot;,&amp;v[i],&amp;w[i],&amp;c[i]);
+\tfor(int i=1;i&lt;=n;i++)
+\t\tfor(int j=m;j&gt;=0;j--)
+\t\t\tfor(int k=0;k&lt;=c[i];k++)
+\t\t\t{\tif(j-k<em>v[i]&lt;0)break;
+                f[j]=max(f[j],f[j-k</em>v[i]]+k*w[i]);
+             }
+             printf(&quot;%d&quot;,f[m]);
+            return 0;
+}
+/<em>5 1000
+80 20 4
+40 50 9
+30 50 7
+40 30 6
+20 20 1</em>/</p>
 <p>不如完全背包，这样的多重背包只能采取枚举，复杂度无法再优化</p>
-<p>\n\n\n\n<img src="../../assets/images/2023/09/image-26.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2023/09/image-26.png" alt=""></p>
 <p>4一些优化：</p>
-<p>\n\n\n\n</p>
 <p>+ 二进制优化</p>
-<p>\n\n\n\n<img src="../../assets/images/2023/09/image-27.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2023/09/image-27.png" alt=""></p>
 <p>所以我们可以通过二进制分组的方式使得拆分方式更优美省时</p>
-<p>\n\n\n\n<img src="../../assets/images/2023/09/image-28.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2023/09/image-28.png" alt=""></p>
 <p>所以问题由此转换成0-1背包，解决即可。</p>
-<p>\n\n\n\n</p>
-<pre><code>index = 0;\nfor (int i = 1; i &lt;= m; i++) {\n  int c = 1, p, h, k;\n  cin &gt;&gt; p &gt;&gt; h &gt;&gt; k;\n  while (k &gt; c) {\n    k -= c;\n    list[++index].w = c * p;\n    list[index].v = c * h;\n    c *= 2;\n  }\n  list[++index].w = p * k;\n  list[index].v = h * k;\n}
+<pre><code>index = 0;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>for (int i = 1; i &lt;= m; i++) {
+  int c = 1, p, h, k;
+  cin &gt;&gt; p &gt;&gt; h &gt;&gt; k;
+  while (k &gt; c) {
+    k -= c;
+    list[++index].w = c * p;
+    list[index].v = c * h;
+    c *= 2;
+  }
+  list[++index].w = p * k;
+  list[index].v = h * k;
+}</p>
 <p>其他优化好复杂先不写了</p>
-<p>\n\n\n\n</p>
 <p>5.混合背包</p>
-<p>\n\n\n\n</p>
 <p>混合背包就是将前面三种的背包问题混合起来，有的只能取一次，有的能取无限次，有的只能取k次。</p>
-<p>\n\n\n\n</p>
 <p>这种题目看起来很吓人，可是只要领悟了前面几种背包的中心思想，并将其合并在一起就可以了。下面给出伪代码：</p>
-<p>\n\n\n\n</p>
-<pre><code>for (循环物品种类) {\n  if (是 0 - 1 背包)\n    套用 0 - 1 背包代码;\n  else if (是完全背包)\n    套用完全背包代码;\n  else if (是多重背包)\n    套用多重背包代码;\n}
+<pre><code>for (循环物品种类) {
 </code></pre>
-<p>\n\n\n\n</p>
+<p>  if (是 0 - 1 背包)
+    套用 0 - 1 背包代码;
+  else if (是完全背包)
+    套用完全背包代码;
+  else if (是多重背包)
+    套用多重背包代码;
+}</p>
 <p>6.二维背包</p>
-<p>\n\n\n\n</p>
 <p>仍然是0-1背包问题，不过要增加一维存储新的价值</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
 <p>洛谷大佬题单</p>
-<p>\n\n\n\n</p>
 <p>特点：<strong>码量较少</strong> （目前只有一题超过1KB）且<strong>难度较低</strong> ，让新手也可以享受切题的快乐。</p>
-<p>\n\n\n\n</p>
 <p>没学过背包问题的可以去看看洛谷日报中的<a href="https://www.luogu.com.cn/blog/RPdreamer/bei-bao-wen-ti">背包问题</a>或者<a href="https://www.kancloud.cn/kancloud/pack/70124">背包九讲</a>。</p>
-<p>\n\n\n\n</p>
 <p><strong>题目：</strong></p>
 <table>
 <thead>
 <tr>
-<th>\n\n\n\n题目</th>
+<th>题目</th>
 <th>题目解法</th>
 <th>题目难度</th>
 <th>实际难度</th>
@@ -406,28 +504,14 @@
 <td>$\\color{#FFD700}{普及/提高-}$</td>
 <td>$\\color{#FFD700}{普及/提高-}$</td>
 </tr>
-<tr>
-<td>\n\n\n\n</td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
 </tbody></table>
 <p>最后：</p>
-<p>\n\n\n\n</p>
 <p>1.如题目难度不符合实际，补充的题目或修改建议欢迎私信。</p>
-<p>\n\n\n\n</p>
 <p>2.这个题单的题应该算比较简单，以后再写一个难一点的。</p>
-<p>\n\n\n\n</p>
 <p>3.写题单不易，能不能帮忙收藏一下啊。</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
 <p>another 借鉴</p>
-<p>\n\n\n\n</p>
 <p>27000字初级背包问题详解 - walker shi的文章 - 知乎 </p>
-<p>\n\n\n\n</p>
 <p><a href="https://zhuanlan.zhihu.com/p/430195885">https://zhuanlan.zhihu.com/p/430195885</a></p>
-<p>\n</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

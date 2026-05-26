@@ -30,247 +30,206 @@
           <span>2025-01-20</span>
           <span class="tag">计算机基础</span>
         </div>
-        <p>\n</p>
-<p>首先直接介绍两个名词的直接含义</p>
-<p>\n\n\n\n</p>
+        <p>首先直接介绍两个名词的直接含义</p>
 <h2 id="通配符">通配符</h2>
-<p>\n\n\n\n</p>
 <p>一般指在UNIX或者类UNIX系统中，简单匹配文件的符号，用于“通用匹配”文件中的部分内容来指一系列文件，比如alpha.c,beta.c,common.c都可以用*.c这样的通配符辅助的文件名来一起指代，起到一个类似于“筛选”的作用</p>
-<p>\n\n\n\n</p>
 <h2 id="正则匹配">正则匹配</h2>
-<p>\n\n\n\n</p>
 <p>正则匹配在语义上来讲，和通配的原理相似，但是更加的广泛且功能强大（Regular Expression，简称regex）用于更复杂的文本匹配，常见于编程和文本处理。正则表达式功能强大，支持多种模式匹配规则</p>
-<p>\n\n\n\n</p>
 <p>在UNIX通配符中，最常用的还是 * 和 ？ 前者可以替代一或多个字符，后者只能匹配单个字符</p>
-<p>\n\n\n\n</p>
 <p>例如，在您的<strong>unixstuff</strong> 目录中，键入（%为终端指示）</p>
-<p>\n\n\n\n</p>
 <pre><code>％ls list*
 </code></pre>
-<p>\n\n\n\n</p>
 <p>这将列出当前目录中以<strong>list ...</strong> 开头的所有文件<strong>。</strong></p>
-<p>\n\n\n\n</p>
 <p>尝试输入</p>
-<p>\n\n\n\n</p>
 <pre><code>％ls *list
 </code></pre>
-<p>\n\n\n\n</p>
 <p>这将列出当前目录中以<strong>list</strong> 结尾的所有文件</p>
-<p>\n\n\n\n</p>
 <p><a href="https://www.ruanyifeng.com/blog/2018/09/bash-wildcards.html">https://www.ruanyifeng.com/blog/2018/09/bash-wildcards.html</a></p>
-<p>\n\n\n\n</p>
 <p>更多内容可以看这个，不过理解了*和?基本上足以应对大部分情况了</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
 <p>关于正则匹配，则有更多的话要讲</p>
-<p>\n\n\n\n</p>
 <h2 id="正则匹配的详细介绍与实际应用">正则匹配的详细介绍与实际应用</h2>
-<p>\n\n\n\n</p>
 <p>正则表达式（Regular Expression，简称regex）是一种强大的文本匹配工具，广泛应用于字符串搜索、替换、验证等场景。在编译原理中，正则表达式用于词法分析阶段，帮助识别源代码中的基本语法单元（如标识符、关键字、运算符等）。</p>
-<p>\n\n\n\n</p>
 <hr>
-<p>\n\n\n\n</p>
 <h3 id="正则表达式的详细规则">正则表达式的详细规则</h3>
-<p>\n\n\n\n</p>
 <h4 id="1-基本元字符">1. <strong>基本元字符</strong></h4>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><code>.</code>：匹配任意单个字符（除换行符外）。
-\n\n\n\n</li>
-<li><code>\\d</code>：匹配数字（等价于<code>[0-9]</code>）。
-\n\n\n\n</li>
-<li><code>\\D</code>：匹配非数字字符。
-\n\n\n\n</li>
-<li><code>\\w</code>：匹配字母、数字或下划线（等价于<code>[a-zA-Z0-9_]</code>）。
-\n\n\n\n</li>
-<li><code>\\W</code>：匹配非字母、数字或下划线的字符。
-\n\n\n\n</li>
-<li><code>\\s</code>：匹配空白字符（空格、制表符、换行符等）。
-\n\n\n\n</li>
-<li><code>\\S</code>：匹配非空白字符。
-\n
-\n\n\n\n</li>
+<li><p><code>.</code>：匹配任意单个字符（除换行符外）。</p>
+</li>
+<li><p><code>\\d</code>：匹配数字（等价于<code>[0-9]</code>）。</p>
+</li>
+<li><p><code>\\D</code>：匹配非数字字符。</p>
+</li>
+<li><p><code>\\w</code>：匹配字母、数字或下划线（等价于<code>[a-zA-Z0-9_]</code>）。</p>
+</li>
+<li><p><code>\\W</code>：匹配非字母、数字或下划线的字符。</p>
+</li>
+<li><p><code>\\s</code>：匹配空白字符（空格、制表符、换行符等）。</p>
+</li>
+<li><p><code>\\S</code>：匹配非空白字符。</p>
+</li>
 </ul>
 <h4 id="2-量词">2. <strong>量词</strong></h4>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><code>*</code>：匹配前一个字符零次或多次。
-\n\n\n\n</li>
-<li><code>+</code>：匹配前一个字符一次或多次。
-\n\n\n\n</li>
-<li><code>?</code>：匹配前一个字符零次或一次。
-\n\n\n\n</li>
-<li><code>{n}</code>：匹配前一个字符恰好n次。
-\n\n\n\n</li>
-<li><code>{n,}</code>：匹配前一个字符至少n次。
-\n\n\n\n</li>
-<li><code>{n,m}</code>：匹配前一个字符至少n次，至多m次。
-\n
-\n\n\n\n</li>
+<li><p><code>*</code>：匹配前一个字符零次或多次。</p>
+</li>
+<li><p><code>+</code>：匹配前一个字符一次或多次。</p>
+</li>
+<li><p><code>?</code>：匹配前一个字符零次或一次。</p>
+</li>
+<li><p><code>{n}</code>：匹配前一个字符恰好n次。</p>
+</li>
+<li><p><code>{n,}</code>：匹配前一个字符至少n次。</p>
+</li>
+<li><p><code>{n,m}</code>：匹配前一个字符至少n次，至多m次。</p>
+</li>
 </ul>
 <h4 id="3-字符类">3. <strong>字符类</strong></h4>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><code>[abc]</code>：匹配括号内的任意一个字符（a、b或c）。
-\n\n\n\n</li>
-<li><code>[^abc]</code>：匹配不在括号内的任意一个字符。
-\n\n\n\n</li>
-<li><code>[a-z]</code>：匹配a到z之间的任意一个小写字母。
-\n
-\n\n\n\n</li>
+<li><p><code>[abc]</code>：匹配括号内的任意一个字符（a、b或c）。</p>
+</li>
+<li><p><code>[^abc]</code>：匹配不在括号内的任意一个字符。</p>
+</li>
+<li><p><code>[a-z]</code>：匹配a到z之间的任意一个小写字母。</p>
+</li>
 </ul>
 <h4 id="4-边界匹配">4. <strong>边界匹配</strong></h4>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><code>^</code>：匹配字符串的开头。
-\n\n\n\n</li>
-<li><code>$</code>：匹配字符串的结尾。
-\n\n\n\n</li>
-<li><code>\\b</code>：匹配单词边界。
-\n\n\n\n</li>
-<li><code>\\B</code>：匹配非单词边界。
-\n
-\n\n\n\n</li>
+<li><p><code>^</code>：匹配字符串的开头。</p>
+</li>
+<li><p><code>$</code>：匹配字符串的结尾。</p>
+</li>
+<li><p><code>\\b</code>：匹配单词边界。</p>
+</li>
+<li><p><code>\\B</code>：匹配非单词边界。</p>
+</li>
 </ul>
 <h4 id="5-分组与捕获">5. <strong>分组与捕获</strong></h4>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><code>(abc)</code>：捕获组，匹配并记住匹配的文本。
-\n\n\n\n</li>
-<li><code>(?:abc)</code>：非捕获组，匹配但不记住匹配的文本。
-\n\n\n\n</li>
-<li><code>|</code>：或操作，匹配左边或右边的表达式。
-\n
-\n\n\n\n</li>
+<li><p><code>(abc)</code>：捕获组，匹配并记住匹配的文本。</p>
+</li>
+<li><p><code>(?:abc)</code>：非捕获组，匹配但不记住匹配的文本。</p>
+</li>
+<li><p><code>|</code>：或操作，匹配左边或右边的表达式。</p>
+</li>
 </ul>
 <h4 id="6-转义字符">6. <strong>转义字符</strong></h4>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><code>\\</code>：用于转义特殊字符（如<code>\\.</code>匹配句点，<code>\\*</code>匹配星号）。
-\n
-\n\n\n\n</li>
+<li><code>\\</code>：用于转义特殊字符（如<code>\\.</code>匹配句点，<code>\\*</code>匹配星号）。</li>
 </ul>
 <hr>
-<p>\n\n\n\n</p>
 <h3 id="正则表达式的实际应用">正则表达式的实际应用</h3>
-<p>\n\n\n\n</p>
 <h4 id="1-文本搜索与替换">1. <strong>文本搜索与替换</strong></h4>
-<p>\n\n\n\n</p>
 <p>正则表达式常用于文本编辑器或编程语言中，进行字符串的搜索和替换。</p>
-<p>\n\n\n\n</p>
 <p><strong>示例</strong> ：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>搜索所有电子邮件地址：<code>[\\w\\.-]+@[\\w\\.-]+\\.\\w+</code>
-\n\n\n\n</li>
-<li>替换文本中的日期格式：将<code>dd/mm/yyyy</code>替换为<code>yyyy-mm-dd</code>。
-\n
-\n\n\n\n</li>
+<li><p>搜索所有电子邮件地址：<code>[\\w\\.-]+@[\\w\\.-]+\\.\\w+</code></p>
+</li>
+<li><p>替换文本中的日期格式：将<code>dd/mm/yyyy</code>替换为<code>yyyy-mm-dd</code>。</p>
+</li>
 </ul>
 <h4 id="2-数据验证">2. <strong>数据验证</strong></h4>
-<p>\n\n\n\n</p>
 <p>正则表达式可用于验证用户输入的数据格式。</p>
-<p>\n\n\n\n</p>
 <p><strong>示例</strong> ：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>验证电子邮件地址：<code>^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$</code>
-\n\n\n\n</li>
-<li>验证手机号码：<code>^\\d{10}$</code>
-\n
-\n\n\n\n</li>
+<li><p>验证电子邮件地址：<code>^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$</code></p>
+</li>
+<li><p>验证手机号码：<code>^\\d{10}$</code></p>
+</li>
 </ul>
 <h4 id="3-编译原理中的词法分析">3. <strong>编译原理中的词法分析</strong></h4>
-<p>\n\n\n\n</p>
 <p>在编译器中，正则表达式用于定义词法规则，识别源代码中的基本语法单元（Token）。</p>
-<p>\n\n\n\n</p>
 <p><strong>示例</strong> ：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>识别标识符：<code>[a-zA-Z_]\\w*</code>
-\n\n\n\n</li>
-<li>识别整数：<code>\\d+</code>
-\n\n\n\n</li>
-<li>识别浮点数：<code>\\d+\\.\\d+</code>
-\n
-\n\n\n\n</li>
+<li><p>识别标识符：<code>[a-zA-Z_]\\w*</code></p>
+</li>
+<li><p>识别整数：<code>\\d+</code></p>
+</li>
+<li><p>识别浮点数：<code>\\d+\\.\\d+</code></p>
+</li>
 </ul>
 <hr>
-<p>\n\n\n\n</p>
 <h3 id="在编译原理中的应用">在编译原理中的应用</h3>
-<p>\n\n\n\n</p>
 <p>在编译器的词法分析阶段，正则表达式用于定义词法规则。词法分析器（Lexer）根据这些规则将源代码分解为一个个Token。</p>
-<p>\n\n\n\n</p>
 <p><strong>示例</strong> ：<br>假设我们需要识别以下Token：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>关键字：<code>if</code>、<code>else</code>
-\n\n\n\n</li>
-<li>标识符：以字母或下划线开头，后跟字母、数字或下划线。
-\n\n\n\n</li>
-<li>整数：由数字组成。
-\n\n\n\n</li>
-<li>运算符：<code>+</code>、<code>-</code>、<code>*</code>、<code>/</code>
-\n
-\n\n\n\n</li>
+<li><p>关键字：<code>if</code>、<code>else</code></p>
+</li>
+<li><p>标识符：以字母或下划线开头，后跟字母、数字或下划线。</p>
+</li>
+<li><p>整数：由数字组成。</p>
+</li>
+<li><p>运算符：<code>+</code>、<code>-</code>、<code>*</code>、<code>/</code></p>
+</li>
 </ul>
 <p>对应的正则表达式规则：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>关键字：<code>if|else</code>
-\n\n\n\n</li>
-<li>标识符：<code>[a-zA-Z_]\\w*</code>
-\n\n\n\n</li>
-<li>整数：<code>\\d+</code>
-\n\n\n\n</li>
-<li>运算符：<code>[\\+\\-\\*/]</code>
-\n
-\n\n\n\n</li>
+<li><p>关键字：<code>if|else</code></p>
+</li>
+<li><p>标识符：<code>[a-zA-Z_]\\w*</code></p>
+</li>
+<li><p>整数：<code>\\d+</code></p>
+</li>
+<li><p>运算符：<code>[\\+\\-\\*/]</code></p>
+</li>
 </ul>
 <hr>
-<p>\n\n\n\n</p>
 <h3 id="使用代码表述正则匹配的作用">使用代码表述正则匹配的作用</h3>
-<p>\n\n\n\n</p>
 <p>以下是使用Python代码演示正则表达式的应用：</p>
-<p>\n\n\n\n</p>
 <h4 id="1-匹配电子邮件地址">1. <strong>匹配电子邮件地址</strong></h4>
-<p>\n\n\n\n</p>
-<pre><code>import re\n\n# 定义正则表达式\nemail_pattern = r&#x27;[\\w\\.-]+@[\\w\\.-]+\\.\\w+&#x27;\n\n# 测试字符串\ntext = &quot;Contact us at support@example.com or info@domain.com.&quot;\n\n# 查找所有匹配的电子邮件地址\nemails = re.findall(email_pattern, text)\nprint(&quot;Emails found:&quot;, emails)
+<pre><code>import re
 </code></pre>
-<p>\n\n\n\n</p>
+<h1 id="定义正则表达式">定义正则表达式</h1>
+<p>email_pattern = r&#39;[\w\.-]+@[\w\.-]+\.\w+&#39;</p>
+<h1 id="测试字符串">测试字符串</h1>
+<p>text = &quot;Contact us at <a href="mailto:&#115;&#x75;&#112;&#x70;&#x6f;&#x72;&#116;&#64;&#101;&#x78;&#x61;&#x6d;&#x70;&#108;&#x65;&#46;&#x63;&#x6f;&#109;">&#115;&#x75;&#112;&#x70;&#x6f;&#x72;&#116;&#64;&#101;&#x78;&#x61;&#x6d;&#x70;&#108;&#x65;&#46;&#x63;&#x6f;&#109;</a> or <a href="mailto:&#105;&#x6e;&#102;&#x6f;&#x40;&#x64;&#111;&#109;&#x61;&#x69;&#110;&#x2e;&#99;&#x6f;&#x6d;">&#105;&#x6e;&#102;&#x6f;&#x40;&#x64;&#111;&#109;&#x61;&#x69;&#110;&#x2e;&#99;&#x6f;&#x6d;</a>.&quot;</p>
+<h1 id="查找所有匹配的电子邮件地址">查找所有匹配的电子邮件地址</h1>
+<p>emails = re.findall(email_pattern, text)
+print(&quot;Emails found:&quot;, emails)</p>
 <h4 id="2-验证手机号码">2. <strong>验证手机号码</strong></h4>
-<p>\n\n\n\n</p>
-<pre><code>import re\n\n# 定义正则表达式\nphone_pattern = r&#x27;^\\d{10}$&#x27;\n\n# 测试手机号码\nphone_number = &quot;1234567890&quot;\n\n# 验证手机号码\nif re.match(phone_pattern, phone_number):\n    print(&quot;Valid phone number.&quot;)\nelse:\n    print(&quot;Invalid phone number.&quot;)
+<pre><code>import re
 </code></pre>
-<p>\n\n\n\n</p>
+<h1 id="定义正则表达式-1">定义正则表达式</h1>
+<p>phone_pattern = r&#39;^\d{10}$&#39;</p>
+<h1 id="测试手机号码">测试手机号码</h1>
+<p>phone_number = &quot;1234567890&quot;</p>
+<h1 id="验证手机号码">验证手机号码</h1>
+<p>if re.match(phone_pattern, phone_number):
+    print(&quot;Valid phone number.&quot;)
+else:
+    print(&quot;Invalid phone number.&quot;)</p>
 <h4 id="3-词法分析示例">3. <strong>词法分析示例</strong></h4>
-<p>\n\n\n\n</p>
-<pre><code>import re\n\n# 定义词法规则\ntoken_specification = [\n    (&#x27;NUMBER&#x27;, r&#x27;\\d+&#x27;),           # 整数\n    (&#x27;IDENTIFIER&#x27;, r&#x27;[a-zA-Z_]\\w*&#x27;),  # 标识符\n    (&#x27;OPERATOR&#x27;, r&#x27;[\\+\\-\\*/]&#x27;),   # 运算符\n    (&#x27;SKIP&#x27;, r&#x27;[ \\t\\n]&#x27;),         # 跳过空白字符\n]\n\n# 编译正则表达式\ntoken_regex = &#x27;|&#x27;.join(f&#x27;(?P&lt;{pair[0]}&gt;{pair[1]})&#x27; for pair in token_specification)\nlexer = re.compile(token_regex)\n\n# 测试代码\ncode = &quot;x = 10 + y * 20&quot;\n\n# 词法分析\nfor match in lexer.finditer(code):\n    token_type = match.lastgroup\n    token_value = match.group(token_type)\n    if token_type != &#x27;SKIP&#x27;:\n        print(f&quot;Token: {token_type}, Value: {token_value}&quot;)
+<pre><code>import re
 </code></pre>
-<p>\n\n\n\n</p>
+<h1 id="定义词法规则">定义词法规则</h1>
+<p>token_specification = [
+    (&#39;NUMBER&#39;, r&#39;\d+&#39;),           # 整数
+    (&#39;IDENTIFIER&#39;, r&#39;[a-zA-Z_]\w*&#39;),  # 标识符
+    (&#39;OPERATOR&#39;, r&#39;[\+\-\*/]&#39;),   # 运算符
+    (&#39;SKIP&#39;, r&#39;[ \t<br>]&#39;),         # 跳过空白字符
+]</p>
+<h1 id="编译正则表达式">编译正则表达式</h1>
+<p>token_regex = &#39;|&#39;.join(f&#39;(?P&lt;{pair[0]}&gt;{pair[1]})&#39; for pair in token_specification)
+lexer = re.compile(token_regex)</p>
+<h1 id="测试代码">测试代码</h1>
+<p>code = &quot;x = 10 + y * 20&quot;</p>
+<h1 id="词法分析">词法分析</h1>
+<p>for match in lexer.finditer(code):
+    token_type = match.lastgroup
+    token_value = match.group(token_type)
+    if token_type != &#39;SKIP&#39;:
+        print(f&quot;Token: {token_type}, Value: {token_value}&quot;)</p>
 <p><strong>输出</strong> ：</p>
-<p>\n\n\n\n</p>
-<pre><code>Token: IDENTIFIER, Value: x\nToken: OPERATOR, Value: =\nToken: NUMBER, Value: 10\nToken: OPERATOR, Value: +\nToken: IDENTIFIER, Value: y\nToken: OPERATOR, Value: *\nToken: NUMBER, Value: 20
+<pre><code>Token: IDENTIFIER, Value: x
 </code></pre>
-<p>\n\n\n\n</p>
+<p>Token: OPERATOR, Value: =
+Token: NUMBER, Value: 10
+Token: OPERATOR, Value: +
+Token: IDENTIFIER, Value: y
+Token: OPERATOR, Value: *
+Token: NUMBER, Value: 20</p>
 <hr>
-<p>\n\n\n\n</p>
 <h3 id="总结">总结</h3>
-<p>\n\n\n\n</p>
 <p>正则表达式是一种强大的工具，适用于文本处理、数据验证和编译原理中的词法分析。通过掌握其规则和应用场景，可以高效地解决复杂的字符串匹配问题。</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

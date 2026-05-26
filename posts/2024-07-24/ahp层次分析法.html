@@ -30,104 +30,80 @@
           <span>2024-07-24</span>
           <span class="tag">data science</span>
         </div>
-        <p>\n</p>
-<p>层次分析法，即所谓的Analytic Hierarchy Process，是通过分解决策相关元素为目标、准则方案等多个层次来进行定量和定性分析</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
+        <p>层次分析法，即所谓的Analytic Hierarchy Process，是通过分解决策相关元素为目标、准则方案等多个层次来进行定量和定性分析</p>
 <ul>
-<li>指标定权
-\n
-\n\n\n\n</li>
+<li>指标定权</li>
 </ul>
 <p>给指标制定权重，打个比方，例如选择旅游地这个决策，可能一般我们由以下5个因素组成，但是每个人（主观）对因素的重视程度不一，ahp可以实现在无需搜集数据的情况下，给这些指标制定权重。</p>
-<p>\n\n\n\n</p>
 <p>我们一般使用判断矩阵进行标度给分：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ol>
-<li><strong>构建判断矩阵</strong> ：对每一层中的准则或选项进行成对比较，判断其相对重要性。通过1到9的标度来表示相对重要性，1表示同等重要，9表示绝对重要。矩阵中元素 𝑎𝑖𝑗 <em>a</em> <em>ij</em> ​ 表示第 𝑖 <em>i</em> 个元素与第 𝑗 <em>j</em> 个元素的重要性比值。标度示例：\n\n<ul>
-<li>1: 同等重要
-\n\n\n\n</li>
-<li>3: 稍微重要
-\n\n\n\n</li>
-<li>5: 明显重要
-\n\n\n\n</li>
-<li>7: 强烈重要
-\n\n\n\n</li>
-<li>9: 极端重要
-\n\n\n\n</li>
-<li>2, 4, 6, 8: 表示介于上述两者之间的中间值
-\n\n
-\n
-\n\n\n\n<img src="../../assets/images/2024/07/image-9.png" alt="">\n\n\n\n</li>
+<li><p><strong>构建判断矩阵</strong> ：对每一层中的准则或选项进行成对比较，判断其相对重要性。通过1到9的标度来表示相对重要性，1表示同等重要，9表示绝对重要。矩阵中元素 𝑎𝑖𝑗 <em>a</em> <em>ij</em> ​ 表示第 𝑖 <em>i</em> 个元素与第 𝑗 <em>j</em> 个元素的重要性比值。标度示例：</p>
+<ul>
+<li><p>1: 同等重要</p>
+</li>
+<li><p>3: 稍微重要</p>
+</li>
+<li><p>5: 明显重要</p>
+</li>
+<li><p>7: 强烈重要</p>
+</li>
+<li><p>9: 极端重要</p>
+</li>
+<li><p>2, 4, 6, 8: 表示介于上述两者之间的中间值</p>
+</li>
 </ul>
 </li>
 </ol>
+<p><img src="../../assets/images/2024/07/image-9.png" alt=""></p>
 <h2 id="构建层次评价模型"><strong>构建层次评价模型</strong></h2>
-<p>\n\n\n\n</p>
 <p>顾名思义，在这个层次评价模型里面，我们需要确认整个决策事件的目标层、准则层、方案层</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-10.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/07/image-10.png" alt=""></p>
 <p>其中，</p>
-<p>\n\n\n\n</p>
 <p>目标层：最优旅游地选择</p>
-<p>\n\n\n\n</p>
 <p>准则层：景色、费用、居住、饮食、旅途</p>
-<p>\n\n\n\n</p>
 <p>方案层：西安、云南、西藏、青海</p>
-<p>\n\n\n\n</p>
 <p>需要注意的时，准则层如果有多层，例如下图所示，依次类推就行了。</p>
-<p>\n\n\n\n</p>
 <p>构造判断矩阵就是通过各要素之间相互两两比较，并确定各准则层对目标层的权重。</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-11.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/07/image-11.png" alt=""></p>
 <p>构造判断矩阵就是通过各要素之间相互两两比较，并确定各准则层对目标层的权重。</p>
-<p>\n\n\n\n</p>
 <p>简单地说，就是把准则层的指标进行两两判断，通常我们使用Santy的1-9标度方法给出。</p>
-<p>\n\n\n\n</p>
 <p>对于准则层A，我们可以构建一个</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-13.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/07/image-13.png" alt=""></p>
 <p>其中A 中的元素满足：</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-14.png" alt="">\n\n\n\n<img src="../../assets/images/2024/07/image-15.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/07/image-14.png" alt=""></p>
+<p><img src="../../assets/images/2024/07/image-15.png" alt=""></p>
 <p>构建过程如上图所示</p>
-<p>\n\n\n\n</p>
 <h2 id="层次单排序与一致性检验">层次单排序与一致性检验</h2>
-<p>\n\n\n\n</p>
 <p>tep1：层次单排序</p>
-<p>\n\n\n\n</p>
 <p>层次单排序是指针对上一层某元素将本层中所有元素两两评比，并开展层次排序， 进行重要顺序的排列，具体计算可依据判断矩阵 A 进行，计算中确保其能够符合 AW=𝜆𝑚𝑎𝑥𝑊的特征根和特征向量条件。在此，A 的最大特征根为λmax，对应λmax的正规化的特征向量为 W，𝑤𝑖为 W 的分量，其指的是权值，与其相应元素单排序对应。 利用判断矩阵计算各因素𝑎𝑖𝑗对目标层的权重（权系数）。</p>
-<p>\n\n\n\n</p>
 <p>权重向量（W）与最大特征（λmax）的计算步骤（方根法或者和法）如下表所示：</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-16.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/07/image-16.png" alt=""></p>
 <p>step2：求解最大特征根与CI值</p>
-<p>\n\n\n\n</p>
 <p>设 n 阶判断矩阵为 B，则可用以下方法求出其最大的特征根𝜆𝑚𝑎𝑥:</p>
-<p>\n\n\n\n</p>
 <p>BW=λW</p>
-<p>\n\n\n\n</p>
 <p>其中，W 是 B 的特征向量。 在层次分析法中， 我们用以下的一致性指标 CI 来检验判断的一致性指标 （Consistency Index）：</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-17.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/07/image-17.png" alt=""></p>
 <p>C.I.=0 表示判断矩阵完全一致，C.I.越大，判断矩阵的不一致性程度越严重。</p>
-<p>\n\n\n\n</p>
 <p>step3：根据CI、RI值求解CR值，判断其一致性是否通过</p>
-<p>\n\n\n\n</p>
 <p>Satty 模拟 1000 次得到的随机一致性指标 R.I.取值表（如下表 所示）：</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-18.png" alt="">\n\n\n\n<img src="../../assets/images/2024/07/image-19.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/07/image-18.png" alt=""></p>
+<p><img src="../../assets/images/2024/07/image-19.png" alt=""></p>
 <p>当 C.R.&lt;0.1 时，表明判断矩阵 A 的一致性程度被认为在容许的范围内，此时可 用 A 的特征向量开展权向量计算；若 C.R.≥0.1, 则应考虑对判断矩阵 A 进行修正。</p>
-<p>\n\n\n\n</p>
 <h3 id="231-层次单排序">2.3.1 层次单排序</h3>
-<p>\n\n\n\n</p>
 <p>简单地说，层次单排序就是根据我们构成的判断矩阵，求解各个指标的权重。</p>
-<p>\n\n\n\n</p>
 <p>例如我们现在在2.2构建完成了准则层的判断矩阵A如下：</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-20.png" alt="">\n\n\n\n<img src="../../assets/images/2024/07/image-21.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/07/image-20.png" alt=""></p>
+<p><img src="../../assets/images/2024/07/image-21.png" alt=""></p>
 <p>将将向量标准化即为权重向量，即得到权重</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-22.png" alt="">\n\n\n\n<img src="../../assets/images/2024/07/image-23.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/07/image-22.png" alt=""></p>
+<p><img src="../../assets/images/2024/07/image-23.png" alt=""></p>
 <p>还有和法，其实差不多，适用于元素都小于1的情况</p>
-<p>\n\n\n\n</p>
 <h3 id="求解最大特征根与ci值">求解最大特征根与CI值</h3>
+<p><img src="../../assets/images/2024/07/image-24.png" alt=""></p>
 <table>
 <thead>
 <tr>
-<th>\n\n\n\n<img src="../../assets/images/2024/07/image-24.png" alt="">\n\n\n\n指标</th>
+<th>指标</th>
 <th>景色</th>
 <th>费用</th>
 <th>居住</th>
@@ -175,20 +151,12 @@
 <td>0.1667</td>
 <td>1</td>
 </tr>
-<tr>
-<td>\n\n\n\n</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
 </tbody></table>
 <p>标准化后权重W为：</p>
 <table>
 <thead>
 <tr>
-<th>\n\n\n\n景色</th>
+<th>景色</th>
 <th>费用</th>
 <th>居住</th>
 <th>饮食</th>
@@ -202,26 +170,25 @@
 <td>0.4716</td>
 <td>0.0432</td>
 </tr>
+</tbody></table>
+<table>
+<thead>
 <tr>
-<td>\n\n\n\n指标</td>
-<td>景色</td>
-<td>费用</td>
-<td>居住</td>
-<td>饮食</td>
+<th>指标</th>
+<th>景色</th>
+<th>费用</th>
+<th>居住</th>
+<th>饮食</th>
+<th>旅途</th>
 </tr>
-<tr>
-<td>---</td>
-<td>---</td>
-<td>---</td>
-<td>---</td>
-<td>---</td>
-</tr>
-<tr>
+</thead>
+<tbody><tr>
 <td>景色</td>
 <td>0.3104</td>
 <td>0.2955</td>
 <td>0.5785</td>
 <td>0.15718428</td>
+<td>0.3456</td>
 </tr>
 <tr>
 <td>费用</td>
@@ -229,6 +196,7 @@
 <td>0.0591</td>
 <td>0.028925</td>
 <td>0.07861572</td>
+<td>0.0864</td>
 </tr>
 <tr>
 <td>居住</td>
@@ -236,6 +204,7 @@
 <td>0.2364</td>
 <td>0.1157</td>
 <td>0.09432</td>
+<td>0.1296</td>
 </tr>
 <tr>
 <td>饮食</td>
@@ -243,6 +212,7 @@
 <td>0.3546</td>
 <td>0.5785</td>
 <td>0.4716</td>
+<td>0.2592</td>
 </tr>
 <tr>
 <td>旅途</td>
@@ -250,22 +220,14 @@
 <td>0.02955</td>
 <td>0.03856281</td>
 <td>0.07861572</td>
-</tr>
-<tr>
-<td>\n\n\n\n</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
+<td>0.0432</td>
 </tr>
 </tbody></table>
 <h2 id="层次总排序与一致性检验">层次总排序与一致性检验</h2>
-<p>\n\n\n\n</p>
 <p>计算某一层次所有因素对于最高层（目标层）相对重要性的权值，称为层次总排 序。该过程是从最高层次向最低层次依次进行：</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-25.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/07/image-25.png" alt=""></p>
 <p>设 B 层𝐵1 ，𝐵2 ⋯ ，𝐵𝑛对上层（A 层）中因素𝐴𝑗（𝑗 = 1,2， ⋯ ，𝑚）的层次排序 一致性指标为𝐶𝐼𝑗，随机一致性指标为𝑅𝐼𝑗 ,则层次总排序的一致性比率为：</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/07/image-26.png" alt="">\n\n\n\n</p>
-<p>\n</p>
+<p><img src="../../assets/images/2024/07/image-26.png" alt=""></p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

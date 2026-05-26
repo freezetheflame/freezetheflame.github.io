@@ -30,125 +30,96 @@
           <span>2025-06-25</span>
           <span class="tag">服务器后端内容</span>
         </div>
-        <p>\n</p>
-<p>Node.js作为开源的跨平台的JavaScript运行时环境，便于开发任何类型的项目。不过本博文的重点主要围绕在后台领域node.js的运用。</p>
-<p>\n\n\n\n</p>
+        <p>Node.js作为开源的跨平台的JavaScript运行时环境，便于开发任何类型的项目。不过本博文的重点主要围绕在后台领域node.js的运用。</p>
 <p>Node.js是运行于单进程的，因此不需要为每个请求创造新线程。Node.js在标准库中有对于异步操作的基本支持，可以防止阻塞情况的出现。因此可以处理单机多线程的情况。</p>
-<p>\n\n\n\n</p>
 <h2 id="tools-1-express后端框架">tools 1: express后端框架</h2>
-<p>\n\n\n\n</p>
 <p>express是基于node.js的成熟后端框架，通过express=require(&#39;express&#39;) app = express()建立框架，之后可以通过在这个基础app上面注册中间件来进一步拓展其功能。</p>
-<p>\n\n\n\n</p>
 <h2 id="tools-2：redis-client--redisstore">tools 2：redis client &amp; RedisStore</h2>
-<p>\n\n\n\n</p>
 <h3 id="redis-client">Redis Client</h3>
-<p>\n\n\n\n</p>
 <p><strong>职责</strong> ：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>Redis Client 是与 Redis 数据库进行直接交互的工具。
-\n\n\n\n</li>
-<li>它提供了一组 API 用于连接、读取、写入和删除 Redis 中的数据。
-\n\n\n\n</li>
-<li>Redis Client 可以执行 Redis 提供的各种命令，如 <code>GET</code>、<code>SET</code>、<code>DEL</code> 等。
-\n
-\n\n\n\n</li>
+<li><p>Redis Client 是与 Redis 数据库进行直接交互的工具。</p>
+</li>
+<li><p>它提供了一组 API 用于连接、读取、写入和删除 Redis 中的数据。</p>
+</li>
+<li><p>Redis Client 可以执行 Redis 提供的各种命令，如 <code>GET</code>、<code>SET</code>、<code>DEL</code> 等。</p>
+</li>
 </ul>
 <p><strong>使用场景</strong> ：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>当你需要自定义某些数据操作，或者在业务逻辑中需要与 Redis 交互时，会使用 Redis Client。
-\n\n\n\n</li>
-<li>适合进行复杂的查询和数据存储操作。
-\n
-\n\n\n\n</li>
+<li><p>当你需要自定义某些数据操作，或者在业务逻辑中需要与 Redis 交互时，会使用 Redis Client。</p>
+</li>
+<li><p>适合进行复杂的查询和数据存储操作。</p>
+</li>
 </ul>
 <h3 id="redis-store">Redis Store</h3>
-<p>\n\n\n\n</p>
 <p><strong>职责</strong> ：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>Redis Store 一般是一个更高层的抽象，它通常用于特定的功能，例如会话存储（Session Store）、缓存等。
-\n\n\n\n</li>
-<li>Redis Store 使用 Redis Client 来实际执行命令，但提供了一个简化的接口，使得开发者更方便地使用。
-\n\n\n\n</li>
-<li>它通常专注于特定的使用场景，提供一些预定义的功能，比如自动过期、序列化等。
-\n
-\n\n\n\n</li>
+<li><p>Redis Store 一般是一个更高层的抽象，它通常用于特定的功能，例如会话存储（Session Store）、缓存等。</p>
+</li>
+<li><p>Redis Store 使用 Redis Client 来实际执行命令，但提供了一个简化的接口，使得开发者更方便地使用。</p>
+</li>
+<li><p>它通常专注于特定的使用场景，提供一些预定义的功能，比如自动过期、序列化等。</p>
+</li>
 </ul>
 <p><strong>使用场景</strong> ：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>Redis Store 通常用于会话管理，比如在 Express 中使用 <code>connect-redis</code> 中间件，将用户会话数据存储在 Redis 中。
-\n\n\n\n</li>
-<li>适合需要快速集成特定功能的情况，而无需过多考虑底层细节。
-\n
-\n\n\n\n</li>
+<li><p>Redis Store 通常用于会话管理，比如在 Express 中使用 <code>connect-redis</code> 中间件，将用户会话数据存储在 Redis 中。</p>
+</li>
+<li><p>适合需要快速集成特定功能的情况，而无需过多考虑底层细节。</p>
+</li>
 </ul>
 <h2 id="issue1--express-session类型合并（module-augmentation）">issue1 : express-session类型合并（Module Augmentation）</h2>
-<p>\n\n\n\n</p>
 <p><a href="https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/express-session/index.d.ts#L23">https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/express-session/index.d.ts#L23</a></p>
-<p>\n\n\n\n</p>
 <p>由于需求中需要“在session中”对于querysreing进行存储，因此要对session进行操作，并且在服务器端通过redis完成对于session的缓存，故要在session上使用新的字段存储这一string，但是对于js来说很正常的req.session.querystring的index操作上（其实是类型不安全），迁移到typescript上，则存在implicitly的问题，这个参数在原本的&#39;Session &amp; Partial<SessionData>&#39;类型上并不存在，因此这个index操作是不安全的，故需要使用type merging的办法来扩展原始的express-session的类型。</p>
-<p>\n\n\n\n</p>
 <p>首先，为了开发规范和逻辑，单独建立一个文件夹管理这个新声明，命名为types即可，然后新建一个express-session.d.ts文件夹，其中的类型扩展代码如下：</p>
-<p>\n\n\n\n</p>
-<pre><code>import &#x27;express-session&#x27;;\n\ndeclare module &#x27;express-session&#x27; {\n  interface Session {\n    queryParams?: Record&lt;string, any&gt;;\n  }\n}
+<pre><code>import &#x27;express-session&#x27;;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>declare module &#39;express-session&#39; {
+  interface Session {
+    queryParams?: Record&lt;string, any&gt;;
+  }
+}</p>
 <p>然后在tsconfig中确定compilerOptions中包含这里的自定义类型。</p>
-<p>\n\n\n\n</p>
-<pre><code>{\n  &quot;compilerOptions&quot;: {\n    ...\n    &quot;typeRoots&quot;: [&quot;./node_modules/@types&quot;, &quot;./src/types&quot;]\n  }\n}
+<pre><code>{
 </code></pre>
-<p>\n\n\n\n</p>
+<p>  &quot;compilerOptions&quot;: {
+    ...
+    &quot;typeRoots&quot;: [&quot;./node_modules/@types&quot;, &quot;./src/types&quot;]
+  }
+}</p>
 <p>初始化一个node.js项目一般有如下步骤：</p>
-<p>\n\n\n\n</p>
 <p>1.创建项目目录：</p>
-<p>\n\n\n\n</p>
 <pre><code>mkdir project
 </code></pre>
-<p>\n\n\n\n</p>
 <p>2.初始化项目</p>
-<p>\n\n\n\n</p>
 <pre><code>npm init -y
 </code></pre>
-<p>\n\n\n\n</p>
 <p>3.安装一些依赖库</p>
-<p>\n\n\n\n</p>
-<pre><code>npm install ^\nnpm install --save-dev ^#only for development
+<pre><code>npm install ^
 </code></pre>
-<p>\n\n\n\n</p>
+<p>npm install --save-dev ^#only for development</p>
 <p>4.由于我们主要用ts开发，因此还需要对应的typescript配置文件</p>
-<p>\n\n\n\n</p>
 <pre><code>npx tsc --init
 </code></pre>
-<p>\n\n\n\n</p>
 <h2 id="tools-3-mongodb（之后拆分开来再讲）">tools 3: MongoDB（之后拆分开来再讲）</h2>
-<p>\n\n\n\n</p>
 <p>mongoDB的环境我选择了docker，因此后续的操作都是通过wsl终端完成的，使用时请注意</p>
-<p>\n\n\n\n</p>
 <p>docker运行时一定要注意设置两个参数，一个是管理员name，一个是对应的密码，因为后续的数据库操作都要做authentication，具体如下</p>
-<p>\n\n\n\n</p>
-<pre><code>docker run -d --name mongodb \\\n  -p 27017:27017 \\\n  -v /mnt/c/data/mongodb:/data/db \\\n  -e MONGO_INITDB_ROOT_USERNAME=admin \\\n  -e MONGO_INITDB_ROOT_PASSWORD=admin123 \\\n  mongo
+<pre><code>docker run -d --name mongodb \\
 </code></pre>
-<p>\n\n\n\n</p>
+<p>  -p 27017:27017 \
+  -v /mnt/c/data/mongodb:/data/db \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=admin123 \
+  mongo</p>
 <p>GUI的操作类似的，把容器启动起来后，使用docker exec来连接到mongosh</p>
-<p>\n\n\n\n</p>
 <pre><code>docker exec -it mongodb mongosh
 </code></pre>
-<p>\n\n\n\n</p>
 <p>mongodb有个比较神奇的地方，不是说他文档数据库的存储神奇，他的authentication很神奇，连接的时候暂时还不用权限验证，得你连接上之后，用下面的方式验证权限</p>
-<p>\n\n\n\n</p>
-<pre><code>admin&gt; db.auth(&quot;admin&quot;,&quot;admin123&quot;)\n{ ok: 1 }
+<pre><code>admin&gt; db.auth(&quot;admin&quot;,&quot;admin123&quot;)
 </code></pre>
-<p>\n\n\n\n</p>
+<p>{ ok: 1 }</p>
 <p>这里的返回值是很典型的文档数据库的特性，ok表示验证成功，之后我们才能做一系列操作数据库的动作。</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

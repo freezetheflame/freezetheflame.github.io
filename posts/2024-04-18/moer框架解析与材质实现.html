@@ -30,84 +30,91 @@
           <span>2024-04-18</span>
           <span class="tag">CG</span><span class="tag">C++</span>
         </div>
-        <p>\n</p>
-<p>Moer的框架很大，其中包含必要的多种工具链，除了渲染的多层之外的依赖全都放在ext中，包含FastMath（数学库很显然）、json（JSON化数据交换格式库）、nanovdb（稀释体积数据处理工具）、pcg（随机数生成库与工具）、stb（加载或者解码不同格式的图片）</p>
-<p>\n\n\n\n</p>
+        <p>Moer的框架很大，其中包含必要的多种工具链，除了渲染的多层之外的依赖全都放在ext中，包含FastMath（数学库很显然）、json（JSON化数据交换格式库）、nanovdb（稀释体积数据处理工具）、pcg（随机数生成库与工具）、stb（加载或者解码不同格式的图片）</p>
 <p>由于学长希望我去做的是layered material的材质，所以这些工具链我暂时不用过度深究，跟着其他材料照猫画虎即可，关键的渲染实现部分代码放在src文件夹中，并且按照功能分成了CoreLayer,FunctionLayer,ResourceLayer三层，我接下来会仔细进行阐述和举例解析：</p>
-<p>\n\n\n\n</p>
 <h2 id="corelayer">CoreLayer</h2>
-<p>\n\n\n\n</p>
 <p>├─Adapter<br>│ JsonUtil.cpp<br>│ JsonUtil.h<br>│ Random.h<br>│<br>├─ColorSpace<br>│ Color.h<br>│ RGB3.cpp<br>│ Spectrum.cpp<br>│ XYZ3.cpp<br>│<br>├─Geometry<br>│ Angle.cpp<br>│ Angle.h<br>│ BoundingBox.cpp<br>│ BoundingBox.h<br>│ Frame.h<br>│ Geometry.h<br>│ Matrix.cpp<br>│ Matrix.h<br>│ Normal.h<br>│ Point.h<br>│ Transform3d.cpp<br>│ Transform3d.h<br>│ Vector.h<br>│<br>├─Math<br>│ Common.h<br>│ LowDiscrepancy.cpp<br>│ LowDiscrepancy.h<br>│ Warp.h<br>│<br>└─Ray<br>Ray.cpp<br>Ray.h</p>
-<p>\n\n\n\n</p>
 <p>CoreLayer的内容主要为五部分：Adapter,ColorSpace,Geometry,Math&amp;Ray 这五块部分共同组成了图形学组装基本元素的基础，其实也不能这么讲，我们通过Adapter来处理建模参数，处理数据问题；使用ColorSpace来切换常用的颜色空间；Geometry用来存储、计算基本的几何结构以及相关数据；Math库来做一些复杂向量、矩阵以及数值求和等的精确或者简化计算；Ray则是存储光的几何结构，按照目前的实现来看没有过度考究“波动性”一类的微观特征（偏物理，也是最近几年才有比较多发展的工作）</p>
-<p>\n\n\n\n</p>
 <h3 id="adapter">Adapter</h3>
-<p>\n\n\n\n</p>
 <p>//TODO</p>
-<p>\n\n\n\n</p>
 <h3 id="colorspace">ColorSpace</h3>
-<p>\n\n\n\n</p>
 <p>//TODO</p>
-<p>\n\n\n\n</p>
 <h3 id="geometry">Geometry</h3>
-<p>\n\n\n\n</p>
 <p>//TODO</p>
-<p>\n\n\n\n</p>
 <h3 id="math">Math</h3>
-<p>\n\n\n\n</p>
 <p>//TODO</p>
-<p>\n\n\n\n</p>
 <h3 id="ray">Ray</h3>
-<p>\n\n\n\n</p>
 <p>//TODO</p>
-<p>\n\n\n\n</p>
 <h2 id="functionlayer">FunctionLayer</h2>
-<p>\n\n\n\nfolder structure\n</p>
+<p>folder structure</p>
 <p>│ Intersection.h<br>│<br>├─Acceleration<br>│ Accel.h<br>│ Bvh.cpp<br>│ Bvh.h<br>│ Embree.cpp<br>│ Embree.h<br>│<br>├─Camera<br>│ Camera.h<br>│ CameraFactory.cpp<br>│ CameraFactory.h<br>│ DifferentialPinhole.cpp<br>│ DifferentialPinhole.h<br>│ Perspective.h<br>│ Pinhole.cpp<br>│ Pinhole.h<br>│ Thinlens.cpp<br>│ Thinlens.h<br>│<br>├─Distribution<br>│ Distribution.cpp<br>│ Distribution.h<br>│<br>├─Film<br>│ Film.cpp<br>│ Film.h<br>│ ToneMapping.h<br>│<br>├─Filter<br>│ Filter.h<br>│<br>├─Integrator<br>│ │ AbstractPathIntegrator.cpp<br>│ │ AbstractPathIntegrator.h<br>│ │ GuidedPathIntegrator.cpp<br>│ │ GuidedPathIntegrator.h<br>│ │ Integrator.cpp<br>│ │ Integrator.h<br>│ │ MonteCarloIntegrator.cpp<br>│ │ MonteCarloIntegrator.h<br>│ │ NormalIntegrator.cpp<br>│ │ NormalIntegrator.h<br>│ │ PathIntegrator-new.cpp<br>│ │ PathIntegrator-new.h<br>│ │ PathIntegrator.cpp<br>│ │ PathIntegrator.h<br>│ │ VolPathIntegrator.cpp<br>│ │ VolPathIntegrator.h<br>│ │<br>│ └─guiding<br>│ AdaptiveKDTree.h<br>│ data.h<br>│ GuidedBxDF.h<br>│ guiding.h<br>│ vmm.h<br>│<br>├─Light<br>│ AreaLight.cpp<br>│ AreaLight.h<br>│ DiffuseAreaLight.cpp<br>│ DiffuseAreaLight.h<br>│ InfiniteSphereCapLight.cpp<br>│ InfiniteSphereCapLight.h<br>│ InfiniteSphereLight.cpp<br>│ InfiniteSphereLight.h<br>│ Light.h<br>│ PointLight.cpp<br>│ PointLight.h<br>│<br>├─Material<br>│ │ BumpMapMateiral.cpp<br>│ │ BumpMapMaterial.h<br>│ │ ConductorMaterial.cpp<br>│ │ ConductorMaterial.h<br>│ │ DielectricMaterial.cpp<br>│ │ DielectricMaterial.h<br>│ │ DisneyBSDF.cpp<br>│ │ DisneyBSDF.h<br>│ │ HairMaterial.cpp<br>│ │ HairMaterial.h<br>│ │ LayeredMaterial.cpp<br>│ │ LayeredMaterial.h<br>│ │ Material.cpp<br>│ │ Material.h<br>│ │ MaterialFactory.cpp<br>│ │ MaterialFactory.h<br>│ │ MatteMaterial.cpp<br>│ │ MatteMaterial.h<br>│ │ MirrorMaterial.cpp<br>│ │ MirrorMaterial.h<br>│ │ NormalMapMaterial.cpp<br>│ │ NormalMapMaterial.h<br>│ │ NullMaterial.cpp<br>│ │ NullMaterial.h<br>│ │ PlasticMaterial.cpp<br>│ │ PlasticMaterial.h<br>│ │<br>│ ├─BSSRDF<br>│ │ BSSRDF.h<br>│ │<br>│ └─BxDF<br>│ BxDF.h<br>│ ComplexIor.cpp<br>│ ComplexIor.h<br>│ ConductorBxDF.cpp<br>│ ConductorBxDF.h<br>│ DielectricBxDF.cpp<br>│ DielectricBxDF.h<br>│ Fresnel.h<br>│ GlintBxDF.cpp<br>│ GlintBxDF.h<br>│ HairBXDF.cpp<br>│ HairBXDF.h<br>│ LambertainBxDF.cpp<br>│ LambertainBxDF.h<br>│ LayeredBXDF.cpp<br>│ LayeredBXDF.h<br>│ MicrofacetDistribution.cpp<br>│ MicrofacetDistribution.h<br>│ MirrorBxDF.cpp<br>│ MirrorBxDF.h<br>│ PlasticBxDF.cpp<br>│ PlasticBxDF.h<br>│<br>├─Medium<br>│ Beerslaw.cpp<br>│ Beerslaw.h<br>│ Heterogeneous.cpp<br>│ Heterogeneous.h<br>│ HGPhase.cpp<br>│ HGPhase.h<br>│ Homogeneous.cpp<br>│ Homogeneous.h<br>│ IsotropicPhase.cpp<br>│ IsotropicPhase.h<br>│ Medium.h<br>│ MediumFactory.cpp<br>│ MediumFactory.h<br>│ Phase.h<br>│<br>├─Sampler<br>│ DirectSampler.cpp<br>│ DirectSampler.h<br>│ Halton.cpp<br>│ Halton.h<br>│ Independent.h<br>│ Sampler.cpp<br>│ Sampler.h<br>│ Stratified.cpp<br>│ Stratified.h<br>│ ZeroTwoSequence.cpp<br>│ ZeroTwoSequence.h<br>│<br>├─Scene<br>│ Scene.cpp<br>│ Scene.h<br>│<br>├─Shape<br>│ Cube.cpp<br>│ Cube.h<br>│ Curve.cpp<br>│ Curve.h<br>│ Entity.cpp<br>│ Entity.h<br>│ EntityFactory.cpp<br>│ EntityFactory.h<br>│ Mesh.cpp<br>│ Mesh.h<br>│ Quad.cpp<br>│ Quad.h<br>│ Sphere.cpp<br>│ Sphere.h<br>│ Triangle.cpp<br>│ Triangle.h<br>│<br>├─Texture<br>│ ImageTexture.cpp<br>│ ImageTexture.h<br>│ ProceduralTexture.cpp<br>│ ProceduralTexture.h<br>│ Texture.h<br>│ TextureFactory.h<br>│ TextureMapping.cpp<br>│ TextureMapping.h<br>│<br>└─TileGenerator<br>SequenceTileGenerator.cpp<br>SequenceTileGenerator.h<br>TileGenerator.cpp<br>TileGenerator.h</p>
-<p>\n\n\n\n\n</p>
 <p>FunctionLayer在我看来是整个离线渲染器的核心，其中包含的内容围绕着具体的图形学技术细节以及tricks展开，比如图形的BVH加速结构、Distribution采样、纹理、材料、光源等核心方面的内容。所以我们主要针对这一层的各个实现进行解释和拆分</p>
-<p>\n\n\n\n</p>
 <h3 id="acceleration">Acceleration</h3>
-<p>\n\n\n\n</p>
 <p>这一部分主要是为了实现光追的几个基本加速结构，详细的光追加速我就另开一篇文章来解释了</p>
-<p>\n\n\n\n</p>
-<pre><code>/// @brief Acceleration structure Interface.\nclass Accel {\n\npublic:\n\n    Accel() = default;\n\n    /*\n    * @brief basic interface for ray intersection.\n    * @param r The ray that intersect with a scene. This interface will only utilize its geometry information.\n    * @return The exactly closest intersection point on an entity in the scene with other useful information.\n    */\n    virtual std::optional&lt;Intersection&gt; Intersect(const Ray &amp;r) const = 0;\n\n    /*\n    * @brief get the bounding box of all the objects\n    */\n    [[nodiscard]]\n    virtual BoundingBox3f getGlobalBoundingBox() const = 0;\n};
+<pre><code>/// @brief Acceleration structure Interface.
 </code></pre>
-<p>\n\n\n\n</p>
+<p>class Accel {
+public:
+    Accel() = default;
+    /*
+    * @brief basic interface for ray intersection.
+    * @param r The ray that intersect with a scene. This interface will only utilize its geometry information.
+    * @return The exactly closest intersection point on an entity in the scene with other useful information.
+    <em>/
+    virtual std::optional<Intersection> Intersect(const Ray &amp;r) const = 0;
+    /</em>
+    * @brief get the bounding box of all the objects
+    */
+    [[nodiscard]]
+    virtual BoundingBox3f getGlobalBoundingBox() const = 0;
+};</p>
 <p>这是整个加速结构的总体interface，包含求交、获得包围盒这两个接口</p>
-<p>\n\n\n\n</p>
 <p>│Bvh.cpp<br>│ Bvh.h<br>│ Embree.cpp<br>│ Embree.h</p>
-<p>\n\n\n\n</p>
 <p>implementation包括BVH和Embree两类</p>
-<p>\n\n\n\n</p>
 <p>BVH里面定义了几个基本的数据结构：</p>
-<p>\n\n\n\n</p>
-<pre><code>/// @brief Entity information declaration for building BVH\nstruct EntityInfo {\n\tEntityInfo(){}\n\tEntityInfo(int _EntityId, const BoundingBox3f&amp; _bounds): EntityId(_EntityId), bounds(_bounds), center(0.5 * (_bounds.pMin + _bounds.pMax)){}\n\tint EntityId;\n\tBoundingBox3f bounds;\n\tPoint3d center;\n};\n\nstruct BvhTreeNode {\n\tBoundingBox3f bounds;\n\tstd::shared_ptr&lt;BvhTreeNode&gt; children[2] = {nullptr, nullptr};//0: left, 1: right\n\tint splitAxis;\n\tint nEntites = 0;//0: interior nodes, otherwise: leaf nodes\n\tint entityOffset;\n};\n\n/// @brief Bvh Nodes in Dfs-Order\nstruct LinearBvhNode {\n\tBoundingBox3f bounds;\n\tunion\n\t{\n\t\tint firstdEntityOffset;//for leaves to enumerate\n\t\tint secondChildOrder;//for interior nodes to traverse\n\t};\n\tint nEntites = 0;\n\tint splitAxis;\n};
+<pre><code>/// @brief Entity information declaration for building BVH
 </code></pre>
-<p>\n\n\n\n</p>
+<p>struct EntityInfo {
+\tEntityInfo(){}
+\tEntityInfo(int _EntityId, const BoundingBox3f&amp; _bounds): EntityId(_EntityId), bounds(_bounds), center(0.5 * (_bounds.pMin + _bounds.pMax)){}
+\tint EntityId;
+\tBoundingBox3f bounds;
+\tPoint3d center;
+};
+struct BvhTreeNode {
+\tBoundingBox3f bounds;
+\tstd::shared_ptr<BvhTreeNode> children[2] = {nullptr, nullptr};//0: left, 1: right
+\tint splitAxis;
+\tint nEntites = 0;//0: interior nodes, otherwise: leaf nodes
+\tint entityOffset;
+};
+/// @brief Bvh Nodes in Dfs-Order
+struct LinearBvhNode {
+\tBoundingBox3f bounds;
+\tunion
+\t{
+\t\tint firstdEntityOffset;//for leaves to enumerate
+\t\tint secondChildOrder;//for interior nodes to traverse
+\t};
+\tint nEntites = 0;
+\tint splitAxis;
+};</p>
 <p><a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>EntityInfo</code></a>结构体包含三个成员：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>EntityId</code></a>：一个整数，用于标识实体。
-\n\n\n\n</li>
-<li><a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>bounds</code></a>：一个<code>BoundingBox3f</code>类型的对象，表示实体的包围盒。<code>BoundingBox3f</code>是一个自定义的类型，用于存储3D包围盒的信息。
-\n\n\n\n</li>
-<li><a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>center</code></a>：一个<code>Point3d</code>类型的对象，表示实体的中心点。<code>Point3d</code>也是一个自定义的类型，用于存储3D点的信息。
-\n
-\n\n\n\n</li>
+<li><p><a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>EntityId</code></a>：一个整数，用于标识实体。</p>
+</li>
+<li><p><a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>bounds</code></a>：一个<code>BoundingBox3f</code>类型的对象，表示实体的包围盒。<code>BoundingBox3f</code>是一个自定义的类型，用于存储3D包围盒的信息。</p>
+</li>
+<li><p><a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>center</code></a>：一个<code>Point3d</code>类型的对象，表示实体的中心点。<code>Point3d</code>也是一个自定义的类型，用于存储3D点的信息。</p>
+</li>
 </ul>
 <p><a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>EntityInfo</code></a>结构体提供了两个构造函数：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>默认构造函数<a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>EntityInfo()</code></a>：创建一个<a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>EntityInfo</code></a>对象，但不对其成员进行初始化。
-\n\n\n\n</li>
-<li>带参数的构造函数<code>EntityInfo(int _EntityId, const BoundingBox3f&amp; _bounds)</code>：创建一个<code>EntityInfo</code>对象，并使用参数<code>_EntityId</code>和<code>_bounds</code>初始化<code>EntityId</code>和<code>bounds</code>成员。同时，它还计算出实体的中心点<code>center</code>，方法是取包围盒的最小点和最大点的中点。
-\n
-\n\n\n\n</li>
+<li><p>默认构造函数<a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>EntityInfo()</code></a>：创建一个<a href="vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html"><code>EntityInfo</code></a>对象，但不对其成员进行初始化。</p>
+</li>
+<li><p>带参数的构造函数<code>EntityInfo(int _EntityId, const BoundingBox3f&amp; _bounds)</code>：创建一个<code>EntityInfo</code>对象，并使用参数<code>_EntityId</code>和<code>_bounds</code>初始化<code>EntityId</code>和<code>bounds</code>成员。同时，它还计算出实体的中心点<code>center</code>，方法是取包围盒的最小点和最大点的中点。</p>
+</li>
 </ul>
-<p>\n</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

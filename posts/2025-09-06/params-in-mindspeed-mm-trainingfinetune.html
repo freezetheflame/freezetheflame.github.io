@@ -30,14 +30,12 @@
           <span>2025-09-06</span>
           <span class="tag">AI</span><span class="tag">深度学习</span><span class="tag">LLM</span><span class="tag">MindSpeed</span>
         </div>
-        <p>\n</p>
-<p><a href="https://gitee.com/ascend/MindSpeed-MM/">MindSpeed-MM: 华为昇腾面向大规模分布式训练的多模态大模型套件，支撑多模态生成、多模态理解。</a></p>
-<p>\n\n\n\n</p>
+        <p><a href="https://gitee.com/ascend/MindSpeed-MM/">MindSpeed-MM: 华为昇腾面向大规模分布式训练的多模态大模型套件，支撑多模态生成、多模态理解。</a></p>
 <h2 id="训练相关参数配置（位于各个bash脚本中）："><strong>训练相关参数配置（位于各个bash脚本中）：</strong></h2>
 <table>
 <thead>
 <tr>
-<th>\n\n\n\n<strong>参数名（及其常用别名，备注中会阐释一些细微差异）</strong></th>
+<th><strong>参数名（及其常用别名，备注中会阐释一些细微差异）</strong></th>
 <th><strong>参数简介</strong></th>
 <th><strong>参数格式说明</strong></th>
 <th><strong>参数示例</strong></th>
@@ -368,310 +366,250 @@
 <td></td>
 </tr>
 </tbody></table>
-<p>adam-beta1| <strong>Adam优化器一阶动量衰减率</strong>|  float| 0.9| | | | | 一般采取原始Adam论文取值0.9<br>adam-beta2| <strong>Adam优化器二阶动量衰减率</strong>|  float| 0.999| | | | | <strong>问题</strong> ：过大的β2可能导致早期训练不稳定，可尝试0.95<br>no-gradient-accumulation-fusion| <strong>禁用梯度累积融合</strong>|  none| none| | | | | <strong>禁用场景</strong> ：遇到NaN梯度或显存不足时<br>seed| <strong>全局随机种子</strong>|  int| 42| | | | |<br>bf16| <strong>bfloat16混合精度训练</strong>|  none| none| | | | |<br>use-flash-attn| <strong>启用FlashAttention优化</strong> 通过IO感知算法减少注意力计算的HBM访问| none| none| | | | |<br>use-distributed-optimizer| <strong>分布式优化器（ZeRO-3级）</strong> 将优化器状态（动量、方差）分散到所有设备| none| none| | | | |<br>--no-load-optim &amp; --no-load-rng| <strong>不保存优化器状态/随机状态</strong>| | | | | | | <strong>背景</strong> ：优化器状态通常占检查点70%+空间<br>num_workers| 加载子进程数| int| | | | | |<br>| | | | | | | |<br>\n\n\n\n</p>
+<p>adam-beta1| <strong>Adam优化器一阶动量衰减率</strong>|  float| 0.9| | | | | 一般采取原始Adam论文取值0.9<br>adam-beta2| <strong>Adam优化器二阶动量衰减率</strong>|  float| 0.999| | | | | <strong>问题</strong> ：过大的β2可能导致早期训练不稳定，可尝试0.95<br>no-gradient-accumulation-fusion| <strong>禁用梯度累积融合</strong>|  none| none| | | | | <strong>禁用场景</strong> ：遇到NaN梯度或显存不足时<br>seed| <strong>全局随机种子</strong>|  int| 42| | | | |<br>bf16| <strong>bfloat16混合精度训练</strong>|  none| none| | | | |<br>use-flash-attn| <strong>启用FlashAttention优化</strong> 通过IO感知算法减少注意力计算的HBM访问| none| none| | | | |<br>use-distributed-optimizer| <strong>分布式优化器（ZeRO-3级）</strong> 将优化器状态（动量、方差）分散到所有设备| none| none| | | | |<br>--no-load-optim &amp; --no-load-rng| <strong>不保存优化器状态/随机状态</strong>| | | | | | | <strong>背景</strong> ：优化器状态通常占检查点70%+空间<br>num_workers| 加载子进程数| int| | | | | |<br>| | | | | | | |   </p>
 <h2 id="模型相关参数配置（位于modeljson中，需要和bash脚本中一些参数完成联动）">模型相关参数配置（位于model.json中，需要和bash脚本中一些参数完成联动）</h2>
-<p>\n\n\n\n</p>
 <p>注意，当开启PP时，<code>model.json</code>中配置的<code>vision_encoder</code>和<code>text_decoder</code>的<code>pipeline_num_layer</code>参数控制了各自的PP切分策略。对于流水线并行，要先处理<code>vision_encoder</code>再处理<code>text_decoder</code>。</p>
-<p>\n\n\n\n</p>
 <p>比如7b默认的值<code>[32,0,0,0]</code>、<code>[1,10,10,7]</code>，其含义为PP域内第一张卡先放32层<code>vision_encoder</code>再放1层<code>text_decoder</code>、第二张卡放<code>text_decoder</code>接着的10层、第三张卡放<code>text_decoder</code>接着的10层、第四张卡放<code>text_decoder</code>接着的7层，<code>vision_encoder</code>没有放完时不能先放<code>text_decoder</code>（比如<code>[30,2,0,0]</code>、<code>[1,10,10,7]</code>的配置是错的）</p>
-<p>\n\n\n\n</p>
 <h3 id="🔧-可安全修改的参数（用于模块测试）">🔧 可安全修改的参数（用于模块测试）</h3>
-<p>\n\n\n\n</p>
 <h3 id="1-归一化函数-normalization">1. 归一化函数 (<code>normalization</code>)</h3>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><p><strong>原始值</strong> ：<code>&quot;RMSNorm&quot;</code>
-\n\n\n\n</p>
+<li><p><strong>原始值</strong> ：<code>&quot;RMSNorm&quot;</code></p>
 </li>
-<li><p><strong>可修改为</strong> ：<code>&quot;LayerNorm&quot;</code>, <code>&quot;FusedLayerNorm&quot;</code>
-\n\n\n\n</p>
+<li><p><strong>可修改为</strong> ：<code>&quot;LayerNorm&quot;</code>, <code>&quot;FusedLayerNorm&quot;</code></p>
 </li>
-<li><p><strong>修改方法</strong> ：
-\n
-\n\n\n\n</p>
-<p>  // 在text_decoder和vision_encoder中同时修改\n  &quot;normalization&quot;: &quot;LayerNorm&quot;</p>
+<li><p><strong>修改方法</strong> ：</p>
+<p>  // 在text_decoder和vision_encoder中同时修改</p>
 </li>
 </ul>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>  &quot;normalization&quot;: &quot;LayerNorm&quot;</p>
 <ul>
-<li><strong>注意事项</strong> ：
-\n\n\n\n</li>
-<li>✅ <strong>安全</strong> ：框架通常会自动处理权重转换（RMSNorm到LayerNorm的gamma参数可直接复用）
-\n\n\n\n</li>
-<li>⚠️ <strong>性能影响</strong> ：RMSNorm比LayerNorm快约15%，但LayerNorm更稳定
-\n\n\n\n</li>
-<li>💡 <strong>测试建议</strong> ：修改后运行简单推理测试，检查loss是否稳定
-\n\n\n\n</li>
-<li>📊 <strong>评估指标</strong> ：推理速度、数值稳定性、生成质量
-\n
-\n\n\n\n</li>
+<li><p><strong>注意事项</strong> ：</p>
+</li>
+<li><p>✅ <strong>安全</strong> ：框架通常会自动处理权重转换（RMSNorm到LayerNorm的gamma参数可直接复用）</p>
+</li>
+<li><p>⚠️ <strong>性能影响</strong> ：RMSNorm比LayerNorm快约15%，但LayerNorm更稳定</p>
+</li>
+<li><p>💡 <strong>测试建议</strong> ：修改后运行简单推理测试，检查loss是否稳定</p>
+</li>
+<li><p>📊 <strong>评估指标</strong> ：推理速度、数值稳定性、生成质量</p>
+</li>
 </ul>
 <h3 id="2-激活函数-activation_func">2. 激活函数 (<code>activation_func</code>)</h3>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><p><strong>原始值</strong> ：<code>&quot;silu&quot;</code> (Swish)
-\n\n\n\n</p>
+<li><p><strong>原始值</strong> ：<code>&quot;silu&quot;</code> (Swish)</p>
 </li>
-<li><p><strong>可修改为</strong> ：<code>&quot;gelu&quot;</code>, <code>&quot;relu&quot;</code>, <code>&quot;quick_gelu&quot;</code>
-\n\n\n\n</p>
+<li><p><strong>可修改为</strong> ：<code>&quot;gelu&quot;</code>, <code>&quot;relu&quot;</code>, <code>&quot;quick_gelu&quot;</code></p>
 </li>
-<li><p><strong>修改方法</strong> ：
-\n
-\n\n\n\n</p>
-<p>  // 在text_decoder和vision_encoder中修改\n  &quot;activation_func&quot;: &quot;gelu&quot;</p>
+<li><p><strong>修改方法</strong> ：</p>
+<p>  // 在text_decoder和vision_encoder中修改</p>
 </li>
 </ul>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>  &quot;activation_func&quot;: &quot;gelu&quot;</p>
 <ul>
-<li><strong>注意事项</strong> ：
-\n\n\n\n</li>
-<li>✅ <strong>安全</strong> ：激活函数替换不会改变张量维度
-\n\n\n\n</li>
-<li>⚠️ <strong>性能差异</strong> ：\n\n<ul>
-<li>SiLU → GELU：质量可能下降0.5-1.0 PPL
-\n\n\n\n</li>
-<li>SiLU → ReLU：可能引起训练不稳定
-\n\n
-\n\n\n\n</li>
+<li><p><strong>注意事项</strong> ：</p>
+</li>
+<li><p>✅ <strong>安全</strong> ：激活函数替换不会改变张量维度</p>
+</li>
+<li><p>⚠️ <strong>性能差异</strong> ：</p>
+<ul>
+<li><p>SiLU → GELU：质量可能下降0.5-1.0 PPL</p>
+</li>
+<li><p>SiLU → ReLU：可能引起训练不稳定</p>
+</li>
 </ul>
 </li>
-<li>💡 <strong>测试建议</strong> ：使用相同输入测试不同激活函数的输出分布
-\n\n\n\n</li>
-<li>📊 <strong>评估指标</strong> ：输出分布熵值、推理速度
-\n
-\n\n\n\n</li>
+<li><p>💡 <strong>测试建议</strong> ：使用相同输入测试不同激活函数的输出分布</p>
+</li>
+<li><p>📊 <strong>评估指标</strong> ：输出分布熵值、推理速度</p>
+</li>
 </ul>
 <h3 id="3-注意力机制配置">3. 注意力机制配置</h3>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><p><strong>可修改项</strong> ：
-\n
-\n\n\n\n</p>
-<p>  &quot;group_query_attention&quot;: true,\n  &quot;num_query_groups&quot;: 4</p>
+<li><p><strong>可修改项</strong> ：</p>
+<p>  &quot;group_query_attention&quot;: true,</p>
 </li>
 </ul>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>  &quot;num_query_groups&quot;: 4</p>
 <ul>
-<li><strong>修改方案</strong> ：
-\n\n\n\n</li>
-<li>方案1：关闭GQA → <code>&quot;group_query_attention&quot;: false</code>
-\n\n\n\n</li>
-<li>方案2：调整组数 → <code>&quot;num_query_groups&quot;: 7</code> (必须是28的约数)
-\n\n\n\n</li>
-<li><strong>注意事项</strong> ：
-\n\n\n\n</li>
-<li>✅ <strong>安全</strong> ：权重可直接复用（多余的头会被忽略）
-\n\n\n\n</li>
-<li>⚠️ <strong>性能影响</strong> ：\n\n<ul>
-<li>关闭GQA：显存增加30%，速度下降15%
-\n\n\n\n</li>
-<li>增加组数：质量可能轻微下降
-\n\n
-\n\n\n\n</li>
+<li><p><strong>修改方案</strong> ：</p>
+</li>
+<li><p>方案1：关闭GQA → <code>&quot;group_query_attention&quot;: false</code></p>
+</li>
+<li><p>方案2：调整组数 → <code>&quot;num_query_groups&quot;: 7</code> (必须是28的约数)</p>
+</li>
+<li><p><strong>注意事项</strong> ：</p>
+</li>
+<li><p>✅ <strong>安全</strong> ：权重可直接复用（多余的头会被忽略）</p>
+</li>
+<li><p>⚠️ <strong>性能影响</strong> ：</p>
+<ul>
+<li><p>关闭GQA：显存增加30%，速度下降15%</p>
+</li>
+<li><p>增加组数：质量可能轻微下降</p>
+</li>
 </ul>
 </li>
-<li>💡 <strong>测试建议</strong> ：使用长文本测试注意力分布变化
-\n\n\n\n</li>
-<li>📊 <strong>评估指标</strong> ：注意力热力图、显存占用
-\n
-\n\n\n\n</li>
+<li><p>💡 <strong>测试建议</strong> ：使用长文本测试注意力分布变化</p>
+</li>
+<li><p>📊 <strong>评估指标</strong> ：注意力热力图、显存占用</p>
+</li>
 </ul>
 <h3 id="4-rope参数调整">4. RoPE参数调整</h3>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><p><strong>可修改项</strong> ：
-\n
-\n\n\n\n</p>
-<p>  &quot;rope_theta&quot;: 1000000.0,\n  &quot;mrope_section&quot;: [16, 24, 24]</p>
+<li><p><strong>可修改项</strong> ：</p>
+<p>  &quot;rope_theta&quot;: 1000000.0,</p>
 </li>
 </ul>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>  &quot;mrope_section&quot;: [16, 24, 24]</p>
 <ul>
-<li><strong>修改方案</strong> ：
-\n\n\n\n</li>
-<li>方案1：调整theta值 → <code>&quot;rope_theta&quot;: 500000.0</code>
-\n\n\n\n</li>
-<li>方案2：简化mrope → <code>&quot;mrope_section&quot;: [32, 32]</code>
-\n\n\n\n</li>
-<li><strong>注意事项</strong> ：
-\n\n\n\n</li>
-<li>✅ <strong>安全</strong> ：仅影响位置编码计算
-\n\n\n\n</li>
-<li>⚠️ <strong>限制</strong> ：<code>mrope_section</code>总和必须=80（原始总和=16+24+24=64? 需确认）
-\n\n\n\n</li>
-<li>💡 <strong>测试建议</strong> ：测试不同长度序列的位置编码输出
-\n\n\n\n</li>
-<li>📊 <strong>评估指标</strong> ：位置编码矩阵可视化、长文本推理质量
-\n
-\n\n\n\n</li>
+<li><p><strong>修改方案</strong> ：</p>
+</li>
+<li><p>方案1：调整theta值 → <code>&quot;rope_theta&quot;: 500000.0</code></p>
+</li>
+<li><p>方案2：简化mrope → <code>&quot;mrope_section&quot;: [32, 32]</code></p>
+</li>
+<li><p><strong>注意事项</strong> ：</p>
+</li>
+<li><p>✅ <strong>安全</strong> ：仅影响位置编码计算</p>
+</li>
+<li><p>⚠️ <strong>限制</strong> ：<code>mrope_section</code>总和必须=80（原始总和=16+24+24=64? 需确认）</p>
+</li>
+<li><p>💡 <strong>测试建议</strong> ：测试不同长度序列的位置编码输出</p>
+</li>
+<li><p>📊 <strong>评估指标</strong> ：位置编码矩阵可视化、长文本推理质量</p>
+</li>
 </ul>
 <h2 id="⚠️-有条件可修改的参数（需谨慎操作）">⚠️ 有条件可修改的参数（需谨慎操作）</h2>
-<p>\n\n\n\n</p>
 <h3 id="1-层数-num_layers">1. 层数 (<code>num_layers</code>)</h3>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><p><strong>原始值</strong> ：
-\n\n\n\n</p>
+<li><p><strong>原始值</strong> ：</p>
 </li>
-<li><p>文本解码器：28层
-\n\n\n\n</p>
+<li><p>文本解码器：28层</p>
 </li>
-<li><p>视觉编码器：32层
-\n\n\n\n</p>
+<li><p>视觉编码器：32层</p>
 </li>
-<li><p><strong>安全修改策略</strong> ：
-\n
-\n\n\n\n</p>
-<p>  // 仅减少层数（不能增加）\n  &quot;num_layers&quot;: 24,\n  &quot;pipeline_num_layers&quot;: [10, 14]  // 保持总和=24</p>
+<li><p><strong>安全修改策略</strong> ：</p>
+<p>  // 仅减少层数（不能增加）</p>
 </li>
 </ul>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>  &quot;num_layers&quot;: 24,
+  &quot;pipeline_num_layers&quot;: [10, 14]  // 保持总和=24</p>
 <ul>
-<li><p><strong>关键限制</strong> ：
-\n\n\n\n</p>
+<li><p><strong>关键限制</strong> ：</p>
 </li>
-<li><p>❌ <strong>禁止增加层数</strong> （新层无预训练权重）
-\n\n\n\n</p>
+<li><p>❌ <strong>禁止增加层数</strong> （新层无预训练权重）</p>
 </li>
-<li><p>✅ <strong>允许减少层数</strong> （从顶部移除，保留底层特征提取能力）
-\n\n\n\n</p>
+<li><p>✅ <strong>允许减少层数</strong> （从顶部移除，保留底层特征提取能力）</p>
 </li>
-<li><p>🔗 <strong>必须同步修改</strong> <code>pipeline_num_layers</code>（总和需等于新num_layers）
-\n\n\n\n</p>
+<li><p>🔗 <strong>必须同步修改</strong> <code>pipeline_num_layers</code>（总和需等于新num_layers）</p>
 </li>
-<li><p><strong>权重加载策略</strong> ：
-\n
-\n\n\n\n</p>
-<h1 id="伪代码：安全加载部分层的权重n--for-layer_idx-in-rangenew_num_layersn------modeldecoderlayerslayer_idxload_state_dictn----------pretrained_statefdecoderlayerslayer_idxn------">伪代码：安全加载部分层的权重\n  for layer_idx in range(new_num_layers):\n      model.decoder.layers[layer_idx].load_state_dict(\n          pretrained_state[f&quot;decoder.layers.{layer_idx}&quot;]\n      )</h1>
+<li><p><strong>权重加载策略</strong> ：</p>
+<h1 id="伪代码：安全加载部分层的权重">伪代码：安全加载部分层的权重</h1>
 </li>
 </ul>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>  for layer_idx in range(new_num_layers):
+      model.decoder.layers[layer_idx].load_state_dict(
+          pretrained_state[f&quot;decoder.layers.{layer_idx}&quot;]
+      )</p>
 <ul>
-<li><strong>测试建议</strong> ：
-\n\n\n\n</li>
-<li>逐步减少层数（28→24→20→16）
-\n\n\n\n</li>
-<li>测试不同任务的性能衰减曲线
-\n\n\n\n</li>
-<li>重点关注底层vs顶层层的重要性
-\n
-\n\n\n\n</li>
+<li><p><strong>测试建议</strong> ：</p>
+</li>
+<li><p>逐步减少层数（28→24→20→16）</p>
+</li>
+<li><p>测试不同任务的性能衰减曲线</p>
+</li>
+<li><p>重点关注底层vs顶层层的重要性</p>
+</li>
 </ul>
 <h3 id="2-隐藏层大小-hidden_size">2. 隐藏层大小 (<code>hidden_size</code>)</h3>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><p><strong>原始值</strong> ：
-\n\n\n\n</p>
+<li><p><strong>原始值</strong> ：</p>
 </li>
-<li><p>文本解码器：3584
-\n\n\n\n</p>
+<li><p>文本解码器：3584</p>
 </li>
-<li><p>视觉编码器：1280
-\n\n\n\n</p>
+<li><p>视觉编码器：1280</p>
 </li>
-<li><p>LLM隐藏层：3584（<code>llm_hidden_size</code>）
-\n\n\n\n</p>
+<li><p>LLM隐藏层：3584（<code>llm_hidden_size</code>）</p>
 </li>
-<li><p><strong>安全修改策略</strong> ：
-\n
-\n\n\n\n</p>
-<p>  // 必须保持比例关系\n  &quot;hidden_size&quot;: 3072,  // 128的倍数\n  &quot;llm_hidden_size&quot;: 3072,\n  &quot;vision_projector&quot;: {\n    &quot;input_size&quot;: 1280,\n    &quot;hidden_size&quot;: 3072,  // 与text_decoder.hidden_size一致\n    &quot;ffn_hidden_size&quot;: 4608  // 通常为hidden_size的1.5倍\n  }</p>
+<li><p><strong>安全修改策略</strong> ：</p>
+<p>  // 必须保持比例关系</p>
 </li>
 </ul>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>  &quot;hidden_size&quot;: 3072,  // 128的倍数
+  &quot;llm_hidden_size&quot;: 3072,
+  &quot;vision_projector&quot;: {
+    &quot;input_size&quot;: 1280,
+    &quot;hidden_size&quot;: 3072,  // 与text_decoder.hidden_size一致
+    &quot;ffn_hidden_size&quot;: 4608  // 通常为hidden_size的1.5倍
+  }</p>
 <ul>
-<li><strong>关键限制</strong> ：
-\n\n\n\n</li>
-<li>🔗 <strong>必须保持维度匹配</strong> ：\n\n<ul>
-<li>视觉投影器输出 = 文本解码器输入
-\n\n\n\n</li>
-<li><code>ffn_hidden_size</code> ≈ <code>hidden_size</code> × 1.5
-\n\n
-\n\n\n\n</li>
+<li><p><strong>关键限制</strong> ：</p>
+</li>
+<li><p>🔗 <strong>必须保持维度匹配</strong> ：</p>
+<ul>
+<li><p>视觉投影器输出 = 文本解码器输入</p>
+</li>
+<li><p><code>ffn_hidden_size</code> ≈ <code>hidden_size</code> × 1.5</p>
+</li>
 </ul>
 </li>
-<li>🔄 <strong>需要权重转换</strong> ：<br><code>python # 伪代码：线性投影转换权重 new_embedding = nn.Linear(3584, 3072) new_embedding.weight.data = pretrained_embed.weight.data[:, :3072]</code>
-\n\n\n\n</li>
-<li><strong>测试建议</strong> ：
-\n\n\n\n</li>
-<li>按128的倍数调整（3584→3456→3328…）
-\n\n\n\n</li>
-<li>测试模型容量与性能的权衡曲线
-\n\n\n\n</li>
-<li>监控显存占用与推理速度变化
-\n
-\n\n\n\n</li>
+<li><p>🔄 <strong>需要权重转换</strong> ：<br><code>python # 伪代码：线性投影转换权重 new_embedding = nn.Linear(3584, 3072) new_embedding.weight.data = pretrained_embed.weight.data[:, :3072]</code></p>
+</li>
+<li><p><strong>测试建议</strong> ：</p>
+</li>
+<li><p>按128的倍数调整（3584→3456→3328…）</p>
+</li>
+<li><p>测试模型容量与性能的权衡曲线</p>
+</li>
+<li><p>监控显存占用与推理速度变化</p>
+</li>
 </ul>
 <h2 id="🚫-绝对禁止修改的参数（会导致推理失败）">🚫 绝对禁止修改的参数（会导致推理失败）</h2>
-<p>\n\n\n\n</p>
 <h3 id="1-词汇表相关参数">1. 词汇表相关参数</h3>
-<p>\n\n\n\n</p>
-<pre><code>&quot;vocab_size&quot;: 152064,\n&quot;img_context_token_id&quot;: 151655,\n&quot;vision_start_token_id&quot;: 151652
+<pre><code>&quot;vocab_size&quot;: 152064,
 </code></pre>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>&quot;img_context_token_id&quot;: 151655,
+&quot;vision_start_token_id&quot;: 151652</p>
 <ul>
-<li><strong>原因</strong> ：这些ID在数据处理流水线和模型架构中<strong>硬编码</strong>
-\n\n\n\n</li>
-<li><strong>后果</strong> ：修改后会导致：
-\n\n\n\n</li>
-<li>视觉特征无法正确插入文本流
-\n\n\n\n</li>
-<li>特殊token被错误解释为普通token
-\n\n\n\n</li>
-<li>模型完全无法理解多模态输入
-\n
-\n\n\n\n</li>
+<li><p><strong>原因</strong> ：这些ID在数据处理流水线和模型架构中<strong>硬编码</strong></p>
+</li>
+<li><p><strong>后果</strong> ：修改后会导致：</p>
+</li>
+<li><p>视觉特征无法正确插入文本流</p>
+</li>
+<li><p>特殊token被错误解释为普通token</p>
+</li>
+<li><p>模型完全无法理解多模态输入</p>
+</li>
 </ul>
 <h3 id="2-多维rope核心配置">2. 多维RoPE核心配置</h3>
-<p>\n\n\n\n</p>
-<pre><code>&quot;position_embedding_type&quot;: &quot;mrope&quot;,\n&quot;mrope_section&quot;: [16, 24, 24]
+<pre><code>&quot;position_embedding_type&quot;: &quot;mrope&quot;,
 </code></pre>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>&quot;mrope_section&quot;: [16, 24, 24]</p>
 <ul>
-<li><strong>原因</strong> ：这是Qwen2.5-VL处理<strong>视觉-文本时空对齐</strong> 的核心机制
-\n\n\n\n</li>
-<li><strong>后果</strong> ：修改后会导致：
-\n\n\n\n</li>
-<li>视觉和文本位置信息错位
-\n\n\n\n</li>
-<li>长视频理解能力完全失效
-\n\n\n\n</li>
-<li>模型无法区分空间/时间维度
-\n
-\n\n\n\n</li>
+<li><p><strong>原因</strong> ：这是Qwen2.5-VL处理<strong>视觉-文本时空对齐</strong> 的核心机制</p>
+</li>
+<li><p><strong>后果</strong> ：修改后会导致：</p>
+</li>
+<li><p>视觉和文本位置信息错位</p>
+</li>
+<li><p>长视频理解能力完全失效</p>
+</li>
+<li><p>模型无法区分空间/时间维度</p>
+</li>
 </ul>
 <h3 id="3-冻结组件标记">3. 冻结组件标记</h3>
-<p>\n\n\n\n</p>
 <pre><code>&quot;freeze&quot;: true  // 在vision_encoder和vision_projector中
 </code></pre>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><p><strong>原因</strong> ：这些标记<strong>不改变模型结构</strong> ，仅控制训练行为
-\n\n\n\n</p>
+<li><p><strong>原因</strong> ：这些标记<strong>不改变模型结构</strong> ，仅控制训练行为</p>
 </li>
-<li><p><strong>正确修改方式</strong> ：通过训练参数控制，而非修改model.json
-\n
-\n\n\n\n</p>
-<h1 id="正确做法：通过训练参数解冻n----unfreeze-vision-encoder---vision-encoder-lr-5e-6nn---错误做法：修改modeljson中的freeze-true">正确做法：通过训练参数解冻\n  --unfreeze-vision-encoder --vision-encoder-lr 5e-6\n\n  # 错误做法：修改model.json中的&quot;freeze&quot;: true</h1>
+<li><p><strong>正确修改方式</strong> ：通过训练参数控制，而非修改model.json</p>
+<h1 id="正确做法：通过训练参数解冻">正确做法：通过训练参数解冻</h1>
 </li>
 </ul>
-<p>\n</p>
+<p>  --unfreeze-vision-encoder --vision-encoder-lr 5e-6</p>
+<h1 id="错误做法：修改modeljson中的freeze-true">错误做法：修改model.json中的&quot;freeze&quot;: true</h1>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

@@ -30,146 +30,166 @@
           <span>2025-06-26</span>
           <span class="tag">服务器后端内容</span><span class="tag">TypeScript/JavaScript</span>
         </div>
-        <p>\n</p>
-<p>typescript是对于Javascript的一种安全封转，因此大部分对于typescript的操作都要转换成JavaScript进行处理，并且会多出一些d.ts的类型定义文件以保证类型安全性的扩展。</p>
-<p>\n\n\n\n</p>
+        <p>typescript是对于Javascript的一种安全封转，因此大部分对于typescript的操作都要转换成JavaScript进行处理，并且会多出一些d.ts的类型定义文件以保证类型安全性的扩展。</p>
 <p>对于ts来说，有如下这一些基本的结构会出现：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><strong>声明部分</strong> ：包括类型声明、接口声明等。
-\n\n\n\n</li>
-<li><strong>变量声明</strong> ：包括 <code>let</code>, <code>const</code> 和 <code>var</code> 的使用。
-\n\n\n\n</li>
-<li><strong>函数声明</strong> ：包括普通函数和箭头函数。
-\n\n\n\n</li>
-<li><strong>类声明</strong> ：用于定义类及其成员。
-\n\n\n\n</li>
-<li><strong>接口与类型别名</strong> ：描述类型的结构。
-\n\n\n\n</li>
-<li><strong>模块化</strong> ：通过 <code>import</code> 和 <code>export</code> 组织代码。
-\n\n\n\n</li>
-<li><strong>类型断言</strong> ：强制类型转换。
-\n\n\n\n</li>
-<li><strong>泛型</strong> ：使代码具备更多的复用性。
-\n\n\n\n</li>
-<li><strong>注释</strong> ：增加代码的可读性。
-\n\n\n\n</li>
-<li><strong>类型推断</strong> ：自动推断类型。
-\n\n\n\n</li>
-<li><strong>类型守卫</strong> ：缩小类型范围。
-\n\n\n\n</li>
-<li><strong>异步编程</strong> ：支持 <code>async/await</code>。
-\n\n\n\n</li>
-<li><strong>错误处理</strong> ：通过 <code>try/catch</code> 进行错误捕捉。
-\n
-\n\n\n\n</li>
+<li><p><strong>声明部分</strong> ：包括类型声明、接口声明等。</p>
+</li>
+<li><p><strong>变量声明</strong> ：包括 <code>let</code>, <code>const</code> 和 <code>var</code> 的使用。</p>
+</li>
+<li><p><strong>函数声明</strong> ：包括普通函数和箭头函数。</p>
+</li>
+<li><p><strong>类声明</strong> ：用于定义类及其成员。</p>
+</li>
+<li><p><strong>接口与类型别名</strong> ：描述类型的结构。</p>
+</li>
+<li><p><strong>模块化</strong> ：通过 <code>import</code> 和 <code>export</code> 组织代码。</p>
+</li>
+<li><p><strong>类型断言</strong> ：强制类型转换。</p>
+</li>
+<li><p><strong>泛型</strong> ：使代码具备更多的复用性。</p>
+</li>
+<li><p><strong>注释</strong> ：增加代码的可读性。</p>
+</li>
+<li><p><strong>类型推断</strong> ：自动推断类型。</p>
+</li>
+<li><p><strong>类型守卫</strong> ：缩小类型范围。</p>
+</li>
+<li><p><strong>异步编程</strong> ：支持 <code>async/await</code>。</p>
+</li>
+<li><p><strong>错误处理</strong> ：通过 <code>try/catch</code> 进行错误捕捉。</p>
+</li>
 </ul>
 <p>我们按章节处理这些基本的定义，其实在Java这种更加OOP的语言中，以上情况也是常见的，不过作为多线程的语言，Java和js的核心理念还是有所区别的，并且js,ts在类型上是独特于Java的一种动态类型，ts在保证安全性的情况下有更安全的类型扩展，比Python的超级弱类型更加的容易管理一些，不过也会出现一些静态检查上的分析误差，这些都要在开发的时候要注意。</p>
-<p>\n\n\n\n</p>
 <h2 id="一、声明部分（declarations）">一、声明部分（Declarations）</h2>
-<p>\n\n\n\n</p>
 <p><strong>类型声明：</strong> TypeScript 是一种静态类型的语言，可以通过类型声明来定义变量、函数、类等的类型。类型声明可以帮助代码更具可维护性和可读性。</p>
-<p>\n\n\n\n</p>
 <p><strong>接口声明：</strong> 用于定义对象的结构，包括对象的属性和方法。</p>
-<p>\n\n\n\n</p>
-<pre><code>interface Person {\n    name: string;\n    age: number;\n}
+<pre><code>interface Person {
+name: string;
+age: number;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>}</p>
 <p><strong>变量声明：</strong> 可以使用let, const,var三种方式完成对变量的声明，各自有区分，具体的场景如下</p>
-<p>\n\n\n\n</p>
 <p>推荐使用 let 和 const，var 用法不再推荐。</p>
-<p>\n\n\n\n</p>
-<pre><code>let age: number = 25;\nconst pi: number = 3.14;
+<pre><code>let age: number = 25;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>const pi: number = 3.14;</p>
 <p><strong>函数声明</strong> ：TypeScript 允许声明带有类型注解的函数，包括参数类型和返回值类型。</p>
-<p>\n\n\n\n</p>
-<pre><code>function greet(name: string): string {\n    return &quot;Hello, &quot; + name;\n}
+<pre><code>function greet(name: string): string {
+return &quot;Hello, &quot; + name;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>}</p>
 <p><strong>箭头函数：</strong> TypeScript 同样支持 ES6 的箭头函数，使用简洁的语法来声明函数。</p>
-<p>\n\n\n\n</p>
 <pre><code>const greet = (name: string): string =&gt; &quot;Hello, &quot; + name;
 </code></pre>
-<p>\n\n\n\n</p>
 <p><strong>类声明：</strong> TypeScript 提供对面向对象编程的支持，允许定义类和类的方法、属性。</p>
-<p>\n\n\n\n</p>
-<pre><code>class Person {\n    name: string;\n    age: number;\n    \n    constructor(name: string, age: number) {\n    this.name = name;\n    this.age = age;\n    }\n    \n    greet() {\n    return `Hello, my name is ${this.name}`;\n    }\n}
+<pre><code>class Person {
+name: string;
+age: number;
+
+constructor(name: string, age: number) {
+this.name = name;
+this.age = age;
+}
+
+greet() {
+return `Hello, my name is ${this.name}`;
+}
 </code></pre>
-<p>\n\n\n\n</p>
+<p>}</p>
 <p><strong>接口</strong> （Interface）：用于描述对象的形状，接口可以继承和扩展。</p>
-<p>\n\n\n\n</p>
-<pre><code>interface Animal {\n    name: string;\n    sound: string;\n    makeSound(): void;\n}
+<pre><code>interface Animal {
 </code></pre>
-<p>\n\n\n\n</p>
+<p>    name: string;
+    sound: string;
+    makeSound(): void;
+}</p>
 <p><strong>类型别名（Type Alias）：</strong> 允许为对象类型、联合类型、交叉类型等定义别名。</p>
-<p>\n\n\n\n</p>
 <pre><code>type ID = string | number;
 </code></pre>
-<p>\n\n\n\n</p>
 <p><strong>泛型：</strong> 泛型允许在定义函数、接口或类时不指定具体类型，而是使用占位符，让用户在使用时传入具体类型。泛型能够增加代码的复用性和类型安全性。</p>
-<p>\n\n\n\n</p>
-<pre><code>function identity&lt;T&gt;(arg: T): T {\n    return arg;\n}
+<pre><code>function identity&lt;T&gt;(arg: T): T {
+return arg;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>}</p>
 <p><strong>类型推断：</strong> TypeScript 在某些情况下会自动推断变量的类型。例如，在声明变量并赋值时，TypeScript 会推断出该变量的类型。</p>
-<p>\n\n\n\n</p>
 <pre><code>let num = 10;  // TypeScript 推断 num 为 number 类型
 </code></pre>
-<p>\n\n\n\n</p>
 <h3 id="类型守卫">类型守卫</h3>
-<p>\n\n\n\n</p>
 <p>TypeScript 提供了类型守卫（如 typeof 和 instanceof），用于在运行时缩小变量的类型范围</p>
-<p>\n\n\n\n</p>
-<pre><code>function isString(value: any): value is string {\n    return typeof value === &#x27;string&#x27;;\n}
+<pre><code>function isString(value: any): value is string {
+return typeof value === &#x27;string&#x27;;
 </code></pre>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
+<p>}</p>
 <h3 id="类型擦除">类型擦除</h3>
-<p>\n\n\n\n</p>
 <p>Javascript有非常变态的类型擦除，在 JavaScript/TypeScript 中，对象 <em>不是</em> 单一的精确类型。例如，如果我们构造一个满足接口的对象，我们可以在需要该接口的地方使用该对象，即使两者之间没有声明性关系。</p>
-<p>\n\n\n\n</p>
-<pre><code>interface Pointlike {\n  x: number;\n  y: number;\n}\ninterface Named {\n  name: string;\n}\n \nfunction logPoint(point: Pointlike) {\n  console.log(&quot;x = &quot; + point.x + &quot;, y = &quot; + point.y);\n}\n \nfunction logName(x: Named) {\n  console.log(&quot;Hello, &quot; + x.name);\n}\n \nconst obj = {\n  x: 0,\n  y: 0,\n  name: &quot;Origin&quot;,\n};\n \nlogPoint(obj);\nlogName(obj);
+<pre><code>interface Pointlike {
 </code></pre>
-<p>\n\n\n\n</p>
+<p>  x: number;
+  y: number;
+}
+interface Named {
+  name: string;
+}</p>
+<p>function logPoint(point: Pointlike) {
+  console.log(&quot;x = &quot; + point.x + &quot;, y = &quot; + point.y);
+}</p>
+<p>function logName(x: Named) {
+  console.log(&quot;Hello, &quot; + x.name);
+}</p>
+<p>const obj = {
+  x: 0,
+  y: 0,
+  name: &quot;Origin&quot;,
+};</p>
+<p>logPoint(obj);
+logName(obj);</p>
 <p>TypeScript 的类型系统是 <em>结构</em> 性的，而不是名义性的：我们可以将 <code>obj</code> 用作 <code>Pointlike</code>，因为它具有 <code>x</code> 和 <code>y</code> 属性，这两个属性都是数字。类型之间的关系由它们包含的属性决定，而不是由它们是否使用某种特定关系声明。</p>
-<p>\n\n\n\n</p>
 <p>因此，推荐我们用集合论的观点去看类型（types），我们可以将 <code>obj</code> 视为 <code>Pointlike</code> 值集和 <code>Named</code> 值集的成员。TypeScript 的类型系统也没有 _具体化  _：运行时没有任何东西可以告诉我们 <code>obj</code> 是 <code>Pointlike</code>。事实上，<code>Pointlike</code> 类型在运行时不 <em>以任何形式</em> 存在。</p>
-<p>\n\n\n\n</p>
 <p>BUT REMEMBER:</p>
-<p>\n\n\n\n</p>
 <p><strong>Remember</strong> : Type annotations never change the runtime behavior of your program.<br>**请记住  **：类型注释永远不会更改程序的运行时行为。</p>
-<p>\n\n\n\n</p>
 <h4 id="empty-types--空类型">Empty Types  空类型</h4>
-<p>\n\n\n\n</p>
 <p>The first is that the <em>empty type</em>  seems to defy expectation:<br>首先是 <em>empty 类型</em> 似乎出乎意料：</p>
-<p>\n\n\n\n</p>
-<pre><code>class Car {\n  drive() {\n    // hit the gas\n  }\n}\nclass Golfer {\n  drive() {\n    // hit the ball far\n  }\n}\n// No error?\nlet w: Car = new Golfer();
+<pre><code>class Car {
 </code></pre>
-<p>\n\n\n\n</p>
+<p>  drive() {
+    // hit the gas
+  }
+}
+class Golfer {
+  drive() {
+    // hit the ball far
+  }
+}
+// No error?
+let w: Car = new Golfer();</p>
 <p>TypeScript 通过查看提供的参数是否为有效的 <code>Empty</code> 来确定此处对 <code>fn</code> 的调用是否有效。它通过检查 <code>{ k： 10 }</code> 和<code>类 Empty { }</code> <em>的结构来实现</em> 此目的。我们可以看到 <code>{ k： 10 }</code> _具有  _<code>Empty</code> 的所有属性，因为 <code>Empty</code> 没有属性。因此，这是一个有效的决定！<br>这可能看起来令人惊讶，但它最终与名义上的 OOP 语言中强制执行的关系非常相似。子类不能 <em>删除</em> 其基类的属性，因为这样做会破坏派生类与其基类之间的自然子类型关系。结构类型系统只是通过根据具有兼容类型的属性来描述子类型来隐式地标识这种关系。</p>
-<p>\n\n\n\n</p>
 <p>导致会有如下的糟糕情况出现（作为Java程序员的我认为糟糕）</p>
-<p>\n\n\n\n</p>
-<pre><code>class Car {\n  drive() {\n    // hit the gas\n  }\n}\nclass Golfer {\n  drive() {\n    // hit the ball far\n  }\n}\n// No error?\nlet w: Car = new Golfer();
+<pre><code>class Car {
 </code></pre>
-<p>\n\n\n\n</p>
+<p>  drive() {
+    // hit the gas
+  }
+}
+class Golfer {
+  drive() {
+    // hit the ball far
+  }
+}
+// No error?
+let w: Car = new Golfer();</p>
 <h3 id="反射（reflection）">反射（reflection）</h3>
-<p>\n\n\n\n</p>
 <p>OOP 程序员习惯于能够查询任何值的类型，甚至是通用值：</p>
-<p>\n\n\n\n</p>
-<pre><code>static void LogType&lt;T&gt;() {\n    Console.WriteLine(typeof(T).Name);\n}
+<pre><code>static void LogType&lt;T&gt;() {
+Console.WriteLine(typeof(T).Name);
 </code></pre>
-<p>\n\n\n\n</p>
+<p>}</p>
 <p>因为 TypeScript 的类型系统被完全擦除，所以有关泛型类型参数的实例化等信息在运行时不可用。</p>
-<p>\n\n\n\n</p>
 <p>JavaScript 确实有一些有限的原语，如 <code>typeof</code> 和 <code>instanceof</code>，但请记住，这些运算符仍在处理类型擦除输出代码中存在的值。例如，<code>typeof （new Car（））</code> 将是 <code>“object”</code>，而不是 <code>Car</code> 或 <code>“Car”。</code></p>
 <table>
 <thead>
 <tr>
-<th>\n\n\n\n类型</th>
+<th>类型</th>
 <th>描述</th>
 <th>示例</th>
 </tr>
@@ -580,8 +600,6 @@
 </code></pre>
 <p>\n\n\n\n</p>
 <p>乍一看，这些似乎是相同的，但 <code>firstElement1</code> 是编写此函数的更好方法。其推断的返回类型是 <code>Type</code>，但 <code>firstElement2</code> 推断的返回类型是 <code>any</code>，因为 TypeScript 必须使用约束类型解析 <code>arr[0]</code> 表达式，而不是在调用期间“等待”解析元素。</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

@@ -30,85 +30,106 @@
           <span>2024-08-05</span>
           <span class="tag">C++</span>
         </div>
-        <p>\n</p>
-<h2 id="installation">Installation:</h2>
-<p>\n\n\n\n</p>
+        <h2 id="installation">Installation:</h2>
 <p>安装的方式很简单，无非两种：去官网找下载器（msi&amp;exe）或者使用pip命令行安装（官网推荐的办法，方便持续更新版本）</p>
-<p>\n\n\n\n</p>
 <p>不过如果实在闲的没事干或者操作系统实在不太兼容预编译的版本那就自己“build from source code”</p>
-<p>\n\n\n\n</p>
-<pre><code># clone folder name matters, to avoid imports issues\n$ git clone https://github.com/conan-io/conan.git conan_src\n$ cd conan_src\n$ git fetch --all\n$ git checkout -b develop2 origin/develop2\n$ python -m pip install -e .
+<pre><code># clone folder name matters, to avoid imports issues
 </code></pre>
-<p>\n\n\n\n</p>
+<p>$ git clone <a href="https://github.com/conan-io/conan.git">https://github.com/conan-io/conan.git</a> conan_src
+$ cd conan_src
+$ git fetch --all
+$ git checkout -b develop2 origin/develop2
+$ python -m pip install -e .</p>
 <h2 id="tutorial：">Tutorial：</h2>
-<p>\n\n\n\n</p>
 <p>We’ll use CMake as build system in this case but keep in mind that Conan <strong>works with any build system</strong> and is not limited to using CMake. You can check more examples with other build systems in the <a href="https://docs.conan.io/2/tutorial/consuming_packages/build_simple_cmake_project.html#consuming-packages-read-more">Read More section</a>.</p>
-<p>\n\n\n\n</p>
 <p>We start from a very simple C language project with this structure:</p>
-<p>\n\n\n\n</p>
-<pre><code>.\n├── CMakeLists.txt\n└── src\n    └── main.c
+<pre><code>.
 </code></pre>
-<p>\n\n\n\n</p>
+<p>├── CMakeLists.txt
+└── src
+    └── main.c</p>
 <p>我们的CMakeList如下：</p>
-<p>\n\n\n\n</p>
-<pre><code>cmake_minimum_required(VERSION 3.15)\nproject(compressor C)\n\nfind_package(ZLIB REQUIRED)\n\nadd_executable(${PROJECT_NAME} src/main.c)\ntarget_link_libraries(${PROJECT_NAME} ZLIB::ZLIB)
+<pre><code>cmake_minimum_required(VERSION 3.15)
 </code></pre>
-<p>\n\n\n\n</p>
+<p>project(compressor C)
+find_package(ZLIB REQUIRED)
+add_executable(${PROJECT_NAME} src/main.c)
+target_link_libraries(${PROJECT_NAME} ZLIB::ZLIB)</p>
 <p>这里的ZLIB库是来自外部的，所以我们需要使用conan来安装并且管理这个包：</p>
-<p>\n\n\n\n</p>
 <p>conanfile.txt</p>
-<p>\n\n\n\n</p>
-<pre><code>[requires]\nzlib/1.2.11\n\n[generators]\nCMakeDeps\nCMakeToolchain
+<pre><code>[requires]
 </code></pre>
-<p>\n\n\n\n</p>
+<p>zlib/1.2.11
+[generators]
+CMakeDeps
+CMakeToolchain</p>
 <p>这个时候使用这样的一行指令检测并且使用默认的配置：</p>
-<p>\n\n\n\n</p>
 <pre><code>conan profile detect --force
 </code></pre>
-<p>\n\n\n\n</p>
 <p><strong>Using a compiler other than the auto-detected one<br>使用自动检测的编译器以外的编译器</strong></p>
-<p>\n\n\n\n</p>
 <p>If you want to change a Conan profile to use a compiler different from the default one, you need to change the <code>compiler</code> setting and also tell Conan explicitly where to find it using the <a href="https://docs.conan.io/2/reference/tools/cmake/cmaketoolchain.html#conan-cmake-toolchain-conf">tools.build:compiler_executables configuration</a>.<br>如果要更改 Conan 配置文件以使用与默认编译器不同的编译器，则需要更改<code>编译器</code>设置，并使用 <a href="https://docs.conan.io/2/reference/tools/cmake/cmaketoolchain.html#conan-cmake-toolchain-conf">tools.build：compiler_executables 配置</a>明确告诉 Conan 在哪里可以找到它。</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ol>
-<li><strong>使用自定义 profile 文件</strong> ：在运行 Conan 命令时，使用 <code>--profile</code> 参数指定自定义 profile 文件。例如：<code>conan install . --profile=myprofile </code>
-\n\n\n\n</li>
-<li><code>conan create . mypackage/version@ --profile=myprofile</code>
-\n
-\n\n\n\n</li>
+<li><p><strong>使用自定义 profile 文件</strong> ：在运行 Conan 命令时，使用 <code>--profile</code> 参数指定自定义 profile 文件。例如：<code>conan install . --profile=myprofile </code></p>
+</li>
+<li><p><code>conan create . mypackage/version@ --profile=myprofile</code></p>
+</li>
 </ol>
 <p>我们将使用 Conan 安装 <strong>Zlib</strong> 并生成 CMake 找到此库并构建我们的项目所需的文件。我们将在文件夹 <em>构建</em> 中生成这些文件。为此，请运行：</p>
-<p>\n\n\n\n</p>
 <pre><code>conan install . --output-folder=build --build=missing
 </code></pre>
-<p>\n\n\n\n</p>
 <p>使用conanfile.txt时候，请注意不能使用conan build的相关命令（虽然很奇怪但是build只能py用）</p>
-<p>\n\n\n\n</p>
 <p>You will get something similar to this as the output of that command:</p>
-<p>\n\n\n\n</p>
-<pre><code>$ conan install . --output-folder=build --build=missing\n...\n-------- Computing dependency graph ----------\nzlib/1.2.11: Not found in local cache, looking in remotes...\nzlib/1.2.11: Checking remote: conancenter\nzlib/1.2.11: Trying with &#x27;conancenter&#x27;...\nDownloading conanmanifest.txt\nDownloading conanfile.py\nDownloading conan_export.tgz\nDecompressing conan_export.tgz\nzlib/1.2.11: Downloaded recipe revision f1fadf0d3b196dc0332750354ad8ab7b\nGraph root\n    conanfile.txt: /home/conan/examples2/tutorial/consuming_packages/simple_cmake_project/conanfile.txt\nRequirements\n    zlib/1.2.11#f1fadf0d3b196dc0332750354ad8ab7b - Downloaded (conancenter)\n\n-------- Computing necessary packages ----------\nRequirements\n    zlib/1.2.11#f1fadf0d3b196dc0332750354ad8ab7b:cdc9a35e010a17fc90bb845108cf86cfcbce64bf#dd7bf2a1ab4eb5d1943598c09b616121 - Download (conancenter)\n\n-------- Installing packages ----------\n\nInstalling (downloading, building) binaries...\nzlib/1.2.11: Retrieving package cdc9a35e010a17fc90bb845108cf86cfcbce64bf from remote &#x27;conancenter&#x27;\nDownloading conanmanifest.txt\nDownloading conaninfo.txt\nDownloading conan_package.tgz\nDecompressing conan_package.tgz\nzlib/1.2.11: Package installed cdc9a35e010a17fc90bb845108cf86cfcbce64bf\nzlib/1.2.11: Downloaded package revision dd7bf2a1ab4eb5d1943598c09b616121\n\n-------- Finalizing install (deploy, generators) ----------\nconanfile.txt: Generator &#x27;CMakeToolchain&#x27; calling &#x27;generate()&#x27;\nconanfile.txt: Generator &#x27;CMakeDeps&#x27; calling &#x27;generate()&#x27;\nconanfile.txt: Generating aggregated env files
+<pre><code>$ conan install . --output-folder=build --build=missing
 </code></pre>
-<p>\n\n\n\n</p>
+<p>...
+-------- Computing dependency graph ----------
+zlib/1.2.11: Not found in local cache, looking in remotes...
+zlib/1.2.11: Checking remote: conancenter
+zlib/1.2.11: Trying with &#39;conancenter&#39;...
+Downloading conanmanifest.txt
+Downloading conanfile.py
+Downloading conan_export.tgz
+Decompressing conan_export.tgz
+zlib/1.2.11: Downloaded recipe revision f1fadf0d3b196dc0332750354ad8ab7b
+Graph root
+    conanfile.txt: /home/conan/examples2/tutorial/consuming_packages/simple_cmake_project/conanfile.txt
+Requirements
+    zlib/1.2.11#f1fadf0d3b196dc0332750354ad8ab7b - Downloaded (conancenter)
+-------- Computing necessary packages ----------
+Requirements
+    zlib/1.2.11#f1fadf0d3b196dc0332750354ad8ab7b:cdc9a35e010a17fc90bb845108cf86cfcbce64bf#dd7bf2a1ab4eb5d1943598c09b616121 - Download (conancenter)
+-------- Installing packages ----------
+Installing (downloading, building) binaries...
+zlib/1.2.11: Retrieving package cdc9a35e010a17fc90bb845108cf86cfcbce64bf from remote &#39;conancenter&#39;
+Downloading conanmanifest.txt
+Downloading conaninfo.txt
+Downloading conan_package.tgz
+Decompressing conan_package.tgz
+zlib/1.2.11: Package installed cdc9a35e010a17fc90bb845108cf86cfcbce64bf
+zlib/1.2.11: Downloaded package revision dd7bf2a1ab4eb5d1943598c09b616121
+-------- Finalizing install (deploy, generators) ----------
+conanfile.txt: Generator &#39;CMakeToolchain&#39; calling &#39;generate()&#39;
+conanfile.txt: Generator &#39;CMakeDeps&#39; calling &#39;generate()&#39;
+conanfile.txt: Generating aggregated env files</p>
 <p>然后就可以执行我们项目的构建与执行了：</p>
-<p>\n\n\n\n</p>
-<pre><code>$ cd build\n# assuming Visual Studio 15 2017 is your VS version and that it matches your default profile\n$ cmake .. -G &quot;Visual Studio 15 2017&quot; -DCMAKE_TOOLCHAIN_FILE=&quot;conan_toolchain.cmake&quot;\n$ cmake --build . --config Release\n...\n[100%] Built target compressor\n$ Release\\compressor.exe\nUncompressed size is: 233\nCompressed size is: 147\nZLIB VERSION: 1.2.11
+<pre><code>$ cd build
 </code></pre>
-<p>\n\n\n\n</p>
+<h1 id="assuming-visual-studio-15-2017-is-your-vs-version-and-that-it-matches-your-default-profile">assuming Visual Studio 15 2017 is your VS version and that it matches your default profile</h1>
+<p>$ cmake .. -G &quot;Visual Studio 15 2017&quot; -DCMAKE_TOOLCHAIN_FILE=&quot;conan_toolchain.cmake&quot;
+$ cmake --build . --config Release
+...
+[100%] Built target compressor
+$ Release\compressor.exe
+Uncompressed size is: 233
+Compressed size is: 147
+ZLIB VERSION: 1.2.11</p>
 <p>以上就是一次使用cmake+conan来构建项目的实例。不过在平常使用中只有这些指令还是远远不够的，我们还会遇到“不清楚使用的包在conan远端存不存在，需要删除或者调整包”的情况，所以罗列一些我们常用的的conan指令</p>
-<p>\n\n\n\n</p>
 <h2 id="搜索指定包">搜索指定包</h2>
-<p>\n\n\n\n</p>
 <p>在远程仓库中搜索指定的包</p>
-<p>\n\n\n\n</p>
 <pre><code>conan search osqp --remote=conancenter
 </code></pre>
-<p>\n\n\n\n</p>
 <p>也可以在<a href="https://conan.io/center">Conan官网</a>直接搜索</p>
-<p>\n\n\n\n</p>
 <p>因为之后conanfile.txt的书写一定要带上版本号，所以每次使用都务必注意这一点</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

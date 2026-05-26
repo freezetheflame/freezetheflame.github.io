@@ -30,220 +30,185 @@
           <span>2025-02-06</span>
           <span class="tag">服务器后端内容</span><span class="tag">Java</span>
         </div>
-        <p>\n</p>
-<p>Redis（Remote Dictionary Server）是一个开源的内存数据库，遵守 BSD 协议，它提供了一个高性能的键值（key-value）存储系统，常用于缓存、消息队列、会话存储等应用场景。</p>
-<p>\n\n\n\n</p>
+        <p>Redis（Remote Dictionary Server）是一个开源的内存数据库，遵守 BSD 协议，它提供了一个高性能的键值（key-value）存储系统，常用于缓存、消息队列、会话存储等应用场景。</p>
 <p>与一般的kv缓存数据库相比，redis具有极高的性能，并且支持丰富的数据类型存储，包括字符串、列表、集合、哈希表、有序集合等。这些数据类型为开发者提供了灵活的数据操作能力，使得Redis可以适应各种不同的应用场景。</p>
-<p>\n\n\n\n</p>
 <p>与此同时，redis的操作都是原子的，因此可以保证数据的一致性和完整性，适用于高并发环境下的事务处理</p>
-<p>\n\n\n\n</p>
 <p>Redis 支持数据的持久化，可以将内存中的数据保存到磁盘中，以便在系统重启后恢复数据。这为 Redis 提供了数据安全性，确保数据不会因为系统故障而丢失。</p>
-<p>\n\n\n\n</p>
 <p>注：强烈建议不要在公网访问 redis,因为 redis 的处理速度非常快，所以如果你的密码比较简单，很容易就会通过暴力破解破解出密码</p>
-<p>\n\n\n\n</p>
 <h2 id="redis-数据类型介绍">Redis 数据类型介绍</h2>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>**string（字符串）:  **基本的数据存储单元，可以存储字符串、整数或者浮点数。
-\n\n\n\n</li>
-<li><strong>hash（哈希）:</strong> 一个键值对集合，可以存储多个字段。
-\n\n\n\n</li>
-<li><strong>list（列表）:</strong> 一个简单的列表，可以存储一系列的字符串元素。
-\n\n\n\n</li>
-<li><strong>set（集合）:</strong> 一个无序集合，可以存储不重复的字符串元素。
-\n\n\n\n</li>
-<li>**zset(sorted set：有序集合):  **类似于集合，但是每个元素都有一个分数（score）与之关联。
-\n\n\n\n</li>
-<li><strong>位图（Bitmaps）：</strong> 基于字符串类型，可以对每个位进行操作。
-\n\n\n\n</li>
-<li><strong>超日志（HyperLogLogs）：</strong> 用于基数统计，可以估算集合中的唯一元素数量。
-\n\n\n\n</li>
-<li><strong>地理空间（Geospatial）：</strong> 用于存储地理位置信息。
-\n\n\n\n</li>
-<li><strong>发布/订阅（Pub/Sub）：</strong> 一种消息通信模式，允许客户端订阅消息通道，并接收发布到该通道的消息。
-\n\n\n\n</li>
-<li><strong>流（Streams）：</strong> 用于消息队列和日志存储，支持消息的持久化和时间排序。
-\n\n\n\n</li>
-<li><strong>模块（Modules）：</strong> Redis 支持动态加载模块，可以扩展 Redis 的功能
-\n
-\n\n\n\n</li>
+<li><p>**string（字符串）:  **基本的数据存储单元，可以存储字符串、整数或者浮点数。</p>
+</li>
+<li><p><strong>hash（哈希）:</strong> 一个键值对集合，可以存储多个字段。</p>
+</li>
+<li><p><strong>list（列表）:</strong> 一个简单的列表，可以存储一系列的字符串元素。</p>
+</li>
+<li><p><strong>set（集合）:</strong> 一个无序集合，可以存储不重复的字符串元素。</p>
+</li>
+<li><p>**zset(sorted set：有序集合):  **类似于集合，但是每个元素都有一个分数（score）与之关联。</p>
+</li>
+<li><p><strong>位图（Bitmaps）：</strong> 基于字符串类型，可以对每个位进行操作。</p>
+</li>
+<li><p><strong>超日志（HyperLogLogs）：</strong> 用于基数统计，可以估算集合中的唯一元素数量。</p>
+</li>
+<li><p><strong>地理空间（Geospatial）：</strong> 用于存储地理位置信息。</p>
+</li>
+<li><p><strong>发布/订阅（Pub/Sub）：</strong> 一种消息通信模式，允许客户端订阅消息通道，并接收发布到该通道的消息。</p>
+</li>
+<li><p><strong>流（Streams）：</strong> 用于消息队列和日志存储，支持消息的持久化和时间排序。</p>
+</li>
+<li><p><strong>模块（Modules）：</strong> Redis 支持动态加载模块，可以扩展 Redis 的功能</p>
+</li>
 </ul>
 <h3 id="string类型">string类型</h3>
-<p>\n\n\n\n</p>
 <p>string 是 redis 最基本的类型，你可以理解成与 Memcached 一模一样的类型，一个 key 对应一个 value。</p>
-<p>\n\n\n\n</p>
 <p>string 类型是二进制安全的。意思是 redis 的 string 可以包含任何数据，比如jpg图片或者序列化的对象。最大能存储512MB的对象</p>
-<p>\n\n\n\n</p>
 <h3 id="hash哈希">Hash哈希</h3>
-<p>\n\n\n\n</p>
 <p>Redis hash 是一个键值(key=&gt;value)对集合，类似于一个小型的 NoSQL 数据库。</p>
-<p>\n\n\n\n</p>
 <p>Redis hash 是一个 string 类型的 field 和 value 的映射表，hash 特别适合用于存储对象。每个哈希最多可以存储 2^32 - 1 个键值对。</p>
-<p>\n\n\n\n</p>
 <p>因此相对于一般的string存储，hash存储多出了field这样一种限制和约束</p>
-<p>\n\n\n\n</p>
 <h3 id="list列表">List列表</h3>
-<p>\n\n\n\n</p>
 <p>Redis 列表是简单的字符串列表，按照插入顺序排序。你可以添加一个元素到列表的头部（左边）或者尾部（右边）。</p>
-<p>\n\n\n\n</p>
 <p>列表最多可以存储 2^32 - 1 个元素。</p>
-<p>\n\n\n\n</p>
 <h3 id="set集合">Set集合</h3>
-<p>\n\n\n\n</p>
 <p>Redis 的 Set 是 string 类型的无序集合。</p>
-<p>\n\n\n\n</p>
 <p>集合是通过哈希表实现的，所以添加，删除，查找的复杂度都是 O(1)。</p>
-<p>\n\n\n\n</p>
-<pre><code>redis 127.0.0.1:6379&gt; DEL runoob\nredis 127.0.0.1:6379&gt; sadd runoob redis\n(integer) 1\nredis 127.0.0.1:6379&gt; sadd runoob mongodb\n(integer) 1\nredis 127.0.0.1:6379&gt; sadd runoob rabbitmq\n(integer) 1\nredis 127.0.0.1:6379&gt; sadd runoob rabbitmq\n(integer) 0\nredis 127.0.0.1:6379&gt; smembers runoob\n\n1) &quot;redis&quot;\n2) &quot;rabbitmq&quot;\n3) &quot;mongodb&quot;\n
+<pre><code>redis 127.0.0.1:6379&gt; DEL runoob
 </code></pre>
-<p>\n\n\n\n</p>
+<p>redis 127.0.0.1:6379&gt; sadd runoob redis
+(integer) 1
+redis 127.0.0.1:6379&gt; sadd runoob mongodb
+(integer) 1
+redis 127.0.0.1:6379&gt; sadd runoob rabbitmq
+(integer) 1
+redis 127.0.0.1:6379&gt; sadd runoob rabbitmq
+(integer) 0
+redis 127.0.0.1:6379&gt; smembers runoob</p>
+<ol>
+<li>&quot;redis&quot;</li>
+<li>&quot;rabbitmq&quot;</li>
+<li>&quot;mongodb&quot;</li>
+</ol>
 <p><strong>注意：</strong> 以上实例中 rabbitmq 添加了两次，但根据集合内元素的唯一性，第二次插入的元素将被忽略。</p>
-<p>\n\n\n\n</p>
 <h3 id="zset有序集合">zset有序集合</h3>
-<p>\n\n\n\n</p>
 <p>Redis zset 和 set 一样也是string类型元素的集合,且不允许重复的成员。</p>
-<p>\n\n\n\n</p>
 <p>不同的是每个元素都会关联一个double类型的分数。redis正是通过分数来为集合中的成员进行从小到大的排序。（排序依据是score）</p>
-<p>\n\n\n\n</p>
 <p>zset的成员是唯一的,但分数(score)却可以重复</p>
-<p>\n\n\n\n</p>
 <p>其实在redis sorted sets里面当items内容大于64的时候同时使用了hash和skiplist两种设计实现。这也会为了排序和查找性能做的优化。所以如上可知： </p>
-<p>\n\n\n\n</p>
 <p>添加和删除都需要修改skiplist，所以复杂度为O(log(n))。 </p>
-<p>\n\n\n\n</p>
 <p>但是如果仅仅是查找元素的话可以直接使用hash，其复杂度为O(1) </p>
-<p>\n\n\n\n</p>
 <p>其他的range操作复杂度一般为O(log(n))</p>
-<p>\n\n\n\n</p>
 <h3 id="关于skiplist的介绍：">关于skiplist的介绍：</h3>
-<p>\n\n\n\n</p>
 <p>跳表插入、删除、查找元素的时间复杂度跟红黑树都是一样量级的，时间复杂度都是O(logn)，而且跳表有一个特性是红黑树无法匹敌的（具体什么特性后面会提到）。所以在工业中，跳表也会经常被用到。废话不多说了，开始今天的跳表学习。<a href="https://blog.csdn.net/sihai12345/article/details/138419109">https://blog.csdn.net/sihai12345/article/details/138419109</a></p>
-<p>\n\n\n\n</p>
 <p>所以简单来讲跳表是<strong>可以实现二分查找的有序链表</strong> 。能够实现比较高的查找以及插入效率。</p>
-<p>\n\n\n\n</p>
 <p><a href="https://oi-wiki.org/ds/skiplist/">https://oi-wiki.org/ds/skiplist/</a><br>具体请参考以上文章对于跳表进行详细的学习了解。</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
 <p><strong>其他高级数据类似</strong></p>
-<p>\n\n\n\n</p>
 <h3 id="hyperloglog">HyperLogLog</h3>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>用于基数估计算法的数据结构。
-\n\n\n\n</li>
-<li>常用于统计唯一值的近似值。
-\n
-\n\n\n\n</li>
+<li><p>用于基数估计算法的数据结构。</p>
+</li>
+<li><p>常用于统计唯一值的近似值。</p>
+</li>
 </ul>
 <h3 id="bitmaps">Bitmaps</h3>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>位数组，可以对字符串进行位操作。
-\n\n\n\n</li>
-<li>常用于实现布隆过滤器等位操作。
-\n
-\n\n\n\n</li>
+<li><p>位数组，可以对字符串进行位操作。</p>
+</li>
+<li><p>常用于实现布隆过滤器等位操作。</p>
+</li>
 </ul>
 <h3 id="geospatial-indexes">Geospatial Indexes</h3>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>处理地理空间数据，支持地理空间索引和半径查询。\n\n<ul>
-<li>日志数据类型，支持时间序列数据。
-\n\n\n\n</li>
-<li>用于消息队列和实时数据处理。
-\n\n
-\n
-\n\n\n\n</li>
+<li><p>处理地理空间数据，支持地理空间索引和半径查询。</p>
+<ul>
+<li><p>日志数据类型，支持时间序列数据。</p>
+</li>
+<li><p>用于消息队列和实时数据处理。</p>
+</li>
 </ul>
 </li>
 </ul>
 <h2 id="关于redis服务">关于redis服务</h2>
-<p>\n\n\n\n</p>
 <p>如果需要在远程 redis 服务上执行命令，同样我们使用的也是 <strong>redis-cli</strong>  命令。</p>
-<p>\n\n\n\n</p>
 <pre><code>$ redis-cli -h host -p port -a password
 </code></pre>
-<p>\n\n\n\n</p>
 <p>关于redis的键的管理获取命令详见：<a href="https://www.runoob.com/redis/redis-keys.html">https://www.runoob.com/redis/redis-keys.html</a> 不再赘述</p>
-<p>\n\n\n\n</p>
 <h2 id="redis发布订阅">redis发布订阅</h2>
-<p>\n\n\n\n</p>
 <p>Redis 发布订阅 (pub/sub) 是一种消息通信模式：发送者 (pub) 发送消息，订阅者 (sub) 接收消息。</p>
-<p>\n\n\n\n</p>
 <p>Redis 客户端可以订阅任意数量的频道。</p>
-<p>\n\n\n\n</p>
 <p>下图展示了频道 channel1 ， 以及订阅这个频道的三个客户端 —— client2 、 client5 和 client1 之间的关系：</p>
-<p>\n\n\n\n<img src="https://www.runoob.com/wp-content/uploads/2014/11/pubsub1.png" alt="">\n\n\n\n</p>
+<p><img src="https://www.runoob.com/wp-content/uploads/2014/11/pubsub1.png" alt=""></p>
 <p>当channel1接收到publish的信息后回发送给订阅的三个客户端</p>
-<p>\n\n\n\n<img src="https://www.runoob.com/wp-content/uploads/2014/11/pubsub2.png" alt="">\n\n\n\n</p>
+<p><img src="https://www.runoob.com/wp-content/uploads/2014/11/pubsub2.png" alt=""></p>
 <h2 id="redis事务">redis事务</h2>
-<p>\n\n\n\n</p>
 <p>Redis 事务可以一次执行多个命令， 并且带有以下三个重要的保证：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>批量操作在发送EXEC命令前被放入队列缓存
-\n\n\n\n</li>
-<li>收到EXEC命令后进入事务执行，事务中任意命令执行失败，其余的命令依然被执行
-\n\n\n\n</li>
-<li>在事务执行过程中，其他客户端提交的命令请求不会插入到事务执行命令序列中
-\n
-\n\n\n\n</li>
+<li><p>批量操作在发送EXEC命令前被放入队列缓存</p>
+</li>
+<li><p>收到EXEC命令后进入事务执行，事务中任意命令执行失败，其余的命令依然被执行</p>
+</li>
+<li><p>在事务执行过程中，其他客户端提交的命令请求不会插入到事务执行命令序列中</p>
+</li>
 </ul>
 <p>一个事务从开始到执行会经历以下三个阶段：</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>开始事务。
-\n\n\n\n</li>
-<li>命令入队。
-\n\n\n\n</li>
-<li>执行事务。
-\n
-\n\n\n\n</li>
+<li><p>开始事务。</p>
+</li>
+<li><p>命令入队。</p>
+</li>
+<li><p>执行事务。</p>
+</li>
 </ul>
 <p>example:</p>
-<p>\n\n\n\n</p>
 <p>以下是一个事务的例子， 它先以 <strong>MULTI</strong> 开始一个事务， 然后将多个命令入队到事务中， 最后由 <strong>EXEC</strong> 命令触发事务， 一并执行事务中的所有命令：</p>
-<p>\n\n\n\n</p>
-<pre><code>redis 127.0.0.1:6379&gt; MULTI\nOK\n\nredis 127.0.0.1:6379&gt; SET book-name &quot;Mastering C++ in 21 days&quot;\nQUEUED\n\nredis 127.0.0.1:6379&gt; GET book-name\nQUEUED\n\nredis 127.0.0.1:6379&gt; SADD tag &quot;C++&quot; &quot;Programming&quot; &quot;Mastering Series&quot;\nQUEUED\n\nredis 127.0.0.1:6379&gt; SMEMBERS tag\nQUEUED\n\nredis 127.0.0.1:6379&gt; EXEC\n1) OK\n2) &quot;Mastering C++ in 21 days&quot;\n3) (integer) 3\n4) 1) &quot;Mastering Series&quot;\n   2) &quot;C++&quot;\n   3) &quot;Programming&quot;
+<pre><code>redis 127.0.0.1:6379&gt; MULTI
 </code></pre>
-<p>\n\n\n\n</p>
+<p>OK
+redis 127.0.0.1:6379&gt; SET book-name &quot;Mastering C++ in 21 days&quot;
+QUEUED
+redis 127.0.0.1:6379&gt; GET book-name
+QUEUED
+redis 127.0.0.1:6379&gt; SADD tag &quot;C++&quot; &quot;Programming&quot; &quot;Mastering Series&quot;
+QUEUED
+redis 127.0.0.1:6379&gt; SMEMBERS tag
+QUEUED
+redis 127.0.0.1:6379&gt; EXEC</p>
+<ol>
+<li>OK</li>
+<li>&quot;Mastering C++ in 21 days&quot;</li>
+<li>(integer) 3</li>
+<li><ol>
+<li>&quot;Mastering Series&quot;</li>
+<li>&quot;C++&quot;</li>
+<li>&quot;Programming&quot;</li>
+</ol>
+</li>
+</ol>
 <p>单个 Redis 命令的执行是原子性的，但 Redis 没有在事务上增加任何维持原子性的机制，所以 Redis 事务的执行并不是原子性的。</p>
-<p>\n\n\n\n</p>
 <p>事务可以理解为一个打包的批量执行脚本，但批量指令并非原子化的操作，中间某条指令的失败不会导致前面已做指令的回滚，也不会造成后续的指令不做。</p>
-<p>\n\n\n\n</p>
 <h2 id="redis-脚本">Redis 脚本</h2>
-<p>\n\n\n\n</p>
 <p>Redis 脚本使用 Lua 解释器来执行脚本。 Redis 2.6 版本通过内嵌支持 Lua 环境。执行脚本的常用命令为 <strong>EVAL</strong> 。</p>
-<p>\n\n\n\n</p>
 <h3 id="语法">语法</h3>
-<p>\n\n\n\n</p>
 <p>Eval 命令的基本语法如下：</p>
-<p>\n\n\n\n</p>
 <pre><code>redis 127.0.0.1:6379&gt; EVAL script numkeys key [key ...] arg [arg ...]
 </code></pre>
-<p>\n\n\n\n</p>
 <h3 id="实例">实例</h3>
-<p>\n\n\n\n</p>
 <p>以下实例演示了 redis 脚本工作过程：</p>
-<p>\n\n\n\n</p>
-<pre><code>redis 127.0.0.1:6379&gt; EVAL &quot;return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}&quot; 2 key1 key2 first second\n\n1) &quot;key1&quot;\n2) &quot;key2&quot;\n3) &quot;first&quot;\n4) &quot;second&quot;
+<pre><code>redis 127.0.0.1:6379&gt; EVAL &quot;return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}&quot; 2 key1 key2 first second
 </code></pre>
-<p>\n\n\n\n</p>
+<ol>
+<li>&quot;key1&quot;</li>
+<li>&quot;key2&quot;</li>
+<li>&quot;first&quot;</li>
+<li>&quot;second&quot;</li>
+</ol>
 <hr>
-<p>\n\n\n\n</p>
 <h2 id="redis-脚本命令">Redis 脚本命令</h2>
-<p>\n\n\n\n</p>
 <p>下表列出了 redis 脚本常用命令：</p>
 <table>
 <thead>
 <tr>
-<th>\n\n\n\n序号</th>
+<th>序号</th>
 <th>命令及描述</th>
 </tr>
 </thead>
@@ -293,10 +258,6 @@
 </tr>
 <tr>
 <td>将脚本 script 添加到脚本缓存中，但并不立即执行这个脚本。</td>
-<td></td>
-</tr>
-<tr>
-<td>\n</td>
 <td></td>
 </tr>
 </tbody></table>

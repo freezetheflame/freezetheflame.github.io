@@ -30,93 +30,93 @@
           <span>2023-09-12</span>
           <span class="tag">Windows相关</span>
         </div>
-        <p>\n</p>
-<p>（翻译来自<a href="https://u.osu.edu/cstutorials/2018/09/28/how-to-debug-c-program-using-gdb-in-6-simple-steps/">How to Debug C Program using gdb in 6 Simple Steps (osu.edu)</a>）</p>
-<p>\n\n\n\n</p>
+        <p>（翻译来自<a href="https://u.osu.edu/cstutorials/2018/09/28/how-to-debug-c-program-using-gdb-in-6-simple-steps/">How to Debug C Program using gdb in 6 Simple Steps (osu.edu)</a>）</p>
 <p>我们接下来讨论一下如何在六步，使用gdb来调试一个C语言程序</p>
-<p>\n\n\n\n</p>
 <p>以下操作均在<strong>Linux系统</strong> 执行</p>
-<p>\n\n\n\n</p>
 <p>首先为调试目的编写一个带有错误的示例 C 程序</p>
-<p>\n\n\n\n</p>
 <p>为了学习C语言调试，让我们创建下面的 C 程序来计算和打印一个数的阶乘。然而这个C程序为了给我们调试带有一些错误[su_accordion][su_spoiler title=&quot;Code&quot; open=&quot;no&quot; style=&quot;default&quot; icon=&quot;plus&quot; anchor=&quot;&quot; anchor_in_url=&quot;no&quot; class=&quot;&quot;]</p>
-<p>\n\n\n\n</p>
-<pre><code># include &lt;stdio.h&gt;\n\nint main()\n{\n\tint i, num, j;\n\tprintf (&quot;Enter the number: &quot;);\n\tscanf (&quot;%d&quot;, &amp;num );\n\n\tfor (i=1; i&lt;num; i++)\n\t\tj=j*i;    \n\n\tprintf(&quot;The factorial of %d is %d\\n&quot;,num,j);\n}
+<pre><code># include &lt;stdio.h&gt;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>int main()
+{
+\tint i, num, j;
+\tprintf (&quot;Enter the number: &quot;);
+\tscanf (&quot;%d&quot;, &amp;num );
+\tfor (i=1; i&lt;num; i++)
+\t\tj=j*i;<br>\tprintf(&quot;The factorial of %d is %d<br>&quot;,num,j);
+}</p>
 <p>[/su_spoiler] [/su_accordion]</p>
-<p>\n\n\n\n</p>
 <p>第一步：使用调试参数-g编译程序</p>
-<p>\n\n\n\n</p>
 <pre><code>cc -g factorial.c
 </code></pre>
-<p>\n\n\n\n</p>
 <p>第二步：启动gdb</p>
-<p>\n\n\n\n</p>
 <pre><code>gdb a.out
 </code></pre>
-<p>\n\n\n\n</p>
 <p>第三步：在C语言程序内部设置断点</p>
-<p>\n\n\n\n</p>
-<pre><code>Syntax:\n\nbreak line_number\n\nOther formats:\n\nbreak [file_name]:line_number\nbreak [file_name]:func_name
+<pre><code>Syntax:
 </code></pre>
-<p>\n\n\n\n</p>
+<p>break line_number
+Other formats:
+break [file_name]:line_number
+break [file_name]:func_name</p>
 <p>在你怀疑C程序有问题的地方放置断点，当运行程序的时候，调试器会在断点自动停止，并且给你提示调试。</p>
-<p>\n\n\n\n</p>
 <p>所以在启动程序前，让我们把下列断点放在程序里</p>
-<p>\n\n\n\n</p>
-<pre><code>break 10\nBreakpoint 1 at 0x804846f: file factorial.c, line 10.
+<pre><code>break 10
 </code></pre>
-<p>\n\n\n\n</p>
+<p>Breakpoint 1 at 0x804846f: file factorial.c, line 10.</p>
 <p>第四步：在gdb调试器中运行C程序</p>
-<p>\n\n\n\n</p>
 <pre><code>run [args]
 </code></pre>
-<p>\n\n\n\n</p>
 <p>你可以使用 gdb 调试器中的 run 命令开始运行该程序，还可以通过 run args 向程序提供命令行参数。</p>
-<p>\n\n\n\n</p>
 <p>我们在这里使用的示例程序不需要任何命令行参数，因此让我们给出 run，并开始程序执行。</p>
-<p>\n\n\n\n</p>
-<pre><code>run\nStarting program: /home/sathiyamoorthy/Debugging/c/a.out
+<pre><code>run
 </code></pre>
-<p>\n\n\n\n</p>
+<p>Starting program: /home/sathiyamoorthy/Debugging/c/a.out</p>
 <p>一旦您执行了 C 程序，它将一直执行到第一个断点，并提示您进行调试。</p>
-<p>\n\n\n\n</p>
-<pre><code>Breakpoint 1, main () at factorial.c:10\n10\t\t\tj=j*i;
+<pre><code>Breakpoint 1, main () at factorial.c:10
 </code></pre>
-<p>\n\n\n\n</p>
+<p>10\t\t\tj=j*i;</p>
 <p>您可以使用各种 gdb 命令来调试 C 程序，如下面各节所述</p>
-<p>\n\n\n\n</p>
 <p>第五步：在gdb调试器内打印各个变量的值</p>
-<p>\n\n\n\n</p>
-<pre><code>Syntax: print {variable}\n\nExamples:\nprint i\nprint j\nprint num\n\n(gdb) p i\n$1 = 1\n(gdb) p j\n$2 = 3042592\n(gdb) p num\n$3 = 3\n(gdb)
+<pre><code>Syntax: print {variable}
 </code></pre>
-<p>\n\n\n\n</p>
+<p>Examples:
+print i
+print j
+print num
+(gdb) p i
+$1 = 1
+(gdb) p j
+$2 = 3042592
+(gdb) p num
+$3 = 3
+(gdb)</p>
 <p>如上所述，在 factorial.c 中，我们没有初始化变量 j. 因此，它得到的垃圾值导致一个很大的 factorial 。</p>
-<p>\n\n\n\n</p>
 <p>通过初始化j为1，我们解决了这个bug，编译c程序再执行一次。</p>
-<p>\n\n\n\n</p>
 <p>即使在这个修复之后，似乎在 factorial.c 程序中仍然存在一些问题，因为它仍然给出了错误的阶乘值。</p>
-<p>\n\n\n\n</p>
 <p>因此，将断点放在第10行，并按照下一节中的解释继续。</p>
-<p>\n\n\n\n</p>
 <p>第六步：继续、步进——gdb命令</p>
-<p>\n\n\n\n</p>
 <p>当程序在断点停止时，可以选择三种 gdb 操作。它们一直持续到下一个断点，进入或跨越下一个程序行。</p>
-<p>\n\n\n\n</p>
-<pre><code>c or continue: Debugger will continue executing until the next break point.\nn or next: Debugger will execute the next line as single instruction.\ns or step: Same as next, but does not treats function as a single instruction, instead goes into the function and executes it line by line.
+<pre><code>c or continue: Debugger will continue executing until the next break point.
 </code></pre>
-<p>\n\n\n\n</p>
+<p>n or next: Debugger will execute the next line as single instruction.
+s or step: Same as next, but does not treats function as a single instruction, instead goes into the function and executes it line by line.</p>
 <p>通过继续或单步执行，您可能会发现问题是因为我们没有在‘ for 循环’条件检查中使用 &lt; = 。因此，将它从 &lt; = 更改为 &lt; = 将解决这个问题。</p>
-<p>\n\n\n\n</p>
 <p>其他一些内容：</p>
-<p>\n\n\n\n</p>
-<pre><code>gdb command shortcuts\nUse following shortcuts for most of the frequent gdb operations.\n\nl – list\np – print\nc – continue\ns – step\nENTER: pressing enter key would execute the previously executed command again.
+<pre><code>gdb command shortcuts
 </code></pre>
-<p>\n\n\n\n</p>
-<pre><code>Miscellaneous gdb commands\nl command: Use gdb command l or list to print the source code in the debug mode. Use l line-number to view a specific line number (or) l function to view a specific function.\nbt: backtrack – Print backtrace of all stack frames, or innermost COUNT frames.\nhelp – View help for a particular gdb topic — help TOPICNAME.\nquit – Exit from the gdb debugger.
+<p>Use following shortcuts for most of the frequent gdb operations.
+l – list
+p – print
+c – continue
+s – step
+ENTER: pressing enter key would execute the previously executed command again.</p>
+<pre><code>Miscellaneous gdb commands
 </code></pre>
-<p>\n</p>
+<p>l command: Use gdb command l or list to print the source code in the debug mode. Use l line-number to view a specific line number (or) l function to view a specific function.
+bt: backtrack – Print backtrace of all stack frames, or innermost COUNT frames.
+help – View help for a particular gdb topic — help TOPICNAME.
+quit – Exit from the gdb debugger.</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

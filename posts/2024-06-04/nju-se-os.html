@@ -30,151 +30,119 @@
           <span>2024-06-04</span>
           <span class="tag">计算机基础</span>
         </div>
-        <p>\n</p>
-<p>关键词：南京大学 软件学院 操作系统 期末复习 homework 作业 2024 22级</p>
-<p>\n\n\n\n</p>
+        <p>关键词：南京大学 软件学院 操作系统 期末复习 homework 作业 2024 22级</p>
 <h2 id="第一章：计算机操作系统概述">第一章：计算机操作系统概述</h2>
-<p>\n\n\n\n</p>
 <h3 id="计算机的定义：">计算机的定义：</h3>
-<p>\n\n\n\n</p>
 <p>电子数字计算机，是一种能够自行按照已设定的程序进行数据处理的电子设备<br>它是，是软件与硬件相结合、面向系统、侧重应用的自动化求解工具</p>
-<p>\n\n\n\n</p>
 <h3 id="冯·诺依曼结构">冯·诺依曼结构</h3>
-<p>\n\n\n\n<img src="../../assets/images/2024/06/image.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/06/image.png" alt=""></p>
 <p>1945年6月冯·诺伊曼等发表了著名的“101页报告”，指出计算机分为<strong>运算器、逻辑控制器、存储器、输入设备和输出设备</strong> 五大部件，发展至今，大多数机器结构并未突破冯·诺依曼结构。</p>
-<p>\n\n\n\n</p>
 <h3 id="操作系统中最基本的抽象">操作系统中最基本的抽象</h3>
-<p>\n\n\n\n<img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec0/1.png" alt="">\n\n\n\n</p>
-<p>\n</p>
+<p><img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec0/1.png" alt=""></p>
 <ol>
-<li>进程抽象:对已进入主存正在运行的程序在处理器上操作的状态集的抽象
-\n\n\n\n</li>
-<li>虚存抽象:是物理内存的抽象，进程可获得一个硕大的连续地址空间来存放可执行程序和数据，可使用虚拟地址来引用物理主存单元。
-\n\n\n\n</li>
-<li>文件抽象:是对设备(磁盘)的抽象
-\n
-\n\n\n\n</li>
+<li><p>进程抽象:对已进入主存正在运行的程序在处理器上操作的状态集的抽象</p>
+</li>
+<li><p>虚存抽象:是物理内存的抽象，进程可获得一个硕大的连续地址空间来存放可执行程序和数据，可使用虚拟地址来引用物理主存单元。</p>
+</li>
+<li><p>文件抽象:是对设备(磁盘)的抽象</p>
+</li>
 </ol>
 <p><a href="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec0/1.png"></a></p>
-<p>\n\n\n\n<img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec0/2.png" alt="">\n\n\n\n</p>
+<p><img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec0/2.png" alt=""></p>
 <p>总路线：</p>
-<p>\n\n\n\n<img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec0/4.png" alt="">\n\n\n\n</p>
+<p><img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec0/4.png" alt=""></p>
 <h3 id="多道程序设计">多道程序设计</h3>
-<p>\n\n\n\n</p>
 <p><strong>指允许多个作业(程序)同时进入计算机系统的内存并启动交替计算的方法</strong></p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ol>
-<li>CPU速度与I/O速度不匹配的矛盾，非常突出
-\n\n\n\n</li>
-<li>只有让多道程序同时进入内存争抢CPU运行，才可以够使得CPU和外围设备充分并行，从而提高计算机系统的使用效率
-\n
-\n\n\n\n<img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec1/5.png" alt="">\n\n\n\n<img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec1/23.png" alt="">\n\n\n\n<img src="../../assets/images/2024/06/image-1.png" alt="">\n\n\n\n</li>
+<li><p>CPU速度与I/O速度不匹配的矛盾，非常突出</p>
+</li>
+<li><p>只有让多道程序同时进入内存争抢CPU运行，才可以够使得CPU和外围设备充分并行，从而提高计算机系统的使用效率</p>
+</li>
 </ol>
-<p>\n</p>
+<p><img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec1/5.png" alt=""></p>
+<p><img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec1/23.png" alt=""></p>
+<p><img src="../../assets/images/2024/06/image-1.png" alt=""></p>
 <ol>
-<li><strong>多道程序设计的特点</strong> \n\n<ol>
-<li>CPU与外部设备充分并行
-\n\n\n\n</li>
-<li>外部设备之间充分并行
-\n\n\n\n</li>
-<li>发挥CPU、内存和设备的使用效率
-\n\n\n\n</li>
-<li>提高单位时间的算题量(吞吐率)
-\n\n
-\n
-\n\n\n\n\n</li>
+<li><p><strong>多道程序设计的特点</strong> </p>
+<ol>
+<li><p>CPU与外部设备充分并行</p>
+</li>
+<li><p>外部设备之间充分并行</p>
+</li>
+<li><p>发挥CPU、内存和设备的使用效率</p>
+</li>
+<li><p>提高单位时间的算题量(吞吐率)</p>
+</li>
 </ol>
 </li>
-<li>进入内存执行的程序建立管理实体：<strong>进程</strong> 动态概念，驻留在操作系统中
-\n\n\n\n</li>
-<li>OS应该能管理与控制进程程序的执行
-\n\n\n\n</li>
-<li>OS协调管理各类资源在进程间的使用\n\n<ol>
-<li>处理器的管理和调度
-\n\n\n\n</li>
-<li>主存储器的管理和调度
-\n\n\n\n</li>
-<li>其他资源的管理和调度
-\n\n\n\n</li>
-<li>信号量的管理和调度
-\n\n
-\n
-\n\n\n\n</li>
+<li><p>进入内存执行的程序建立管理实体：<strong>进程</strong> 动态概念，驻留在操作系统中</p>
+</li>
+<li><p>OS应该能管理与控制进程程序的执行</p>
+</li>
+<li><p>OS协调管理各类资源在进程间的使用</p>
+<ol>
+<li><p>处理器的管理和调度</p>
+</li>
+<li><p>主存储器的管理和调度</p>
+</li>
+<li><p>其他资源的管理和调度</p>
+</li>
+<li><p>信号量的管理和调度</p>
+</li>
 </ol>
 </li>
 </ol>
 <p><strong>多道程序系统的实现要点</strong></p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ol>
-<li>如何使用资源：调用操作系统提供的服务例程(如何陷入操作系统)
-\n\n\n\n</li>
-<li>如何复用CPU：调度程序(在CPU空闲时让其他程序运行)
-\n\n\n\n</li>
-<li>如何使CPU与I/O设备充分并行：设备控制器与通道(专用的I/O处理器)
-\n\n\n\n</li>
-<li>如何让正在运行的程序让出CPU：中断(中断正在执行的程序，引入OS处理)，能够恢复现场而不是从头运行
-\n\n\n\n</li>
-<li>需要注意的是道数是受到物理资源的制约的
-\n
-\n\n\n\n</li>
+<li><p>如何使用资源：调用操作系统提供的服务例程(如何陷入操作系统)</p>
+</li>
+<li><p>如何复用CPU：调度程序(在CPU空闲时让其他程序运行)</p>
+</li>
+<li><p>如何使CPU与I/O设备充分并行：设备控制器与通道(专用的I/O处理器)</p>
+</li>
+<li><p>如何让正在运行的程序让出CPU：中断(中断正在执行的程序，引入OS处理)，能够恢复现场而不是从头运行</p>
+</li>
+<li><p>需要注意的是道数是受到物理资源的制约的</p>
+</li>
 </ol>
 <h3 id="总线及其组成">总线及其组成</h3>
-<p>\n\n\n\n</p>
 <h4 id="总线定义">总线定义</h4>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ol>
-<li><strong>总线</strong> 是计算机各种功能部件之间发送信息的<strong>公共通信干线</strong> ，它是CPU、内存、输入输出设备传递信息的<strong>公用通道</strong>
-\n\n\n\n</li>
-<li>计算机的各个部件通过<strong>总线</strong> 相连接，<strong>外围设备</strong> 通过相应的接口电路再与总线相连接，从而形成了计算机硬件系统。
-\n\n\n\n</li>
-<li>按照所传输的信息种类，总线包括\n\n<ol>
-<li>控制线
-\n\n\n\n</li>
-<li>数据线
-\n\n\n\n</li>
-<li>地址线
-\n\n
-\n
-\n\n\n\n</li>
+<li><p><strong>总线</strong> 是计算机各种功能部件之间发送信息的<strong>公共通信干线</strong> ，它是CPU、内存、输入输出设备传递信息的<strong>公用通道</strong></p>
+</li>
+<li><p>计算机的各个部件通过<strong>总线</strong> 相连接，<strong>外围设备</strong> 通过相应的接口电路再与总线相连接，从而形成了计算机硬件系统。</p>
+</li>
+<li><p>按照所传输的信息种类，总线包括</p>
+<ol>
+<li><p>控制线</p>
+</li>
+<li><p>数据线</p>
+</li>
+<li><p>地址线</p>
+</li>
 </ol>
 </li>
 </ol>
 <p><strong>分类</strong></p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ol>
-<li>内部总线:用于CPU芯片内部连接各元件
-\n\n\n\n</li>
-<li>系统总线:用于连接CPU、存储器和各种I/O模块等主要部件\n\n<ol>
-<li>PCI总线用来连接块设备
-\n\n\n\n</li>
-<li>E(ISA)主要是用来处理字符型输入设备，输入速度较慢
-\n\n
-\n
-\n\n\n\n<a href="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec1/13.png"><img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec1/13.png" alt=""></a>\n\n\n\n</li>
+<li><p>内部总线:用于CPU芯片内部连接各元件</p>
+</li>
+<li><p>系统总线:用于连接CPU、存储器和各种I/O模块等主要部件</p>
+<ol>
+<li><p>PCI总线用来连接块设备</p>
+</li>
+<li><p>E(ISA)主要是用来处理字符型输入设备，输入速度较慢</p>
+</li>
 </ol>
 </li>
 </ol>
-<p>\n
-  3. 通信总线:用于计算机系统之间通信
-\n
-\n\n\n\n</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
+<p><a href="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec1/13.png"><img src="https://spricoder.oss-cn-shanghai.aliyuncs.com/2020-OS/img/lec1/13.png" alt=""></a></p>
+<ol start="3">
+<li>通信总线:用于计算机系统之间通信</li>
+</ol>
 <h2 id="第六章：并发程序设计">第六章：并发程序设计</h2>
-<p>\n\n\n\n</p>
-<p>\n<a href="https://www.freezetheflame.cc/2024/05/27/pv%e4%bf%a1%e5%8f%b7%e9%87%8f%e4%b8%8e%e7%ae%a1%e7%a8%8b%e6%93%8d%e4%bd%9c%5Cn">https://www.freezetheflame.cc/2024/05/27/pv%e4%bf%a1%e5%8f%b7%e9%87%8f%e4%b8%8e%e7%ae%a1%e7%a8%8b%e6%93%8d%e4%bd%9c\n</a></p>
-<p>关于PV和管程操作\n\n\n\n</p>
-<p>\n</p>
+<p><a href="https://www.freezetheflame.cc/2024/05/27/pv%e4%bf%a1%e5%8f%b7%e9%87%8f%e4%b8%8e%e7%ae%a1%e7%a8%8b%e6%93%8d%e4%bd%9c">https://www.freezetheflame.cc/2024/05/27/pv%e4%bf%a1%e5%8f%b7%e9%87%8f%e4%b8%8e%e7%ae%a1%e7%a8%8b%e6%93%8d%e4%bd%9c</a></p>
+<p>关于PV和管程操作</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

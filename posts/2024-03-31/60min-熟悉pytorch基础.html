@@ -30,118 +30,137 @@
           <span>2024-03-31</span>
           <span class="tag">AI</span>
         </div>
-        <p>\n</p>
-<pre><code>鸣谢@Leonard的倾情分享
+        <pre><code>鸣谢@Leonard的倾情分享
 </code></pre>
-<p>\n\n\n\n</p>
 <p>一些基础的语法笔记之后再补……先写一些实践过程（实现一个minist手写数字识别器，按理是单层的神经网络，之前看敖神手搓过，不过没有记录，现在用torch的框架写一遍，以后不做这个领域的工作的话至少还能用上这些基础）</p>
-<p>\n\n\n\n</p>
 <h2 id="1preparation">1.preparation</h2>
-<p>\n\n\n\n</p>
 <p>最基础的当然是配置好对应平台的torch环境，有条件可以考虑CUDA，不过暂时似乎可以不用，这种小程序拿CPU也行，对并行计算能力要求不高</p>
-<p>\n\n\n\n</p>
-<pre><code>import torch\nimport torchvision\nfrom torch.utils.data import DataLoader
+<pre><code>import torch
 </code></pre>
-<p>\n\n\n\n</p>
+<p>import torchvision
+from torch.utils.data import DataLoader</p>
 <p>其次就是准备对应的数据集以及训练参数，我们按照教程所述配置如下</p>
-<p>\n\n\n\n</p>
-<pre><code>n_epochs = 3\nbatch_size_train = 64\nbatch_size_test = 1000\nlearning_rate = 0.01\nmomentum = 0.5\nlog_interval = 10\nrandom_seed = 1\ntorch.manual_seed(random_seed)
+<pre><code>n_epochs = 3
 </code></pre>
-<p>\n\n\n\n</p>
+<p>batch_size_train = 64
+batch_size_test = 1000
+learning_rate = 0.01
+momentum = 0.5
+log_interval = 10
+random_seed = 1
+torch.manual_seed(random_seed)</p>
 <p>解释一下其中每个参数<br>一个epoch , 表示： 所有的数据送入网络中， 完成了一次前向计算 + <a href="https://so.csdn.net/so/search?q=%E5%8F%8D%E5%90%91%E4%BC%A0%E6%92%AD&spm=1001.2101.3001.7020">反向传播</a>的过程。<br>由于一个epoch 常常太大， 分成 几个小的 baches .<br><strong>batchsize</strong><br>每个batch 中： 训练样本的数量。<br>batch size 大小的选择也很重要， 最优化网络模型的性能+速度。<br>当数据量较小， 计算机可以承载只有1个batch 的训练方式时， 收敛效果会好。</p>
-<p>\n\n\n\n</p>
 <h4 id="momentum（动量）优化算法"><strong>Momentum（动量）优化算法</strong></h4>
-<p>\n\n\n\n</p>
 <p>在<a href="https://so.csdn.net/so/search?q=%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0&spm=1001.2101.3001.7020">深度学习</a>中，<strong>Momentum（动量）优化算法</strong> 是对梯度下降法的一种优化， 它在原理上模拟了物理学中的动量，已成为目前非常流行的深度学习优化算法之一。在介绍动量优化算法前，需要对 <strong>指数加权平均法</strong> 有所了解，它是动量优化算法的理论基础</p>
-<p>\n\n\n\n</p>
 <p>下图表明了传统的<a href="https://so.csdn.net/so/search?q=%E6%A2%AF%E5%BA%A6%E4%B8%8B%E9%99%8D&spm=1001.2101.3001.7020">梯度下降</a>法会存在的问题，即训练轨迹会呈现锯齿状，这无疑会大大延长训练时间。同时，由于存在摆动现象，学习率只能设置的较小，才不会因为步伐太大而偏离最小值。</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/03/image-127.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/03/image-127.png" alt=""></p>
 <h4 id="优化思路">优化思路</h4>
-<p>\n\n\n\n</p>
 <p>一个很朴素的想法便是让纵向的摆动尽量小，同时保持横向的运动方向比较平稳。为此，需要知道梯度在过去的一段时间内的大致走向，以消除当前轮迭代梯度向量存在的方向抖动。</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/03/image-128.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/03/image-128.png" alt=""></p>
 <p>problems:</p>
-<p>\n\n\n\n</p>
 <p>1、较早的梯度对梯度的大致走向预测几乎失去了作用；</p>
-<p>\n\n\n\n</p>
 <p>2、较早的梯度抖动的较为严重，最近的梯度抖动要弱一些，如果权重都相同，梯度的大致走向预测可能不精确；</p>
-<p>\n\n\n\n</p>
 <p>3、在梯度下降的后期，参数的搜索空间基本上处于一个凸集上，梯度的每个分量的大小和方向基本固定，不断的将大小和方向基本固定的分量做累加，梯度会变得非常大，造成无法收敛到局部最优。</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/03/image-129.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/03/image-129.png" alt=""></p>
 <h4 id="四、基于momentum的梯度更新">四、基于Momentum的梯度更新</h4>
-<p>\n\n\n\n</p>
 <pre><code> 基本的梯度更新规则如下，其中 ![\\\\eta](https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20%5Ceta) 表示学习率。
 </code></pre>
-<p>\n\n\n\n<img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20w%5Crightarrow%20w%5E%7B%27%7D%3Dw-%5Ceta%5Cfrac%7B%5Cpartial%20C%7D%7B%5Cpartial%20w%7D" alt="w\\\\rightarrow w^{&#39;}=w-\\\\eta\\\\frac{\\\\partial C}{\\\\partial w}">\n\n\n\n<img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20b%5Crightarrow%20b%5E%7B%27%7D%3Db-%5Ceta%5Cfrac%7B%5Cpartial%20C%7D%7B%5Cpartial%20b%7D" alt="b\\\\rightarrow b^{&#39;}=b-\\\\eta\\\\frac{\\\\partial C}{\\\\partial b}">\n\n\n\n</p>
+<p><img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20w%5Crightarrow%20w%5E%7B%27%7D%3Dw-%5Ceta%5Cfrac%7B%5Cpartial%20C%7D%7B%5Cpartial%20w%7D" alt="w\\\\rightarrow w^{&#39;}=w-\\\\eta\\\\frac{\\\\partial C}{\\\\partial w}"></p>
+<p><img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20b%5Crightarrow%20b%5E%7B%27%7D%3Db-%5Ceta%5Cfrac%7B%5Cpartial%20C%7D%7B%5Cpartial%20b%7D" alt="b\\\\rightarrow b^{&#39;}=b-\\\\eta\\\\frac{\\\\partial C}{\\\\partial b}"></p>
 <pre><code> 根据上述分析，引入指数加权平均后， ![v_{\\\\textit{\\\\textbf{w}}}](https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20v_%7B%5Ctextit%7B%5Ctextbf%7Bw%7D%7D%7D) 的更新规则为：
 </code></pre>
-<p>\n\n\n\n<img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20v_w%5Crightarrow%20v%5E%7B%27%7D_w%3D%5Cbeta%20v_w%20+%20%5Cfrac%7B%5Cpartial%20C%7D%7B%5Cpartial%20w%7D" alt="v_w\\\\rightarrow v^{&#39;}_w=\\\\beta v_w + \\\\frac{\\\\partial C}{\\\\partial w}">\n\n\n\n<img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20v_b%5Crightarrow%20v%5E%7B%27%7D_b%3D%5Cbeta%20v_b%20+%20%5Cfrac%7B%5Cpartial%20C%7D%7B%5Cpartial%20b%7D" alt="v_b\\\\rightarrow v^{&#39;}_b=\\\\beta v_b + \\\\frac{\\\\partial C}{\\\\partial b}">\n\n\n\n</p>
+<p><img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20v_w%5Crightarrow%20v%5E%7B%27%7D_w%3D%5Cbeta%20v_w%20+%20%5Cfrac%7B%5Cpartial%20C%7D%7B%5Cpartial%20w%7D" alt="v_w\\\\rightarrow v^{&#39;}_w=\\\\beta v_w + \\\\frac{\\\\partial C}{\\\\partial w}"></p>
+<p><img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20v_b%5Crightarrow%20v%5E%7B%27%7D_b%3D%5Cbeta%20v_b%20+%20%5Cfrac%7B%5Cpartial%20C%7D%7B%5Cpartial%20b%7D" alt="v_b\\\\rightarrow v^{&#39;}_b=\\\\beta v_b + \\\\frac{\\\\partial C}{\\\\partial b}"></p>
 <pre><code> 新的梯度更新规则变为
 </code></pre>
-<p>\n\n\n\n<img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20w%5Crightarrow%20w%5E%7B%27%7D%3Dw-%20%5Ceta%20v_w" alt="\\\\dpi{120} w\\\\rightarrow w^{&#39;}=w- \\\\eta v_w">\n\n\n\n<img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20b%5Crightarrow%20b%5E%7B%27%7D%3Db%20-%20%5Ceta%20v_b" alt="b\\\\rightarrow b^{&#39;}=b - \\\\eta v_b">\n\n\n\n</p>
+<p><img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20w%5Crightarrow%20w%5E%7B%27%7D%3Dw-%20%5Ceta%20v_w" alt="\\\\dpi{120} w\\\\rightarrow w^{&#39;}=w- \\\\eta v_w"></p>
+<p><img src="https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20b%5Crightarrow%20b%5E%7B%27%7D%3Db%20-%20%5Ceta%20v_b" alt="b\\\\rightarrow b^{&#39;}=b - \\\\eta v_b"></p>
 <pre><code> 关于摩擦系数 ![\\\\beta](https://private.codecogs.com/gif.latex?%5Cdpi%7B120%7D%20%5Cbeta)：
 </code></pre>
-<p>\n\n\n\n</p>
 <blockquote>
-<p>\n</p>
-<p>1、为 0 时，退化为未优化前的梯度更新；</p>
-<p>\n\n\n\n</p>
-<p>2、为 1 时， 表示完全没有摩擦，如前所述，这样会存在大的问题；</p>
-<p>\n\n\n\n</p>
-<p>3、取 <strong>0.9</strong>  是一个较好的选择。可能是 <strong>0.9</strong>  的 <strong>60</strong>  次方约等于**  0.001**，相当仅考虑最近的60轮迭代所产生的的梯度，这个数值看起来相对适中合理。</p>
-<p>\n</p>
 </blockquote>
-<p>\n\n\n\n</p>
+<blockquote>
+<p>1、为 0 时，退化为未优化前的梯度更新；</p>
+</blockquote>
+<blockquote>
+<p>2、为 1 时， 表示完全没有摩擦，如前所述，这样会存在大的问题；</p>
+</blockquote>
+<blockquote>
+<p>3、取 <strong>0.9</strong>  是一个较好的选择。可能是 <strong>0.9</strong>  的 <strong>60</strong>  次方约等于**  0.001**，相当仅考虑最近的60轮迭代所产生的的梯度，这个数值看起来相对适中合理。</p>
+</blockquote>
 <p>其他的之后我再努力理解吧</p>
-<p>\n\n\n\n</p>
 <p>接下来就要加载数据集了</p>
-<p>\n\n\n\n</p>
-<pre><code>train_loader = torch.utils.data.DataLoader(\n    torchvision.datasets.MNIST(&#x27;./data/&#x27;, train=True, download=True,\n                               transform=torchvision.transforms.Compose([\n                                   torchvision.transforms.ToTensor(),\n                                   torchvision.transforms.Normalize(\n                                       (0.1307,), (0.3081,))\n                               ])),\n    batch_size=batch_size_train, shuffle=True)\ntest_loader = torch.utils.data.DataLoader(\n    torchvision.datasets.MNIST(&#x27;./data/&#x27;, train=False, download=True,\n                               transform=torchvision.transforms.Compose([\n                                   torchvision.transforms.ToTensor(),\n                                   torchvision.transforms.Normalize(\n                                       (0.1307,), (0.3081,))\n                               ])),\n    batch_size=batch_size_test, shuffle=True)
+<pre><code>train_loader = torch.utils.data.DataLoader(
+torchvision.datasets.MNIST(&#x27;./data/&#x27;, train=True, download=True,
+                           transform=torchvision.transforms.Compose([
+                               torchvision.transforms.ToTensor(),
+                               torchvision.transforms.Normalize(
+                                   (0.1307,), (0.3081,))
+                           ])),
+batch_size=batch_size_train, shuffle=True)
 </code></pre>
-<p>\n\n\n\n</p>
+<p>test_loader = torch.utils.data.DataLoader(
+    torchvision.datasets.MNIST(&#39;./data/&#39;, train=False, download=True,
+                               transform=torchvision.transforms.Compose([
+                                   torchvision.transforms.ToTensor(),
+                                   torchvision.transforms.Normalize(
+                                       (0.1307,), (0.3081,))
+                               ])),
+    batch_size=batch_size_test, shuffle=True)</p>
 <p>使用以上的方式下载数据集并且按照batch size做对应的分割</p>
-<p>\n\n\n\n</p>
 <p>可以用matplotlib画些图看一眼</p>
-<p>\n\n\n\n</p>
-<pre><code>import matplotlib.pyplot as plt\nfig = plt.figure()\nfor i in range(6):\n  plt.subplot(2,3,i+1)\n  plt.tight_layout()\n  plt.imshow(example_data[i][0], cmap=&#x27;gray&#x27;, interpolation=&#x27;none&#x27;)\n  plt.title(&quot;Ground Truth: {}&quot;.format(example_targets[i]))\n  plt.xticks([])\n  plt.yticks([])\nplt.show()
+<pre><code>import matplotlib.pyplot as plt
 </code></pre>
-<p>\n\n\n\n<img src="../../assets/images/2024/03/image-130.png" alt="">\n\n\n\n</p>
+<p>fig = plt.figure()
+for i in range(6):
+  plt.subplot(2,3,i+1)
+  plt.tight_layout()
+  plt.imshow(example_data[i][0], cmap=&#39;gray&#39;, interpolation=&#39;none&#39;)
+  plt.title(&quot;Ground Truth: {}&quot;.format(example_targets[i]))
+  plt.xticks([])
+  plt.yticks([])
+plt.show()</p>
+<p><img src="../../assets/images/2024/03/image-130.png" alt=""></p>
 <h2 id="2construct-the-net">2.Construct the Net</h2>
-<p>\n\n\n\n</p>
 <p>我们将使用两个2d卷积层，然后是两个全连接(或线性)层。作为激活函数，我们将选择整流线性单元(简称ReLUs)，作为正则化的手段，我们将使用两个dropout层。在PyTorch中，构建网络的一个好方法是为我们希望构建的网络创建一个新类。让我们在这里导入一些子模块，以获得更具可读性的代码。</p>
-<p>\n\n\n\n</p>
 <p>首先我们理解一下神经网络中各个层的含义</p>
-<p>\n\n\n\n</p>
 <h3 id="全连接层">全连接层</h3>
-<p>\n\n\n\n</p>
 <p>假设全连接层的输入是个4096维的列向量，一般我们把这个向量叫做特征向量（卷积层提取到的特征的输出），经过全连接层得到一个10维的列向量输出（也就是10分类每一类别的评分）。我们如果把输入和输出都看成一个个节点的话，节点与节点之间的关系可以用下图来表示：</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/03/image-131.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/03/image-131.png" alt=""></p>
 <p>当然，还有另一种情况，就是输入不是一个行向量，而是一个特征图。假设这个特征图的shape为 [7,7,1024] ，也就是说长宽分别为7，深度为1024的特征图。当我用shape为 [7,7] 的卷积窗进行无pad卷积时得到 [1,1,4098] 的输出，这一层我们也称为全连接层，至于为什么我们在讲卷积层的时候说。</p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li><strong>卷积层</strong>
-\n
-\n\n\n\n</li>
+<li><strong>卷积层</strong></li>
 </ul>
 <p>卷积层其实主要是卷积的过程，大致意思是给个模板，在图片上滑动，滑到的区域对应位置相乘再相加。这个过程大家都懂。但是在看论文和代码时，经常会分析一个shape的输入经过一个卷积层后得到的输出shape应该是多少。初学者可能经常会在这犯迷糊（比如我）。后来真正弄清这中间的过程，其实分析起来也不难了。</p>
-<p>\n\n\n\n</p>
 <p>假设输入的shape为 [1,224,224,3] 经过strid=2,padding=same,窗口shape为 [7,7] 的卷积，得到shape为 [1,112,112,64] 的输出。</p>
-<p>\n\n\n\n</p>
 <p>首先解释下输入输出中shape的四个数字的含义，第一个代表batch，也就是图片的数量，一般输入的batch是多少，输出的batch是多少。第二和第三个表示图片（特征图）的长度和宽度，第四个表示的图片（特征图）的深度（可以理解为多个二维的像素矩阵叠加在一起）。具体的卷积的话，第一步可以用下图表示：</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/03/image-132.png" alt="">\n\n\n\n</p>
+<p><img src="../../assets/images/2024/03/image-132.png" alt=""></p>
 <p>从图中可以看出，这时候我们的weight的深度也变为3了，也就是7X7X3个参数，然后这个滑窗在深度为3的图片上滑动，滑到的区域，也就是一个三维区域，在这个三维区域内对应的像素值与滑窗对应位置的权重相乘，然后将乘到的7X7X3个数字加起来作为我们输出特征图的一个位置的像素值。也就是说我们输出图的一个像素值，是由输入特征图的某个区域内所有的7X7X3个像素值经过线性运算得到的。</p>
-<p>\n\n\n\n</p>
 <p>说到这，大家是不是想到刚刚说到的全连接层，全连接层的每一个输出元素都是由所有的输入元素经过线性运算得到的，而在卷积过程中，我们得到的每个输出元素，只是由输入中的部分元素（像素），本例子中是7X7X3个像素得到的，所以这种连接结构是<strong>非全连接</strong> 的。当然，当卷积窗口足够大的时候也不是不能叫做全连接层</p>
-<p>\n\n\n\n</p>
 <p><strong>线性层/非线性层</strong></p>
-<p>\n\n\n\n</p>
 <p>大家有没有发现，之前谈到的无论是全连接层还是卷积层的计算都是简单的乘加运算，也称之为线性运算，这样我们可以作为线性层。但是，线性层的特征表达能力是有限的，所以在这些线性计算之后又引入了非线性计算，增强模型特征的表达能力，也就是大家熟知的激活层，也称为非线性层。这里就列几个激活函数把，具体的就不细究了。</p>
-<p>\n\n\n\n<img src="../../assets/images/2024/03/image.webp" alt="">\n\n\n\n<img src="https://pic4.zhimg.com/80/v2-455129a4b09b25b0eeba29b40c06045b_720w.webp" alt="">\n\n\n\n</p>
-<pre><code>import torch.nn as nn\nimport torch.nn.functional as F\nimport torch.optim as optim\n\nclass Net(nn.Module):\n    def __init__(self):\n        super(Net, self).__init__()\n        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)\n        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)\n        self.conv2_drop = nn.Dropout2d()\n        self.fc1 = nn.Linear(320, 50)\n        self.fc2 = nn.Linear(50, 10)\n    def forward(self, x):\n        x = F.relu(F.max_pool2d(self.conv1(x), 2))\n        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))\n        x = x.view(-1, 320)\n        x = F.relu(self.fc1(x))\n        x = F.dropout(x, training=self.training)\n        x = self.fc2(x)\n        return F.log_softmax(x)
+<p><img src="../../assets/images/2024/03/image.webp" alt=""></p>
+<p><img src="https://pic4.zhimg.com/80/v2-455129a4b09b25b0eeba29b40c06045b_720w.webp" alt=""></p>
+<pre><code>import torch.nn as nn
 </code></pre>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>import torch.nn.functional as F
+import torch.optim as optim
+class Net(nn.Module):
+    def <strong>init</strong>(self):
+        super(Net, self).<strong>init</strong>()
+        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+        self.conv2_drop = nn.Dropout2d()
+        self.fc1 = nn.Linear(320, 50)
+        self.fc2 = nn.Linear(50, 10)
+    def forward(self, x):
+        x = F.relu(F.max_pool2d(self.conv1(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = x.view(-1, 320)
+        x = F.relu(self.fc1(x))
+        x = F.dropout(x, training=self.training)
+        x = self.fc2(x)
+        return F.log_softmax(x)</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

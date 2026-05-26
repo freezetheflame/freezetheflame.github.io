@@ -4,19 +4,12 @@ date: 2024-04-18
 tags: [CG, C++]
 ---
 
-\n
 
 Moer的框架很大，其中包含必要的多种工具链，除了渲染的多层之外的依赖全都放在ext中，包含FastMath（数学库很显然）、json（JSON化数据交换格式库）、nanovdb（稀释体积数据处理工具）、pcg（随机数生成库与工具）、stb（加载或者解码不同格式的图片）
 
-\n\n\n\n
-
 由于学长希望我去做的是layered material的材质，所以这些工具链我暂时不用过度深究，跟着其他材料照猫画虎即可，关键的渲染实现部分代码放在src文件夹中，并且按照功能分成了CoreLayer,FunctionLayer,ResourceLayer三层，我接下来会仔细进行阐述和举例解析：
 
-\n\n\n\n
-
 ## CoreLayer
-
-\n\n\n\n
 
 ├─Adapter  
 │ JsonUtil.cpp  
@@ -54,55 +47,31 @@ Moer的框架很大，其中包含必要的多种工具链，除了渲染的多�
 Ray.cpp  
 Ray.h
 
-\n\n\n\n
-
 CoreLayer的内容主要为五部分：Adapter,ColorSpace,Geometry,Math&Ray 这五块部分共同组成了图形学组装基本元素的基础，其实也不能这么讲，我们通过Adapter来处理建模参数，处理数据问题；使用ColorSpace来切换常用的颜色空间；Geometry用来存储、计算基本的几何结构以及相关数据；Math库来做一些复杂向量、矩阵以及数值求和等的精确或者简化计算；Ray则是存储光的几何结构，按照目前的实现来看没有过度考究“波动性”一类的微观特征（偏物理，也是最近几年才有比较多发展的工作）
-
-\n\n\n\n
 
 ### Adapter
 
-\n\n\n\n
-
 //TODO
-
-\n\n\n\n
 
 ### ColorSpace
 
-\n\n\n\n
-
 //TODO
-
-\n\n\n\n
 
 ### Geometry
 
-\n\n\n\n
-
 //TODO
-
-\n\n\n\n
 
 ### Math
 
-\n\n\n\n
-
 //TODO
-
-\n\n\n\n
 
 ### Ray
 
-\n\n\n\n
-
 //TODO
-
-\n\n\n\n
 
 ## FunctionLayer
 
-\n\n\n\nfolder structure\n
+folder structure
 
 │ Intersection.h  
 │  
@@ -297,71 +266,81 @@ SequenceTileGenerator.h
 TileGenerator.cpp  
 TileGenerator.h
 
-\n\n\n\n\n
-
 FunctionLayer在我看来是整个离线渲染器的核心，其中包含的内容围绕着具体的图形学技术细节以及tricks展开，比如图形的BVH加速结构、Distribution采样、纹理、材料、光源等核心方面的内容。所以我们主要针对这一层的各个实现进行解释和拆分
-
-\n\n\n\n
 
 ### Acceleration
 
-\n\n\n\n
-
 这一部分主要是为了实现光追的几个基本加速结构，详细的光追加速我就另开一篇文章来解释了
 
-\n\n\n\n
-    
-    
-    /// @brief Acceleration structure Interface.\nclass Accel {\n\npublic:\n\n    Accel() = default;\n\n    /*\n    * @brief basic interface for ray intersection.\n    * @param r The ray that intersect with a scene. This interface will only utilize its geometry information.\n    * @return The exactly closest intersection point on an entity in the scene with other useful information.\n    */\n    virtual std::optional<Intersection> Intersect(const Ray &r) const = 0;\n\n    /*\n    * @brief get the bounding box of all the objects\n    */\n    [[nodiscard]]\n    virtual BoundingBox3f getGlobalBoundingBox() const = 0;\n};
 
-\n\n\n\n
+    
+    /// @brief Acceleration structure Interface.
+class Accel {
+public:
+    Accel() = default;
+    /*
+    * @brief basic interface for ray intersection.
+    * @param r The ray that intersect with a scene. This interface will only utilize its geometry information.
+    * @return The exactly closest intersection point on an entity in the scene with other useful information.
+    */
+    virtual std::optional<Intersection> Intersect(const Ray &r) const = 0;
+    /*
+    * @brief get the bounding box of all the objects
+    */
+    [[nodiscard]]
+    virtual BoundingBox3f getGlobalBoundingBox() const = 0;
+};
 
 这是整个加速结构的总体interface，包含求交、获得包围盒这两个接口
-
-\n\n\n\n
 
 │Bvh.cpp  
 │ Bvh.h  
 │ Embree.cpp  
 │ Embree.h
 
-\n\n\n\n
-
 implementation包括BVH和Embree两类
-
-\n\n\n\n
 
 BVH里面定义了几个基本的数据结构：
 
-\n\n\n\n
-    
-    
-    /// @brief Entity information declaration for building BVH\nstruct EntityInfo {\n\tEntityInfo(){}\n\tEntityInfo(int _EntityId, const BoundingBox3f& _bounds): EntityId(_EntityId), bounds(_bounds), center(0.5 * (_bounds.pMin + _bounds.pMax)){}\n\tint EntityId;\n\tBoundingBox3f bounds;\n\tPoint3d center;\n};\n\nstruct BvhTreeNode {\n\tBoundingBox3f bounds;\n\tstd::shared_ptr<BvhTreeNode> children[2] = {nullptr, nullptr};//0: left, 1: right\n\tint splitAxis;\n\tint nEntites = 0;//0: interior nodes, otherwise: leaf nodes\n\tint entityOffset;\n};\n\n/// @brief Bvh Nodes in Dfs-Order\nstruct LinearBvhNode {\n\tBoundingBox3f bounds;\n\tunion\n\t{\n\t\tint firstdEntityOffset;//for leaves to enumerate\n\t\tint secondChildOrder;//for interior nodes to traverse\n\t};\n\tint nEntites = 0;\n\tint splitAxis;\n};
 
-\n\n\n\n
+    
+    /// @brief Entity information declaration for building BVH
+struct EntityInfo {
+\tEntityInfo(){}
+\tEntityInfo(int _EntityId, const BoundingBox3f& _bounds): EntityId(_EntityId), bounds(_bounds), center(0.5 * (_bounds.pMin + _bounds.pMax)){}
+\tint EntityId;
+\tBoundingBox3f bounds;
+\tPoint3d center;
+};
+struct BvhTreeNode {
+\tBoundingBox3f bounds;
+\tstd::shared_ptr<BvhTreeNode> children[2] = {nullptr, nullptr};//0: left, 1: right
+\tint splitAxis;
+\tint nEntites = 0;//0: interior nodes, otherwise: leaf nodes
+\tint entityOffset;
+};
+/// @brief Bvh Nodes in Dfs-Order
+struct LinearBvhNode {
+\tBoundingBox3f bounds;
+\tunion
+\t{
+\t\tint firstdEntityOffset;//for leaves to enumerate
+\t\tint secondChildOrder;//for interior nodes to traverse
+\t};
+\tint nEntites = 0;
+\tint splitAxis;
+};
 
 [`EntityInfo`](<vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html>)结构体包含三个成员：
 
-\n\n\n\n
-
-\n
   * [`EntityId`](<vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html>)：一个整数，用于标识实体。
-\n\n\n\n
+
   * [`bounds`](<vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html>)：一个`BoundingBox3f`类型的对象，表示实体的包围盒。`BoundingBox3f`是一个自定义的类型，用于存储3D包围盒的信息。
-\n\n\n\n
+
   * [`center`](<vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html>)：一个`Point3d`类型的对象，表示实体的中心点。`Point3d`也是一个自定义的类型，用于存储3D点的信息。
-\n
-\n\n\n\n
 
 [`EntityInfo`](<vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html>)结构体提供了两个构造函数：
 
-\n\n\n\n
-
-\n
   * 默认构造函数[`EntityInfo()`](<vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html>)：创建一个[`EntityInfo`](<vscode-file://vscode-app/c:/Users/shenjiawei/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.html>)对象，但不对其成员进行初始化。
-\n\n\n\n
-  * 带参数的构造函数`EntityInfo(int _EntityId, const BoundingBox3f& _bounds)`：创建一个`EntityInfo`对象，并使用参数`_EntityId`和`_bounds`初始化`EntityId`和`bounds`成员。同时，它还计算出实体的中心点`center`，方法是取包围盒的最小点和最大点的中点。
-\n
-\n\n\n\n
 
-\n
+  * 带参数的构造函数`EntityInfo(int _EntityId, const BoundingBox3f& _bounds)`：创建一个`EntityInfo`对象，并使用参数`_EntityId`和`_bounds`初始化`EntityId`和`bounds`成员。同时，它还计算出实体的中心点`center`，方法是取包围盒的最小点和最大点的中点。

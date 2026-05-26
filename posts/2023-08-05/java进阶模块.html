@@ -30,19 +30,12 @@
           <span>2023-08-05</span>
           <span class="tag">Java</span>
         </div>
-        <p>\n</p>
-<p>I/O进阶（加速）（来自OIwiki <a href="https://oi-wiki.org//lang/java-pro/">Java 进阶 - OI Wiki (oi-wiki.org)</a>）</p>
-<p>\n\n\n\n</p>
+        <p>I/O进阶（加速）（来自OIwiki <a href="https://oi-wiki.org//lang/java-pro/">Java 进阶 - OI Wiki (oi-wiki.org)</a>）</p>
 <h2 id="更高速的输入输出">更高速的输入输出<a href="https://oi-wiki.org//lang/java-pro/#%E6%9B%B4%E9%AB%98%E9%80%9F%E7%9A%84%E8%BE%93%E5%85%A5%E8%BE%93%E5%87%BA"></a></h2>
-<p>\n\n\n\n</p>
 <p><code>Scanner</code> 和 <code>System.out.print</code> 在最开始会工作得很好，但是在处理更大的输入的时候会降低效率，因此我们会需要使用一些方法来提高 IO 速度。</p>
-<p>\n\n\n\n</p>
 <p>使用 Kattio + StringTokenizer 作为输入输出</p>
-<p>\n\n\n\n</p>
 <p>最常用的方法之一是使用来自 Kattis 的 <a href="https://github.com/Kattis/kattio/blob/master/Kattio.java">Kattio.java</a> 来提高 IO 效率。<a href="https://oi-wiki.org//lang/java-pro/#fn:ref1">1</a>这个方法会将 <code>StringTokenizer</code> 与 <code>PrintWriter</code> 包装在一个类中方便使用。而在具体进行解题的时候（假如赛会/组织方允许）可以直接使用这个模板。</p>
-<p>\n\n\n\n</p>
 <p>以下是代码实现：</p>
-<p>\n\n\n\n</p>
 <pre><code>class Kattio extends PrintWriter {
 </code></pre>
 

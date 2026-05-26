@@ -30,115 +30,184 @@
           <span>2024-08-26</span>
           <span class="tag">C++</span>
         </div>
-        <p>\n</p>
-<p><a href="https://zhuanlan.zhihu.com/p/376235626">醍醐灌顶全方位击破C++线程池及异步处理 - 知乎 (zhihu.com)</a></p>
-<p>\n\n\n\n</p>
-<p>\n\n\n\n</p>
+        <p><a href="https://zhuanlan.zhihu.com/p/376235626">醍醐灌顶全方位击破C++线程池及异步处理 - 知乎 (zhihu.com)</a></p>
 <h2 id="基本概念">基本概念</h2>
-<p>\n\n\n\n</p>
 <p>池化思想，又称为资源池化，是一种在计算机科学和系统工程中广泛应用的设计理念。其核心思想是<strong>将资源统一管理和分配</strong> ，以提高资源的使用效率，降低资源消耗，并增强系统的稳定性和响应速度。</p>
-<p>\n\n\n\n</p>
 <p>池化思想通过将资源（如内存、<a href="https://cloud.baidu.com/solution/database.html">数据库</a>连接、线程等）预先分配并<a href="https://cloud.baidu.com/product/bos.html">存储</a>在一个资源池中，当系统需要这些资源时，直接从池中获取，而不是每次需要时都重新创建。这种机制不仅可以减少资源的创建和销毁开销，还能避免资源竞争和过度消耗。</p>
-<p>\n\n\n\n</p>
 <p><strong>资源池（Resource Pooling）：</strong></p>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ul>
-<li>池化思想的核心概念是资源池，它是一组<strong>可重复使用</strong> 的资源，如数据库连接、线程、对象实例、网络连接等。
-\n\n\n\n</li>
-<li>资源池中的资源可以被多个任务或线程共享，并且可以通过请求和释放的方式来管理。
-\n
-\n\n\n\n</li>
+<li><p>池化思想的核心概念是资源池，它是一组<strong>可重复使用</strong> 的资源，如数据库连接、线程、对象实例、网络连接等。</p>
+</li>
+<li><p>资源池中的资源可以被多个任务或线程共享，并且可以通过请求和释放的方式来管理。</p>
+</li>
 </ul>
 <h2 id="例子---为何要用池？">例子 - 为何要用池？</h2>
-<p>\n\n\n\n</p>
 <p>先举一个简单的使用篮球 例子，我们有多种策略使用篮球，并且使用篮球之后会产生一定的代价，主观上认为我们倾向于将代价最小化。</p>
-<p>\n\n\n\n</p>
 <h3 id="策略1：（一次性使用）">策略1：（一次性使用）</h3>
-<p>\n\n\n\n</p>
 <p>这是一种比较笨的策略，每次都买一个新的篮球用于使用，使用之后丢掉。于是我们可以得到如下代价公式：</p>
-<p>\n\n\n\n</p>
 <p>总代价=（买篮球代价+用篮球代价）∗使用次数</p>
-<p>\n\n\n\n</p>
 <h3 id="策略2：（重复使用）">策略2：（重复使用）</h3>
-<p>\n\n\n\n</p>
 <p>在该策略中，认为篮球是可以多次使用的。于是我们可以得到如下公式：：</p>
-<p>\n\n\n\n</p>
 <p>总代价=买篮球代价∗篮球个数+重复代价∗使用次数+用篮球代价∗使用次数</p>
-<p>\n\n\n\n</p>
 <h3 id="策略的选择">策略的选择</h3>
-<p>\n\n\n\n</p>
 <p>上面列举了两种策略，事实上还有很多其他的策略。<br>两种策略本身是没有绝对的好坏的，而是视场景而定的。但就现实情况而言（比如，使用次数很多），篮球这个例子中符合如下的规律：</p>
-<p>\n\n\n\n</p>
 <p>买篮球的代价∗篮球个数+复用的代价∗使用次数&lt;买篮球的代价∗使用次数</p>
-<p>\n\n\n\n</p>
 <p>这意味着，复用的总代价 小于 不复用的代价，即<strong>复用的策略更适合篮球这个例子</strong> 。</p>
-<p>\n\n\n\n</p>
 <h2 id="线程池的组成"><strong>线程池的组成</strong></h2>
-<p>\n\n\n\n</p>
-<p>\n</p>
 <ol>
-<li>线程池管理器：初始化和创建线程，启动和停止线程，调配任务；管理线程池
-\n\n\n\n</li>
-<li>工作线程：线程池中等待并执行分配的任务
-\n\n\n\n</li>
-<li>任务接口：添加任务的接口，以提供工作<a href="https://www.zhihu.com/search?q=%E7%BA%BF%E7%A8%8B%E8%B0%83%E5%BA%A6&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra=%7B%22sourceType%22%3A%22article%22%2C%22sourceId%22%3A376235626%7D">线程调度</a>任务的执行。
-\n\n\n\n</li>
-<li>任务队列：用于存放没有处理的任务，提供一种缓冲机制，同时具有调度功能，高优先级的任务放在队列前面
-\n
-\n\n\n\n</li>
+<li><p>线程池管理器：初始化和创建线程，启动和停止线程，调配任务；管理线程池</p>
+</li>
+<li><p>工作线程：线程池中等待并执行分配的任务</p>
+</li>
+<li><p>任务接口：添加任务的接口，以提供工作<a href="https://www.zhihu.com/search?q=%E7%BA%BF%E7%A8%8B%E8%B0%83%E5%BA%A6&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra=%7B%22sourceType%22%3A%22article%22%2C%22sourceId%22%3A376235626%7D">线程调度</a>任务的执行。</p>
+</li>
+<li><p>任务队列：用于存放没有处理的任务，提供一种缓冲机制，同时具有调度功能，高优先级的任务放在队列前面</p>
+</li>
 </ol>
 <h2 id="对象池的优势">对象池的优势</h2>
-<p>\n\n\n\n</p>
 <blockquote>
-<p>\n</p>
+</blockquote>
+<blockquote>
 <p>通过对象创建的例子，可看出对象创建是一个复杂的过程，少数的对象的创建并不会影响程序的太多的性能，但是如果达到了数以万计，就应该考虑复用同类对象的分配了。<br>【通俗理解】<strong>只是替换某个已存在对象的状态（填充原对象结构中的变量），复用已存在对象分配的内存</strong> （节省了寻找空闲堆区等方面的时间）。</p>
-<p>\n\n\n\n</p>
-<p>（<strong>相当于给内存重新换了身衣服</strong> ）<br>这里认为，<strong>重新创建对象的代价</strong>  远远大于 <strong>更换已存在对象中相关的状态变量</strong> 。</p>
-<p>\n</p>
 </blockquote>
-<p>\n\n\n\n</p>
-<h2 id="线程池工作的四种情况">线程池工作的四种情况</h2>
-<p>\n\n\n\n</p>
-<h3 id="131-没有任务要执行，缓冲队列为空"><strong>1.3.1 没有任务要执行，缓冲队列为空</strong></h3>
-<p>\n\n\n\n<img src="../../assets/images/2024/08/image-1.webp" alt="">\n\n\n\n</p>
-<p><strong>1.3.2 队列中任务数量，小于等于线程池中线程任务数量</strong></p>
-<p>\n\n\n\n<img src="../../assets/images/2024/08/image-2.webp" alt="">\n\n\n\n</p>
-<p><strong>1.3.3 任务数量大于线程池数量,缓冲队列未满</strong></p>
-<p>\n\n\n\n<img src="../../assets/images/2024/08/image-3.webp" alt="">\n\n\n\n</p>
-<p><strong>1.3.4 任务数量大于线程池数量，缓冲队列已满</strong></p>
-<p>\n\n\n\n<img src="../../assets/images/2024/08/image.webp" alt="">\n\n\n\n</p>
 <blockquote>
-<p>\n</p>
-<p><strong>Thread Safe Queue Requirement</strong></p>
-<p>\n</p>
+<p>（<strong>相当于给内存重新换了身衣服</strong> ）<br>这里认为，<strong>重新创建对象的代价</strong>  远远大于 <strong>更换已存在对象中相关的状态变量</strong> 。</p>
 </blockquote>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<h2 id="线程池工作的四种情况">线程池工作的四种情况</h2>
+<h3 id="131-没有任务要执行，缓冲队列为空"><strong>1.3.1 没有任务要执行，缓冲队列为空</strong></h3>
+<p><img src="../../assets/images/2024/08/image-1.webp" alt=""></p>
+<p><strong>1.3.2 队列中任务数量，小于等于线程池中线程任务数量</strong></p>
+<p><img src="../../assets/images/2024/08/image-2.webp" alt=""></p>
+<p><strong>1.3.3 任务数量大于线程池数量,缓冲队列未满</strong></p>
+<p><img src="../../assets/images/2024/08/image-3.webp" alt=""></p>
+<p><strong>1.3.4 任务数量大于线程池数量，缓冲队列已满</strong></p>
+<p><img src="../../assets/images/2024/08/image.webp" alt=""></p>
+<blockquote>
+</blockquote>
+<blockquote>
+<p><strong>Thread Safe Queue Requirement</strong></p>
+</blockquote>
 <ul>
-<li>How many producer are there for this queue? How many threads will be “ <em>pushing</em> to it”?
-\n\n\n\n</li>
-<li>Will there be many threads “ <em>popping</em> ” from the queue?
-\n\n\n\n</li>
-<li>Do we always need the “pop” operation to return something? Can it block a thread?
-\n\n\n\n</li>
-<li>Does the queue need to be atomic- no mutex locking allowed?
-\n
-\n\n\n\n</li>
+<li><p>How many producer are there for this queue? How many threads will be “ <em>pushing</em> to it”?</p>
+</li>
+<li><p>Will there be many threads “ <em>popping</em> ” from the queue?</p>
+</li>
+<li><p>Do we always need the “pop” operation to return something? Can it block a thread?</p>
+</li>
+<li><p>Does the queue need to be atomic- no mutex locking allowed?</p>
+</li>
 </ul>
 <h2 id="simple-c-implementation-for-thread-safe-queue">Simple C++ Implementation for Thread Safe Queue</h2>
-<p>\n\n\n\n</p>
-<pre><code>#include &lt;queue&gt;\n#include &lt;condition_variable&gt;\n#include &lt;mutex&gt;\n\ntemplate &lt;typename T&gt;\nclass Queue_Safe {\nprivate:\n    std::queue&lt;T&gt; q;               // Underlying queue to store elements\n    std::condition_variable cv;    // Condition variable for synchronization\n    std::mutex mtx;                // Mutex for exclusive access to the queue\n\npublic:\n    // Pushes an element onto the queue\n    void push(T const&amp; val) {\n        std::lock_guard&lt;std::mutex&gt; lock(mtx); \n        q.push(val);                        \n        cv.notify_one();  // Notify one waiting thread that data is available\n    }\n\n    // Pops and returns the front element of the queue\n    T pop() {\n        std::unique_lock&lt;std::mutex&gt; uLock(mtx);  \n        cv.wait(uLock, [&amp;] { return !q.empty(); });  // Wait until the queue is not empty\n        T front = q.front();                      \n        q.pop();                                  \n        return front;    \n    }                        \n};
+<pre><code>#include &lt;queue&gt;
 </code></pre>
-<p>\n\n\n\n</p>
+<p>#include <condition_variable>
+#include <mutex>
+template <typename T>
+class Queue_Safe {
+private:
+    std::queue<T> q;               // Underlying queue to store elements
+    std::condition_variable cv;    // Condition variable for synchronization
+    std::mutex mtx;                // Mutex for exclusive access to the queue
+public:
+    // Pushes an element onto the queue
+    void push(T const&amp; val) {
+        std::lock_guard<a href="std::mutex">std::mutex</a> lock(mtx); 
+        q.push(val);<br>        cv.notify_one();  // Notify one waiting thread that data is available
+    }
+    // Pops and returns the front element of the queue
+    T pop() {
+        std::unique_lock<a href="std::mutex">std::mutex</a> uLock(mtx);<br>        cv.wait(uLock, [&amp;] { return !q.empty(); });  // Wait until the queue is not empty
+        T front = q.front();<br>        q.pop();<br>        return front;<br>    }<br>};</p>
 <p>We can pass arguments to the start-function when creating a new thread via  <em>std::thread(startFunction, args)</em>. Those arguments are passed by value from the thread creator function because the  <em>std::thread</em> constructor copies or moves the creator&#39;s arguments before passing them to the start-function.</p>
-<p>\n\n\n\n</p>
 <p>最简单的线程池的实现（基于c++11)</p>
-<p>\n\n\n\n</p>
-<pre><code>#ifndef THREAD_POOL_H\n#define THREAD_POOL_H\n\n#include &lt;vector&gt;\n#include &lt;queue&gt;\n#include &lt;memory&gt;\n#include &lt;thread&gt;\n#include &lt;mutex&gt;\n#include &lt;condition_variable&gt;\n#include &lt;future&gt;\n#include &lt;functional&gt;\n#include &lt;stdexcept&gt;\n\nclass ThreadPool {\npublic:\n    ThreadPool(size_t);\n    template&lt;class F, class... Args&gt;\n    auto enqueue(F&amp;&amp; f, Args&amp;&amp;... args) \n        -&gt; std::future&lt;typename std::result_of&lt;F(Args...)&gt;::type&gt;;\n    ~ThreadPool();\nprivate:\n    // need to keep track of threads so we can join them\n    std::vector&lt; std::thread &gt; workers;\n    // the task queue\n    std::queue&lt; std::function&lt;void()&gt; &gt; tasks;\n    \n    // synchronization\n    std::mutex queue_mutex;\n    std::condition_variable condition;\n    bool stop;\n};\n \n// the constructor just launches some amount of workers\ninline ThreadPool::ThreadPool(size_t threads)\n    :   stop(false)\n{\n    for(size_t i = 0;i&lt;threads;++i)\n        workers.emplace_back(\n            [this]\n            {\n                for(;;)\n                {\n                    std::function&lt;void()&gt; task;\n\n                    {\n                        std::unique_lock&lt;std::mutex&gt; lock(this-&gt;queue_mutex);\n                        this-&gt;condition.wait(lock,\n                            [this]{ return this-&gt;stop || !this-&gt;tasks.empty(); });\n                        if(this-&gt;stop &amp;&amp; this-&gt;tasks.empty())\n                            return;\n                        task = std::move(this-&gt;tasks.front());\n                        this-&gt;tasks.pop();\n                    }\n\n                    task();\n                }\n            }\n        );\n}\n\n// add new work item to the pool\ntemplate&lt;class F, class... Args&gt;\nauto ThreadPool::enqueue(F&amp;&amp; f, Args&amp;&amp;... args) \n    -&gt; std::future&lt;typename std::result_of&lt;F(Args...)&gt;::type&gt;\n{\n    using return_type = typename std::result_of&lt;F(Args...)&gt;::type;\n\n    auto task = std::make_shared&lt; std::packaged_task&lt;return_type()&gt; &gt;(\n            std::bind(std::forward&lt;F&gt;(f), std::forward&lt;Args&gt;(args)...)\n        );\n        \n    std::future&lt;return_type&gt; res = task-&gt;get_future();\n    {\n        std::unique_lock&lt;std::mutex&gt; lock(queue_mutex);\n\n        // don&#x27;t allow enqueueing after stopping the pool\n        if(stop)\n            throw std::runtime_error(&quot;enqueue on stopped ThreadPool&quot;);\n\n        tasks.emplace([task](){ (*task)(); });\n    }\n    condition.notify_one();\n    return res;\n}\n\n// the destructor joins all threads\ninline ThreadPool::~ThreadPool()\n{\n    {\n        std::unique_lock&lt;std::mutex&gt; lock(queue_mutex);\n        stop = true;\n    }\n    condition.notify_all();\n    for(std::thread &amp;worker: workers)\n        worker.join();\n}\n\n#endif
+<pre><code>#ifndef THREAD_POOL_H
 </code></pre>
-<p>\n\n\n\n</p>
-<p>\n</p>
+<p>#define THREAD_POOL_H
+#include <vector>
+#include <queue>
+#include <memory>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <future>
+#include <functional>
+#include <stdexcept>
+class ThreadPool {
+public:
+    ThreadPool(size_t);
+    template&lt;class F, class... Args&gt;
+    auto enqueue(F&amp;&amp; f, Args&amp;&amp;... args) 
+        -&gt; std::future&lt;typename std::result_of&lt;F(Args...)&gt;::type&gt;;
+    ~ThreadPool();
+private:
+    // need to keep track of threads so we can join them
+    std::vector&lt; std::thread &gt; workers;
+    // the task queue
+    std::queue&lt; std::function&lt;void()&gt; &gt; tasks;</p>
+<pre><code>// synchronization
+std::mutex queue_mutex;
+std::condition_variable condition;
+bool stop;
+</code></pre>
+<p>};</p>
+<p>// the constructor just launches some amount of workers
+inline ThreadPool::ThreadPool(size_t threads)
+    :   stop(false)
+{
+    for(size_t i = 0;i&lt;threads;++i)
+        workers.emplace_back(
+            [this]
+            {
+                for(;;)
+                {
+                    std::function&lt;void()&gt; task;
+                    {
+                        std::unique_lock<a href="std::mutex">std::mutex</a> lock(this-&gt;queue_mutex);
+                        this-&gt;condition.wait(lock,
+                            [this]{ return this-&gt;stop || !this-&gt;tasks.empty(); });
+                        if(this-&gt;stop &amp;&amp; this-&gt;tasks.empty())
+                            return;
+                        task = std::move(this-&gt;tasks.front());
+                        this-&gt;tasks.pop();
+                    }
+                    task();
+                }
+            }
+        );
+}
+// add new work item to the pool
+template&lt;class F, class... Args&gt;
+auto ThreadPool::enqueue(F&amp;&amp; f, Args&amp;&amp;... args) 
+    -&gt; std::future&lt;typename std::result_of&lt;F(Args...)&gt;::type&gt;
+{
+    using return_type = typename std::result_of&lt;F(Args...)&gt;::type;
+    auto task = std::make_shared&lt; std::packaged_task&lt;return_type()&gt; &gt;(
+            std::bind(std::forward<F>(f), std::forward<Args>(args)...)
+        );</p>
+<pre><code>std::future&lt;return_type&gt; res = task-&gt;get_future();
+{
+    std::unique_lock&lt;std::mutex&gt; lock(queue_mutex);
+    // don&#x27;t allow enqueueing after stopping the pool
+    if(stop)
+        throw std::runtime_error(&quot;enqueue on stopped ThreadPool&quot;);
+    tasks.emplace([task](){ (*task)(); });
+}
+condition.notify_one();
+return res;
+</code></pre>
+<p>}
+// the destructor joins all threads
+inline ThreadPool::~ThreadPool()
+{
+    {
+        std::unique_lock<a href="std::mutex">std::mutex</a> lock(queue_mutex);
+        stop = true;
+    }
+    condition.notify_all();
+    for(std::thread &amp;worker: workers)
+        worker.join();
+}
+#endif</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
