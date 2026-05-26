@@ -25,890 +25,898 @@
       <section class="hero-small">
         <p class="eyebrow">POSTS / WRITING INDEX</p>
         <h1 class="page-title">文章中心</h1>
-        <p class="page-copy">这里保留当前可正常访问的博客入口。旧的乱码样例和重复页面不会进入阅读导航。</p>
+        <p class="page-copy">浏览、搜索、按标签筛选所有文章。</p>
       </section>
 
       <section class="content-layout" aria-label="文章列表">
         <div class="panel content-main">
           <p class="section-kicker">AVAILABLE POSTS</p>
           <h2 class="section-title">可阅读文章</h2>
-          <p class="section-intro">当前共 118 篇文章。</p>
-          <ul class="post-grid">
-            <li class="post-card">
+          <p class="section-intro">当前共 <strong id="postCount">118</strong> 篇文章。</p>
+
+          <div class="search-box">
+            <label class="sr-only" for="searchInput">搜索文章</label>
+            <input type="text" id="searchInput" placeholder="搜索文章标题或标签...">
+          </div>
+
+          <div class="active-filters" id="activeFilters" style="display:none"></div>
+
+          <ul class="post-grid" id="postGrid">
+            <li class="post-card" data-tags="AI,python">
               <h3><a href="2025-12-15/python中的一些特别性质文件.html">python中的一些特别性质文件</a></h3>
               <div class="post-meta">
                 <span>2025-12-15</span>
-                <span class="tag">AI</span>
-                <span class="tag">python</span>
+                <span class="tag" data-tag="AI">AI</span>
+                <span class="tag" data-tag="python">python</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI,深度学习,LLM,TTT">
               <h3><a href="2025-12-10/test-time-training.html">Test Time Training</a></h3>
               <div class="post-meta">
                 <span>2025-12-10</span>
-                <span class="tag">AI</span>
-                <span class="tag">深度学习</span>
-                <span class="tag">LLM</span>
-                <span class="tag">TTT</span>
+                <span class="tag" data-tag="AI">AI</span>
+                <span class="tag" data-tag="深度学习">深度学习</span>
+                <span class="tag" data-tag="LLM">LLM</span>
+                <span class="tag" data-tag="TTT">TTT</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="python">
               <h3><a href="2025-11-30/pip包管理机制.html">pip包管理机制</a></h3>
               <div class="post-meta">
                 <span>2025-11-30</span>
-                <span class="tag">python</span>
+                <span class="tag" data-tag="python">python</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="博客,入门,教程">
               <h3><a href="2025-11-18/我的第一篇博客文章.html">我的第一篇博客文章</a></h3>
               <div class="post-meta">
                 <span>2025-11-18</span>
-                <span class="tag">博客</span>
-                <span class="tag">入门</span>
-                <span class="tag">教程</span>
+                <span class="tag" data-tag="博客">博客</span>
+                <span class="tag" data-tag="入门">入门</span>
+                <span class="tag" data-tag="教程">教程</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI,深度学习,framework">
               <h3><a href="2025-11-01/动态图and静态图（dl-frameworks）.html">动态图and静态图（DL Frameworks）</a></h3>
               <div class="post-meta">
                 <span>2025-11-01</span>
-                <span class="tag">AI</span>
-                <span class="tag">深度学习</span>
-                <span class="tag">framework</span>
+                <span class="tag" data-tag="AI">AI</span>
+                <span class="tag" data-tag="深度学习">深度学习</span>
+                <span class="tag" data-tag="framework">framework</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关,深度学习,LLM">
               <h3><a href="2025-10-24/optimizer-in-neural-network.html">Optimizer in Neural Network</a></h3>
               <div class="post-meta">
                 <span>2025-10-24</span>
-                <span class="tag">Windows相关</span>
-                <span class="tag">深度学习</span>
-                <span class="tag">LLM</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
+                <span class="tag" data-tag="深度学习">深度学习</span>
+                <span class="tag" data-tag="LLM">LLM</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI">
               <h3><a href="2025-10-17/大语言模型的数值精度llm-percision.html">大语言模型的数值精度(llm percision)</a></h3>
               <div class="post-meta">
                 <span>2025-10-17</span>
-                <span class="tag">AI</span>
+                <span class="tag" data-tag="AI">AI</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="算法与数据结构,图论,algorithm,最短路">
               <h3><a href="2025-09-29/最短路问题实战.html">最短路问题实战</a></h3>
               <div class="post-meta">
                 <span>2025-09-29</span>
-                <span class="tag">算法与数据结构</span>
-                <span class="tag">图论</span>
-                <span class="tag">algorithm</span>
-                <span class="tag">最短路</span>
+                <span class="tag" data-tag="算法与数据结构">算法与数据结构</span>
+                <span class="tag" data-tag="图论">图论</span>
+                <span class="tag" data-tag="algorithm">algorithm</span>
+                <span class="tag" data-tag="最短路">最短路</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI">
               <h3><a href="2025-09-26/attention-in-an-article.html">Attention in an article</a></h3>
               <div class="post-meta">
                 <span>2025-09-26</span>
-                <span class="tag">AI</span>
+                <span class="tag" data-tag="AI">AI</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI,深度学习,LLM,transformer">
               <h3><a href="2025-09-18/rope-in-llm.html">RoPE in LLM</a></h3>
               <div class="post-meta">
                 <span>2025-09-18</span>
-                <span class="tag">AI</span>
-                <span class="tag">深度学习</span>
-                <span class="tag">LLM</span>
-                <span class="tag">transformer</span>
+                <span class="tag" data-tag="AI">AI</span>
+                <span class="tag" data-tag="深度学习">深度学习</span>
+                <span class="tag" data-tag="LLM">LLM</span>
+                <span class="tag" data-tag="transformer">transformer</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI,深度学习,LLM,framework">
               <h3><a href="2025-09-16/高可用的ai-application系统设计.html">高可用的AI application系统设计</a></h3>
               <div class="post-meta">
                 <span>2025-09-16</span>
-                <span class="tag">AI</span>
-                <span class="tag">深度学习</span>
-                <span class="tag">LLM</span>
-                <span class="tag">framework</span>
+                <span class="tag" data-tag="AI">AI</span>
+                <span class="tag" data-tag="深度学习">深度学习</span>
+                <span class="tag" data-tag="LLM">LLM</span>
+                <span class="tag" data-tag="framework">framework</span>
               </div>
             </li>
-            <li class="post-card">
-              <h3><a href="2025-09-06/params-in-mindspeed-mm-trainingfinetune.html">Params in MindSpeed-MM Training&amp;Finetune</a></h3>
+            <li class="post-card" data-tags="AI,深度学习,LLM,MindSpeed">
+              <h3><a href="2025-09-06/params-in-mindspeed-mm-trainingfinetune.html">Params in MindSpeed-MM Training&amp;amp;Finetune</a></h3>
               <div class="post-meta">
                 <span>2025-09-06</span>
-                <span class="tag">AI</span>
-                <span class="tag">深度学习</span>
-                <span class="tag">LLM</span>
-                <span class="tag">MindSpeed</span>
+                <span class="tag" data-tag="AI">AI</span>
+                <span class="tag" data-tag="深度学习">深度学习</span>
+                <span class="tag" data-tag="LLM">LLM</span>
+                <span class="tag" data-tag="MindSpeed">MindSpeed</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容,软件工程理论,2PC,高可用">
               <h3><a href="2025-09-05/高可用中的2pc3pc以及幂等性概念.html">高可用中的2PC,3PC以及幂等性概念</a></h3>
               <div class="post-meta">
                 <span>2025-09-05</span>
-                <span class="tag">服务器后端内容</span>
-                <span class="tag">软件工程理论</span>
-                <span class="tag">2PC</span>
-                <span class="tag">高可用</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
+                <span class="tag" data-tag="软件工程理论">软件工程理论</span>
+                <span class="tag" data-tag="2PC">2PC</span>
+                <span class="tag" data-tag="高可用">高可用</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="算法与数据结构,图论,算法,数据结构">
               <h3><a href="2025-09-04/图的存储专项.html">图的存储专项</a></h3>
               <div class="post-meta">
                 <span>2025-09-04</span>
-                <span class="tag">算法与数据结构</span>
-                <span class="tag">图论</span>
-                <span class="tag">算法</span>
-                <span class="tag">数据结构</span>
+                <span class="tag" data-tag="算法与数据结构">算法与数据结构</span>
+                <span class="tag" data-tag="图论">图论</span>
+                <span class="tag" data-tag="算法">算法</span>
+                <span class="tag" data-tag="数据结构">数据结构</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI,python,深度学习,LLM,MoE">
               <h3><a href="2025-09-03/step-into-moe.html">Step into MoE</a></h3>
               <div class="post-meta">
                 <span>2025-09-03</span>
-                <span class="tag">AI</span>
-                <span class="tag">python</span>
-                <span class="tag">深度学习</span>
-                <span class="tag">LLM</span>
-                <span class="tag">MoE</span>
+                <span class="tag" data-tag="AI">AI</span>
+                <span class="tag" data-tag="python">python</span>
+                <span class="tag" data-tag="深度学习">深度学习</span>
+                <span class="tag" data-tag="LLM">LLM</span>
+                <span class="tag" data-tag="MoE">MoE</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI,python,深度学习">
               <h3><a href="2025-08-29/dropout-in-deep-learning.html">Dropout in Deep Learning</a></h3>
               <div class="post-meta">
                 <span>2025-08-29</span>
-                <span class="tag">AI</span>
-                <span class="tag">python</span>
-                <span class="tag">深度学习</span>
+                <span class="tag" data-tag="AI">AI</span>
+                <span class="tag" data-tag="python">python</span>
+                <span class="tag" data-tag="深度学习">深度学习</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI">
               <h3><a href="2025-08-29/gpt关于进行llm-训练的建议.html">GPT关于进行LLM 训练的建议</a></h3>
               <div class="post-meta">
                 <span>2025-08-29</span>
-                <span class="tag">AI</span>
+                <span class="tag" data-tag="AI">AI</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI,python,深度学习">
               <h3><a href="2025-08-28/residual-connection-残差连接学习.html">Residual connection 残差连接学习</a></h3>
               <div class="post-meta">
                 <span>2025-08-28</span>
-                <span class="tag">AI</span>
-                <span class="tag">python</span>
-                <span class="tag">深度学习</span>
+                <span class="tag" data-tag="AI">AI</span>
+                <span class="tag" data-tag="python">python</span>
+                <span class="tag" data-tag="深度学习">深度学习</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="python,基础语法">
               <h3><a href="2025-08-26/python中的一些注解解释.html">python中的一些注解解释</a></h3>
               <div class="post-meta">
                 <span>2025-08-26</span>
-                <span class="tag">python</span>
-                <span class="tag">基础语法</span>
+                <span class="tag" data-tag="python">python</span>
+                <span class="tag" data-tag="基础语法">基础语法</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI">
               <h3><a href="2025-08-20/mindspeed框架理解.html">MindSpeed框架理解</a></h3>
               <div class="post-meta">
                 <span>2025-08-20</span>
-                <span class="tag">AI</span>
+                <span class="tag" data-tag="AI">AI</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容">
               <h3><a href="2025-07-07/高可用支付系统设计.html">高可用支付系统设计</a></h3>
               <div class="post-meta">
                 <span>2025-07-07</span>
-                <span class="tag">服务器后端内容</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容">
               <h3><a href="2025-06-30/rabbitmq-all-covered.html">RabbitMQ all covered</a></h3>
               <div class="post-meta">
                 <span>2025-06-30</span>
-                <span class="tag">服务器后端内容</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容">
               <h3><a href="2025-06-27/mongodb-learning.html">MongoDB learning</a></h3>
               <div class="post-meta">
                 <span>2025-06-27</span>
-                <span class="tag">服务器后端内容</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容">
               <h3><a href="2025-06-27/数据库分片（database-sharding）.html">数据库分片（Database Sharding）</a></h3>
               <div class="post-meta">
                 <span>2025-06-27</span>
-                <span class="tag">服务器后端内容</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容,TypeScript/JavaScript">
               <h3><a href="2025-06-26/typescript基本理解和语法糖.html">TypeScript基本理解和语法糖</a></h3>
               <div class="post-meta">
                 <span>2025-06-26</span>
-                <span class="tag">服务器后端内容</span>
-                <span class="tag">TypeScript/JavaScript</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
+                <span class="tag" data-tag="TypeScript/JavaScript">TypeScript/JavaScript</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容">
               <h3><a href="2025-06-25/node-jstypescript实战入门.html">Node.js+TypeScript实战入门</a></h3>
               <div class="post-meta">
                 <span>2025-06-25</span>
-                <span class="tag">服务器后端内容</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Java,软件工程理论">
               <h3><a href="2025-06-12/软件系统设计复习（njuse25）.html">软件系统设计复习（NJUSE25）</a></h3>
               <div class="post-meta">
                 <span>2025-06-12</span>
-                <span class="tag">Java</span>
-                <span class="tag">软件工程理论</span>
+                <span class="tag" data-tag="Java">Java</span>
+                <span class="tag" data-tag="软件工程理论">软件工程理论</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="随笔">
               <h3><a href="2025-05-24/26届找暑期实习小结.html">26届找暑期实习小结</a></h3>
               <div class="post-meta">
                 <span>2025-05-24</span>
-                <span class="tag">随笔</span>
+                <span class="tag" data-tag="随笔">随笔</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2025-05-15/how-to-understand-t2v-modelsopen-sora-mainly.html">How to Understand T2V Models?(Open-Sora MAINLY)</a></h3>
               <div class="post-meta">
                 <span>2025-05-15</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Java,java垃圾回收">
               <h3><a href="2025-05-05/jvm垃圾回收.html">JVM垃圾回收</a></h3>
               <div class="post-meta">
                 <span>2025-05-05</span>
-                <span class="tag">Java</span>
-                <span class="tag">java垃圾回收</span>
+                <span class="tag" data-tag="Java">Java</span>
+                <span class="tag" data-tag="java垃圾回收">java垃圾回收</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Java">
               <h3><a href="2025-05-04/springbootcloud中，application-yml和bootstrap-yml的关联？.html">SpringBoot(Cloud)中，application.yml和bootstrap.yml的关联？</a></h3>
               <div class="post-meta">
                 <span>2025-05-04</span>
-                <span class="tag">Java</span>
+                <span class="tag" data-tag="Java">Java</span>
               </div>
             </li>
-            <li class="post-card">
-              <h3><a href="2025-04-14/data-structure-algorithm-template.html">Data Structure &amp; Algorithm Template</a></h3>
+            <li class="post-card" data-tags="Windows相关,算法与数据结构">
+              <h3><a href="2025-04-14/data-structure-algorithm-template.html">Data Structure &amp;amp; Algorithm Template</a></h3>
               <div class="post-meta">
                 <span>2025-04-14</span>
-                <span class="tag">Windows相关</span>
-                <span class="tag">算法与数据结构</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
+                <span class="tag" data-tag="算法与数据结构">算法与数据结构</span>
               </div>
             </li>
-            <li class="post-card">
-              <h3><a href="2025-04-11/preparation-for-mysqlredis.html">Preparation for MySQL&amp;Redis</a></h3>
+            <li class="post-card" data-tags="服务器后端内容">
+              <h3><a href="2025-04-11/preparation-for-mysqlredis.html">Preparation for MySQL&amp;amp;Redis</a></h3>
               <div class="post-meta">
                 <span>2025-04-11</span>
-                <span class="tag">服务器后端内容</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2025-04-10/面向应用的计算机网络.html">面向应用的计算机网络</a></h3>
               <div class="post-meta">
                 <span>2025-04-10</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2025-04-02/软件系统设计-设计模式.html">软件系统设计——设计模式</a></h3>
               <div class="post-meta">
                 <span>2025-04-02</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2025-03-27/操作系统八股化复习.html">操作系统八股化复习</a></h3>
               <div class="post-meta">
                 <span>2025-03-27</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Java">
               <h3><a href="2025-03-18/preparation-for-java.html">Preparation for Java</a></h3>
               <div class="post-meta">
                 <span>2025-03-18</span>
-                <span class="tag">Java</span>
+                <span class="tag" data-tag="Java">Java</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容,Java,MySQL,数据库,SQL,基础语法">
               <h3><a href="2025-02-09/mysql-basics-operations.html">MySQL basics operations</a></h3>
               <div class="post-meta">
                 <span>2025-02-09</span>
-                <span class="tag">服务器后端内容</span>
-                <span class="tag">Java</span>
-                <span class="tag">MySQL</span>
-                <span class="tag">数据库</span>
-                <span class="tag">SQL</span>
-                <span class="tag">基础语法</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
+                <span class="tag" data-tag="Java">Java</span>
+                <span class="tag" data-tag="MySQL">MySQL</span>
+                <span class="tag" data-tag="数据库">数据库</span>
+                <span class="tag" data-tag="SQL">SQL</span>
+                <span class="tag" data-tag="基础语法">基础语法</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容,Java">
               <h3><a href="2025-02-06/redis实际运用.html">Redis实际运用</a></h3>
               <div class="post-meta">
                 <span>2025-02-06</span>
-                <span class="tag">服务器后端内容</span>
-                <span class="tag">Java</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
+                <span class="tag" data-tag="Java">Java</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2025-01-28/step-into-java-and-python.html">Step into Java and Python</a></h3>
               <div class="post-meta">
                 <span>2025-01-28</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2025-01-20/通配符与正则匹配.html">通配符与正则匹配</a></h3>
               <div class="post-meta">
                 <span>2025-01-20</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2025-01-07/嵌入式速通.html">嵌入式速通</a></h3>
               <div class="post-meta">
                 <span>2025-01-07</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="C++">
               <h3><a href="2024-12-29/c-key-pointsnju-se-2024.html">C++ KEY POINTS(NJU SE 2024)</a></h3>
               <div class="post-meta">
                 <span>2024-12-29</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2024-12-23/hci-systems（人机交互系统）（2024-nju-se）.html">HCI systems（人机交互系统）（2024 NJU SE）</a></h3>
               <div class="post-meta">
                 <span>2024-12-23</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2024-11-15/valorant-attacking-guide.html">Valorant Attacking GUIDE</a></h3>
               <div class="post-meta">
                 <span>2024-11-15</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2024-10-31/数理逻辑（2024se）.html">数理逻辑（2024SE）</a></h3>
               <div class="post-meta">
                 <span>2024-10-31</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="RUST">
               <h3><a href="2024-10-22/rustling-分部分总结.html">rustling 分部分总结</a></h3>
               <div class="post-meta">
                 <span>2024-10-22</span>
-                <span class="tag">RUST</span>
+                <span class="tag" data-tag="RUST">RUST</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="软件工程理论">
               <h3><a href="2024-10-10/smart-contract-generation-with-llm.html">Smart Contract Generation with LLM</a></h3>
               <div class="post-meta">
                 <span>2024-10-10</span>
-                <span class="tag">软件工程理论</span>
+                <span class="tag" data-tag="软件工程理论">软件工程理论</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="RUST">
               <h3><a href="2024-09-30/traits-and-generics-in-rust.html">Traits and Generics in RUST</a></h3>
               <div class="post-meta">
                 <span>2024-09-30</span>
-                <span class="tag">RUST</span>
+                <span class="tag" data-tag="RUST">RUST</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="随笔">
               <h3><a href="2024-09-23/something-written-for-freshmen.html">Something Written For Freshmen</a></h3>
               <div class="post-meta">
                 <span>2024-09-23</span>
-                <span class="tag">随笔</span>
+                <span class="tag" data-tag="随笔">随笔</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2024-09-18/linear-algebra-basics.html">Linear Algebra basics</a></h3>
               <div class="post-meta">
                 <span>2024-09-18</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2024-09-18/人机交互（se-2024.html">人机交互（SE 2024)</a></h3>
               <div class="post-meta">
                 <span>2024-09-18</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2024-09-03/操作系统设计和实现（nju-se）.html">操作系统设计和实现（NJU SE）</a></h3>
               <div class="post-meta">
                 <span>2024-09-03</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="C++">
               <h3><a href="2024-08-29/c-new-features.html">C++ new features</a></h3>
               <div class="post-meta">
                 <span>2024-08-29</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI">
               <h3><a href="2024-08-29/机器学习（njuse-machine-learning.html">机器学习（NJUSE Machine Learning)</a></h3>
               <div class="post-meta">
                 <span>2024-08-29</span>
-                <span class="tag">AI</span>
+                <span class="tag" data-tag="AI">AI</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="C++">
               <h3><a href="2024-08-26/池化思想与c线程池.html">池化思想与C++线程池</a></h3>
               <div class="post-meta">
                 <span>2024-08-26</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="data science">
               <h3><a href="2024-08-19/数学建模-2023年c题解析.html">数学建模——2023年C题解析</a></h3>
               <div class="post-meta">
                 <span>2024-08-19</span>
-                <span class="tag">data science</span>
+                <span class="tag" data-tag="data science">data science</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2024-08-18/pedal-to-the-metal-hlsl.html">pedal to the metal——HLSL</a></h3>
               <div class="post-meta">
                 <span>2024-08-18</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="C++">
               <h3><a href="2024-08-05/how-to-use-conan2-the-perfect-package-manager-for-c.html">How to use Conan2——the perfect package manager for c++</a></h3>
               <div class="post-meta">
                 <span>2024-08-05</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="data science">
               <h3><a href="2024-07-24/ahp层次分析法.html">AHP层次分析法</a></h3>
               <div class="post-meta">
                 <span>2024-07-24</span>
-                <span class="tag">data science</span>
+                <span class="tag" data-tag="data science">data science</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="C++">
               <h3><a href="2024-07-20/basics-of-c-including-oop-and-standard-library.html">Basics of C++ (including OOP and Standard Library)</a></h3>
               <div class="post-meta">
                 <span>2024-07-20</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="data science">
               <h3><a href="2024-07-15/数学建模-2020年c题解析.html">数学建模——2020年C题解析</a></h3>
               <div class="post-meta">
                 <span>2024-07-15</span>
-                <span class="tag">data science</span>
+                <span class="tag" data-tag="data science">data science</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="data science">
               <h3><a href="2024-07-02/数学建模-2019c题解析.html">数学建模——2019C题解析</a></h3>
               <div class="post-meta">
                 <span>2024-07-02</span>
-                <span class="tag">data science</span>
+                <span class="tag" data-tag="data science">data science</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="软件工程理论">
               <h3><a href="2024-06-14/软工二总结（缩略答案）.html">软工二总结（缩略答案）</a></h3>
               <div class="post-meta">
                 <span>2024-06-14</span>
-                <span class="tag">软件工程理论</span>
+                <span class="tag" data-tag="软件工程理论">软件工程理论</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2024-06-04/nju-se-os.html">NJU SE OS</a></h3>
               <div class="post-meta">
                 <span>2024-06-04</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2024-06-04/经典并发处理问题的多种解法.html">经典并发处理问题的多种解法</a></h3>
               <div class="post-meta">
                 <span>2024-06-04</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关,计算机基础">
               <h3><a href="2024-05-27/pv信号量与管程操作.html">PV信号量与管程操作</a></h3>
               <div class="post-meta">
                 <span>2024-05-27</span>
-                <span class="tag">Windows相关</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2024-05-20/高级纹理技术.html">高级纹理技术</a></h3>
               <div class="post-meta">
                 <span>2024-05-20</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="data science">
               <h3><a href="2024-05-17/特征工程（feature-engineering）.html">特征工程（Feature Engineering）</a></h3>
               <div class="post-meta">
                 <span>2024-05-17</span>
-                <span class="tag">data science</span>
+                <span class="tag" data-tag="data science">data science</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="data science">
               <h3><a href="2024-05-16/决策树（decision-tree）.html">决策树（decision tree）</a></h3>
               <div class="post-meta">
                 <span>2024-05-16</span>
-                <span class="tag">data science</span>
+                <span class="tag" data-tag="data science">data science</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2024-05-15/ray-marching.html">Ray Marching</a></h3>
               <div class="post-meta">
                 <span>2024-05-15</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2024-05-15/体积光渲染.html">体积光渲染</a></h3>
               <div class="post-meta">
                 <span>2024-05-15</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="data science">
               <h3><a href="2024-05-12/mathsmatics-modeling.html">Mathsmatics Modeling</a></h3>
               <div class="post-meta">
                 <span>2024-05-12</span>
-                <span class="tag">data science</span>
+                <span class="tag" data-tag="data science">data science</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="C++">
               <h3><a href="2024-05-09/c-templates精粹.html">C++ templates精粹</a></h3>
               <div class="post-meta">
                 <span>2024-05-09</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="C++">
               <h3><a href="2024-05-02/深度探索c对象模型.html">深度探索c++对象模型</a></h3>
               <div class="post-meta">
                 <span>2024-05-02</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2024-04-27/cg专栏之-菲涅尔方程与折射率.html">CG专栏之——菲涅尔方程与折射率</a></h3>
               <div class="post-meta">
                 <span>2024-04-27</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2024-04-18/cg专栏之-加速结构.html">CG专栏之——加速结构</a></h3>
               <div class="post-meta">
                 <span>2024-04-18</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG,C++">
               <h3><a href="2024-04-18/moer框架解析与材质实现.html">Moer框架解析与材质实现</a></h3>
               <div class="post-meta">
                 <span>2024-04-18</span>
-                <span class="tag">CG</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="CG">CG</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="C++">
               <h3><a href="2024-04-12/c中的几个左与右.html">C++中的几个“左与右”</a></h3>
               <div class="post-meta">
                 <span>2024-04-12</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Java,C++">
               <h3><a href="2024-04-11/重构：改善既有代码的设计.html">重构：改善既有代码的设计</a></h3>
               <div class="post-meta">
                 <span>2024-04-11</span>
-                <span class="tag">Java</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="Java">Java</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="C++">
               <h3><a href="2024-04-01/虚函数in-cpp.html">虚函数in cpp</a></h3>
               <div class="post-meta">
                 <span>2024-04-01</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="AI">
               <h3><a href="2024-03-31/60min-熟悉pytorch基础.html">60MIN 熟悉pytorch基础</a></h3>
               <div class="post-meta">
                 <span>2024-03-31</span>
-                <span class="tag">AI</span>
+                <span class="tag" data-tag="AI">AI</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2024-03-27/数据管理基础.html">数据管理基础</a></h3>
               <div class="post-meta">
                 <span>2024-03-27</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Java">
               <h3><a href="2024-03-26/springboot-key-parts.html">SpringBoot key parts</a></h3>
               <div class="post-meta">
                 <span>2024-03-26</span>
-                <span class="tag">Java</span>
+                <span class="tag" data-tag="Java">Java</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2024-03-21/layered-bsdfs.html">BxDFs</a></h3>
               <div class="post-meta">
                 <span>2024-03-21</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2024-03-12/games001-图形学数学基础.html">GAMES001 图形学数学基础</a></h3>
               <div class="post-meta">
                 <span>2024-03-12</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2024-03-11/真实感图形学专题整理.html">真实感图形学专题整理</a></h3>
               <div class="post-meta">
                 <span>2024-03-11</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="C++">
               <h3><a href="2024-03-08/stl库解析与手搓.html">STL库解析</a></h3>
               <div class="post-meta">
                 <span>2024-03-08</span>
-                <span class="tag">C++</span>
+                <span class="tag" data-tag="C++">C++</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2024-03-06/games202记录.html">GAMES202记录</a></h3>
               <div class="post-meta">
                 <span>2024-03-06</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2024-01-29/ray-tracing-in-a-weekend.html">Ray Tracing in a weekend</a></h3>
               <div class="post-meta">
                 <span>2024-01-29</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2024-01-20/solidity智能合约编写学习含prompt构建.html">Solidity智能合约编写学习(含prompt构建)</a></h3>
               <div class="post-meta">
                 <span>2024-01-20</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2024-01-16/操作系统.html">操作系统</a></h3>
               <div class="post-meta">
                 <span>2024-01-16</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="算法与数据结构">
               <h3><a href="2024-01-08/数据结构final汇总.html">数据结构Final汇总</a></h3>
               <div class="post-meta">
                 <span>2024-01-08</span>
-                <span class="tag">算法与数据结构</span>
+                <span class="tag" data-tag="算法与数据结构">算法与数据结构</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2024-01-07/coa23-homework.html">COA23 homework</a></h3>
               <div class="post-meta">
                 <span>2024-01-07</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计算机基础">
               <h3><a href="2023-12-22/ics-notes.html">ICS Notes</a></h3>
               <div class="post-meta">
                 <span>2023-12-22</span>
-                <span class="tag">计算机基础</span>
+                <span class="tag" data-tag="计算机基础">计算机基础</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-12-07/计组机试盘点.html">计组机试盘点</a></h3>
               <div class="post-meta">
                 <span>2023-12-07</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-11-25/latex入门.html">LATEX入门</a></h3>
               <div class="post-meta">
                 <span>2023-11-25</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-11-24/计算几何.html">计算几何</a></h3>
               <div class="post-meta">
                 <span>2023-11-24</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-11-23/games101框架代码与作业解析.html">GAMES101框架代码与作业解析</a></h3>
               <div class="post-meta">
                 <span>2023-11-23</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="CG">
               <h3><a href="2023-10-11/computer-graphics.html">Computer Graphics</a></h3>
               <div class="post-meta">
                 <span>2023-10-11</span>
-                <span class="tag">CG</span>
+                <span class="tag" data-tag="CG">CG</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-09-25/背包问题全解.html">背包问题全解</a></h3>
               <div class="post-meta">
                 <span>2023-09-25</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="PL理论">
               <h3><a href="2023-09-15/软件分析（看看能写多久退课）.html">软件分析（退不了课了）</a></h3>
               <div class="post-meta">
                 <span>2023-09-15</span>
-                <span class="tag">PL理论</span>
+                <span class="tag" data-tag="PL理论">PL理论</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-09-12/what-is-gdb-and-how-to-use-it.html">What is GDB and how to use it</a></h3>
               <div class="post-meta">
                 <span>2023-09-12</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="PL理论">
               <h3><a href="2023-09-09/编译原理.html">编译原理</a></h3>
               <div class="post-meta">
                 <span>2023-09-09</span>
-                <span class="tag">PL理论</span>
+                <span class="tag" data-tag="PL理论">PL理论</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-09-05/计算机组织结构.html">计算机组织结构</a></h3>
               <div class="post-meta">
                 <span>2023-09-05</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="tools">
               <h3><a href="2023-08-27/how-to-write-a-makefile-and-cmakelists.html">How to write makefile and CMakeLists.txt</a></h3>
               <div class="post-meta">
                 <span>2023-08-27</span>
-                <span class="tag">tools</span>
+                <span class="tag" data-tag="tools">tools</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-08-14/c-plus-plusoop-part.html">C PLUS PLUS(OOP part)</a></h3>
               <div class="post-meta">
                 <span>2023-08-14</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="计网">
               <h3><a href="2023-08-11/计算机网络.html">计算机网络</a></h3>
               <div class="post-meta">
                 <span>2023-08-11</span>
-                <span class="tag">计网</span>
+                <span class="tag" data-tag="计网">计网</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-08-08/vscode的一些使用技巧.html">VScode的一些使用技巧</a></h3>
               <div class="post-meta">
                 <span>2023-08-08</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Java">
               <h3><a href="2023-08-05/java进阶模块.html">Java进阶模块</a></h3>
               <div class="post-meta">
                 <span>2023-08-05</span>
-                <span class="tag">Java</span>
+                <span class="tag" data-tag="Java">Java</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-08-05/捣鼓一台chromebook.html">捣鼓一台Chromebook</a></h3>
               <div class="post-meta">
                 <span>2023-08-05</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-07-30/关于脚本权限的问题.html">关于脚本权限的问题</a></h3>
               <div class="post-meta">
                 <span>2023-07-30</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
-              <h3><a href="2023-07-26/data-structure-in-java.html">Data Structure in Java&Cpp</a></h3>
+            <li class="post-card" data-tags="算法与数据结构">
+              <h3><a href="2023-07-26/data-structure-in-java.html">Data Structure in Java&amp;Cpp</a></h3>
               <div class="post-meta">
                 <span>2023-07-26</span>
-                <span class="tag">算法与数据结构</span>
+                <span class="tag" data-tag="算法与数据结构">算法与数据结构</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="算法与数据结构">
               <h3><a href="2023-07-16/leetcode刷题笔记.html">Leetcode刷题笔记</a></h3>
               <div class="post-meta">
                 <span>2023-07-16</span>
-                <span class="tag">算法与数据结构</span>
+                <span class="tag" data-tag="算法与数据结构">算法与数据结构</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关">
               <h3><a href="2023-07-08/线性代数笔记.html">线性代数笔记</a></h3>
               <div class="post-meta">
                 <span>2023-07-08</span>
-                <span class="tag">Windows相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容">
               <h3><a href="2023-06-29/nginx专栏.html">Nginx专栏</a></h3>
               <div class="post-meta">
                 <span>2023-06-29</span>
-                <span class="tag">服务器后端内容</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="服务器后端内容">
               <h3><a href="2023-06-29/成型！论ssl协议配置https.html">成型！论SSL协议配置https</a></h3>
               <div class="post-meta">
                 <span>2023-06-29</span>
-                <span class="tag">服务器后端内容</span>
+                <span class="tag" data-tag="服务器后端内容">服务器后端内容</span>
               </div>
             </li>
-            <li class="post-card">
+            <li class="post-card" data-tags="Windows相关,Linux相关">
               <h3><a href="2023-06-28/vscode-wsl配置.html">VScode WSL配置</a></h3>
               <div class="post-meta">
                 <span>2023-06-28</span>
-                <span class="tag">Windows相关</span>
-                <span class="tag">Linux相关</span>
+                <span class="tag" data-tag="Windows相关">Windows相关</span>
+                <span class="tag" data-tag="Linux相关">Linux相关</span>
               </div>
             </li>
           </ul>
@@ -926,6 +934,59 @@
       </section>
     </main>
   </div>
+
+  <script src="data.json?t=1"></script>
+  <script>
+    // search + tag filter
+    (function() {
+      var searchInput = document.getElementById('searchInput');
+      var postGrid = document.getElementById('postGrid');
+      var postCount = document.getElementById('postCount');
+      var activeFilters = document.getElementById('activeFilters');
+      var activeTag = null;
+      var cards = Array.from(postGrid.querySelectorAll('.post-card'));
+
+      function filter() {
+        var term = searchInput.value.toLowerCase();
+        var visible = 0;
+        cards.forEach(function(card) {
+          var tags = (card.dataset.tags || '').toLowerCase();
+          var text = card.textContent.toLowerCase();
+          var matchSearch = !term || text.includes(term);
+          var matchTag = !activeTag || tags.split(',').includes(activeTag.toLowerCase());
+          if (matchSearch && matchTag) {
+            card.style.display = '';
+            visible++;
+          } else {
+            card.style.display = 'none';
+          }
+        });
+        postCount.textContent = visible;
+        if (activeTag) {
+          activeFilters.innerHTML = '筛选: <span class="tag active-filter-tag">' + activeTag + ' <button onclick="clearFilter()" style="cursor:pointer;background:none;border:none;margin-left:4px;">✕</button></span>';
+          activeFilters.style.display = '';
+        } else {
+          activeFilters.style.display = 'none';
+        }
+      }
+
+      window.clearFilter = function() {
+        activeTag = null;
+        filter();
+      };
+
+      searchInput.addEventListener('input', filter);
+
+      // click tag to filter
+      postGrid.addEventListener('click', function(e) {
+        var tagEl = e.target.closest('.tag');
+        if (!tagEl) return;
+        e.preventDefault();
+        activeTag = tagEl.dataset.tag;
+        filter();
+      });
+    })();
+  </script>
   <script>
     window.BLOG_BOT_CONFIG = {
       endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
