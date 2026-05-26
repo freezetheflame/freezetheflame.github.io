@@ -109,7 +109,7 @@
 </ul>
 <pre><code>* 条件匹配成功的数据是否都修改: true都修改,false只修改一条(默认)
 </code></pre>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><strong>修改器</strong></th>
@@ -132,7 +132,7 @@
 <td>$unset</td>
 <td>删除列</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>db.集合名.update(条件, 新数据 [,是否新增, 是否修改多条])</p>
 <p>任务：修改gcc的username为bareth，age+11，sex字段重命名为sexuality，删除address字段</p>
 <pre><code>db.people.update({username:&quot;gcc&quot;},{
@@ -153,7 +153,7 @@
 <li>{key:0}\t除了key列都显示</li>
 <li>注意:_id列都会存在</li>
 </ul>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><strong>运算符</strong></th>
@@ -188,7 +188,7 @@
 <td>$nin</td>
 <td>not in</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>分页查询也是内置的一种方法（可通过find,sort,skip和limit来实现）</p>
 <pre><code>db.集合名.find().sort().skip(数字).limit(数字)[.count()]
 </code></pre>
@@ -222,7 +222,7 @@
 <p>\t{管道:{表达式}}
 \t...
 ])</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>$group</th>
@@ -245,8 +245,8 @@
 <td>$limit</td>
 <td>限制集合数据返回文档数</td>
 </tr>
-</tbody></table>
-<table>
+</tbody></table></div>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>$sum</th>
@@ -265,7 +265,7 @@
 <td>$max</td>
 <td>最大值</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>比如有以下这些数据：</p>
 <pre><code>db.people.insertOne({_id:1,name:&quot;a&quot;,sex:&quot;男&quot;,age:21})
 </code></pre>

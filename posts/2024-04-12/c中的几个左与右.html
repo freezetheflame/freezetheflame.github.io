@@ -279,7 +279,7 @@ int* p = &foo; // 这是合法的</p>
 <li><p>a non-type <a href="https://en.cppreference.com/w/cpp/language/template_parameters">template parameter</a> of a scalar type;</p>
 </li>
 </ul>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>a <a href="https://en.cppreference.com/w/cpp/language/lambda">lambda expression</a>, such as [](int x){ return x * x; };</th>
@@ -290,7 +290,7 @@ int* p = &foo; // 这是合法的</p>
 <td>a <a href="https://en.cppreference.com/w/cpp/language/constraints">requires-expression</a>, such as requires (T i) { typename T::type; };a specialization of a <a href="https://en.cppreference.com/w/cpp/language/constraints">concept</a>, such as <a href="http://en.cppreference.com/w/cpp/concepts/equality_comparable">std::equality_comparable</a><int>.</td>
 <td></td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h3 id="xvalue">xvalue</h3>
 <p>The following expressions are <em>xvalue expressions</em> :</p>
 <ul>
@@ -303,7 +303,7 @@ int* p = &foo; // 这是合法的</p>
 <li><p>a ? b : c, the <a href="https://en.cppreference.com/w/cpp/language/operator_other#Conditional_operator">ternary conditional</a> expression for certain b and c (see <a href="https://en.cppreference.com/w/cpp/language/operator_other#Conditional_operator">definition</a> for detail);</p>
 </li>
 </ul>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>a function call or an overloaded operator expression, whose return type is rvalue reference to object, such as std::move(x);a[n], the built-in <a href="https://en.cppreference.com/w/cpp/language/operator_member_access#Built-in_subscript_operator">subscript</a> expression, where one operand is an array rvalue;a cast expression to rvalue reference to object type, such as static_cast&lt;char&amp;&amp;&gt;(x);</th>
@@ -318,7 +318,7 @@ int* p = &foo; // 这是合法的</p>
 <td>a <a href="https://en.cppreference.com/w/cpp/language/value_category#Move-eligible_expressions">move-eligible expression</a>.</td>
 <td></td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <pre><code>struct Foo {
 int x;
 </code></pre>

@@ -342,6 +342,63 @@ a {
   font-size: 17px;
 }
 
+.article img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+}
+
+/* Wrap tables and wide images in a scrollable container with shadow hint */
+.article .table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 24px 0;
+  border-radius: 8px;
+  /* shadow on right edge when content overflows */
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent),
+    radial-gradient(ellipse at right, rgba(0,0,0,0.12) 0%, transparent 75%);
+  background-attachment: local, scroll;
+  background-repeat: no-repeat;
+  background-size: 100px 100%, 14px 100%;
+  background-position: left, right;
+}
+
+.article .table-wrap table {
+  margin: 0;
+  border-collapse: collapse;
+  min-width: 100%;
+  white-space: nowrap;
+}
+
+.article .table-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+
+.article .table-wrap::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.04);
+  border-radius: 3px;
+}
+
+.article .table-wrap::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+
+/* Direct table fallback — if not wrapped, still scroll */
+.article > table,
+.article p > table,
+.article li > table,
+.article blockquote > table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
 .article pre {
   overflow-x: auto;
   padding: 16px;

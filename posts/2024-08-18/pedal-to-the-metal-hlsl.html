@@ -34,7 +34,7 @@
 <p>例如，可以使用 HLSL 编写 <a href="https://learn.microsoft.com/zh-cn/windows/win32/direct3d11/vertex-shader-stage">顶点着色器</a>(Vertex shader)或 <a href="https://learn.microsoft.com/zh-cn/windows/win32/direct3d11/pixel-shader-stage">像素着色器</a>，并在 <a href="https://learn.microsoft.com/zh-cn/windows/win32/direct3d12/directx-12-programming-guide">Direct3D</a> 应用程序中的呈现器实现中使用这些着色器。</p>
 <p>或者，可以使用 HLSL 编写计算着色器，也许可以实现物理模拟。 但是，例如，如果你倾向于编写自己的卷积运算符 (，以便在计算着色器中将图像处理) 为 HLSL，则在这种情况下，如果改用 <a href="https://learn.microsoft.com/zh-cn/windows/ai/directml/dml">Direct Machine Learning (DirectML) </a>，你将获得更好的性能。</p>
 <h2 id="基本数据类型">基本数据类型</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>类型</th>
@@ -65,7 +65,7 @@
 <td>double</td>
 <td>64位浮点数</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>注意：一些平台可能不支持<code>int</code>, <code>half</code>和<code>double</code>，如果出现这些情况将会使用<code>float</code>来模拟</p>
 <h2 id="向量（vectors）-in-hlsl">向量（Vectors） in HLSL</h2>
 <p>向量类型可以支持2到4个同类元素</p>
@@ -155,7 +155,7 @@ struct B
 B b;
 b.vec = float4(1.0f, 2.0f, 3.0f, 4.0f);</p>
 <h2 id="变量的修饰符">变量的修饰符</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>关键字</th>
@@ -178,7 +178,7 @@ b.vec = float4(1.0f, 2.0f, 3.0f, 4.0f);</p>
 <td>const</td>
 <td>和C++中的含义相同，它是一个<strong>常量</strong> ，需要被<strong>初始化</strong> 且不可以被修改</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>HLSL有着极其灵活的类型转换机制。HLSL中的类型转换语法和C/C++的相同。下面是一些例子：</p>
 <pre><code>float f = 4.0f;
 </code></pre>
@@ -197,7 +197,7 @@ float3x3 mat = (float3x3)WInvT;\t// 只取4x4矩阵的前3行前3列</p>
 <p>着色器程序在同时执行的时候应当选择相同的分支，以防止硬件在分支的两边执行。通常情况下，硬件会同时将一系列连续的顶点数据传入到顶点着色器并行计算，或者是一系列连续的像素单元传入到像素着色器同时运算等。</p>
 <p>动态分支会由于执行分支指令所带来的开销而导致一定的性能损失，因此要权衡动态分支的开销和可以跳过的指令数目。</p>
 <p>通常情况下编译器会自行选择使用判断还是动态分支，但我们可以通过重写某些属性来修改编译器的行为。我们可以在条件语句前可以选择添加下面两个属性之一：</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>属性</th>
@@ -212,7 +212,7 @@ float3x3 mat = (float3x3)WInvT;\t// 只取4x4矩阵的前3行前3列</p>
 <td>[flatten]</td>
 <td>两边的分支内容都会计算，然后根据条件值选择其中一边。可以避免跳转指令的产生。</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>用法如下：</p>
 <pre><code>[flatten]
 </code></pre>
@@ -231,7 +231,7 @@ float3x3 mat = (float3x3)WInvT;\t// 只取4x4矩阵的前3行前3列</p>
 </li>
 </ol>
 <p>此外，HLSL函数的形参可以指定输入/输出类别：</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>输入输出类别</th>
@@ -250,7 +250,7 @@ float3x3 mat = (float3x3)WInvT;\t// 只取4x4矩阵的前3行前3列</p>
 <td>inout</td>
 <td>即in和out的组合</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>例如：</p>
 <pre><code>bool foo(in bool b,\t\t\t// 输入的bool类型参数
 </code></pre>
@@ -284,7 +284,7 @@ return true;
 </li>
 </ol>
 <h3 id="顶点着色器语义">顶点着色器语义</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>输入</th>
@@ -352,10 +352,10 @@ return true;
 <td>顶点雾</td>
 <td>float</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>n是一个可选的整数，从0开始。比如POSITION0, TEXCOORD1等等。</p>
 <h3 id="像素着色器语义">像素着色器语义</h3>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>输入</th>
@@ -383,10 +383,10 @@ return true;
 <td>深度值</td>
 <td>float</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h3 id="系统值语义">系统值语义</h3>
 <p>所有的系统值都包含前缀<code>SV_</code>。这些系统值将用于某些着色器的特定用途（并未全部列出）</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>系统值</th>
@@ -429,7 +429,7 @@ return true;
 <td>每个实例都会在运行期间自动生成一个ID。仅允许作为顶点着色器的输入</td>
 <td>uint</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>所有的可编程着色器阶段使用通用着色器核心来实现相同的基础功能。此外，顶点着色阶段、几何着色阶段和像素着色阶段则提供了独特的功能，例如几何着色阶段可以生成新的图元或删减图元，像素着色阶段可以决定当前像素是否被抛弃等。下图展示了数据是怎么流向一个着色阶段，以及通用着色器核心与着色器内存资源之间的关系：</p>
 <p><img src="../../assets/images/2024/08/image.png" alt=""></p>
 <p><strong>Input Data</strong> ：顶点着色器从输入装配阶段获取数据；几何着色器则从上一个着色阶段的输出获取等等。通过给形参引入可以使用的系统值可以提供额外的输入</p>

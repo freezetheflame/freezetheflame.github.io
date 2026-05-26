@@ -303,7 +303,7 @@
 <p>常用的关系操作<br>查询操作：选择、投影、连接、除、并、差、交、笛卡尔积<br>选择、投影、并、差、笛卡尔积是5种基本操作</p>
 <p>特点：操作的对象和结果都是集合，一次一集合的方式</p>
 <p>关系代数是一种抽象的查询语言，它用对关系的运算来表达查询</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><strong>运 算 符</strong></th>
@@ -342,7 +342,7 @@
 <td><strong>÷</strong></td>
 <td><strong>除</strong></td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h3 id="使用的记号">使用的记号</h3>
 <p><img src="../../assets/images/2024/03/image-96.png" alt=""></p>
 <p><img src="../../assets/images/2024/03/image-97.png" alt=""></p>
@@ -427,7 +427,7 @@
 <p><img src="../../assets/images/2024/04/image-34.png" alt=""></p>
 <p><img src="../../assets/images/2024/04/image-35.png" alt=""></p>
 <p>在SQL中域的概念使用数据类型来实现，定义表的属性时需要指明其数据类型及长度</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><strong>数据类型</strong></th>
@@ -502,7 +502,7 @@
 <td><strong>INTERVAL</strong></td>
 <td><strong>时间间隔类型</strong></td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h3 id="修改基本表">修改基本表</h3>
 <p><img src="../../assets/images/2024/04/image-37.png" alt=""></p>
 <p><img src="../../assets/images/2024/04/image-36.png" alt=""></p>
@@ -529,7 +529,7 @@
 <p><img src="../../assets/images/2024/04/image-42.png" alt=""></p>
 <p><img src="../../assets/images/2024/04/image-44.png" alt="此图片的 alt 属性为空；文件名为 image-43.png"></p>
 <p><img src="../../assets/images/2024/04/image-46.png" alt=""></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><strong>Sname</strong></th>
@@ -552,7 +552,7 @@
 <td>张立</td>
 <td>1995</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p><img src="../../assets/images/2024/04/image-47.png" alt=""></p>
 <p><img src="../../assets/images/2024/04/image-48.png" alt=""></p>
 <p>指定DISTINCT关键词，去掉表中重复的行</p>
@@ -572,7 +572,7 @@
 <p><img src="../../assets/images/2024/04/image-57.png" alt=""></p>
 <h3 id="自身连接">自身连接</h3>
 <p><img src="../../assets/images/2024/04/image-58.png" alt=""></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><strong>课程号****Cno</strong></th>
@@ -623,8 +623,8 @@
 <td><strong>6</strong></td>
 <td><strong>4</strong></td>
 </tr>
-</tbody></table>
-<table>
+</tbody></table></div>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><strong>Cno</strong></th>
@@ -643,7 +643,7 @@
 <td><strong>5</strong></td>
 <td><strong>6</strong></td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h2 id="chap15-sql数据查询（嵌套）">chap15 SQL数据查询（嵌套）</h2>
 <p>一个SELECT-FROM-WHERE语句称为一个查询块,然后我们可以在WHERE中嵌套</p>
 <p>将一个查询块嵌套在另一个查询块的WHERE子句或HAVING短语的条件中的查询称为嵌套查询<br>SELECT Sname /<em>外层查询/父查询</em> /<br>FROM Student<br>WHERE Sno IN<br>( SELECT Sno /<em>内层查询/子查询</em> /<br>FROM SC<br>WHERE Cno= &#39; 2 &#39;);</p>
@@ -651,7 +651,7 @@
 <p>不能使用ORDER BY子句<br>有些嵌套查询可以用连接运算替代<br><strong>谨慎使用</strong> 嵌套查询</p>
 <p><img src="../../assets/images/2024/05/image-89.png" alt=""></p>
 <p><img src="../../assets/images/2024/05/image-92.png" alt=""></p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><strong>Sno</strong></th>
@@ -669,7 +669,7 @@
 <td><strong>刘晨</strong></td>
 <td><strong>CS</strong></td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>SELECT Sno, Sname, Sdept<br>FROM Student<br>WHERE Sdept IN<br>(SELECT Sdept<br>FROM Student<br>WHERE Sname= &#39; 刘晨 &#39;);<br>此查询为<strong>不相关子查询</strong> 。</p>
 <p>用<strong>自身连接</strong> 完成[例 3.55]查询要求<br>SELECT S1.Sno, S1.Sname,S1.Sdept<br>FROM Student S1,Student S2<br>WHERE S1.Sdept = S2.Sdept AND<br>S2.Sname = &#39;刘晨&#39;;</p>
 <p>在[例 3.55]中，由于一个学生只可能在一个系学习，则可以用 = 代替IN ：<br>SELECT Sno,Sname,Sdept<br>FROM Student<br>WHERE Sdept =<br>(SELECT Sdept<br>FROM Student<br>WHERE Sname= &#39;刘晨&#39;);</p>

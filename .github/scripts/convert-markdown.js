@@ -146,7 +146,10 @@ function processMarkdownFile(filePath) {
   if (!frontmatter.title && content.startsWith('# ')) {
     title = content.split('\n')[0].slice(2).trim();
   }
-  const htmlContent = marked.parse(content);
+  const htmlContent = marked.parse(content)
+    // Wrap tables in scrollable containers for overflow handling
+    .replace(/<table>/g, '<div class="table-wrap"><table>')
+    .replace(/<\/table>/g, '</table></div>');
   const fullHtml = createHtmlTemplate(filePath, title, htmlContent, frontmatter.tags || [], frontmatter.date || '');
   fs.writeFileSync(filePath.replace(/\.md$/, '.html'), fullHtml);
   console.log(`Converted ${filePath}`);

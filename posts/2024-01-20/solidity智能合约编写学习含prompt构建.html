@@ -261,7 +261,7 @@ contract SimpleAuction {
 <p>请按照以下格式回答我的问题并完成一段智能合约的书写： 这是我的需求：【秘密竞价的智能合约，满足所有竞价人不能得知其他人在竞价时候的出价，在竞价结束之后比对所有竞价人的实际出价和竞价是否相符，采取公开哈希比较的方式】 请你根据上面的需求完成以下任务：1.分析这一段需求，是否有不理解的地方？如果有的话请用1.2.3.的列表方式回复，与后文用回车相隔 2.指出这一段合约中所需要注意的几个关键点，以1.2.3.的列表方式列出，3-5个即可 3.完成这一段智能合约的撰写，要求采用solidity书写，严格满足语法要求 你完成这些任务之后我会给予你足够的奖励，并且如果做的好的话会有丰厚的小费</p>
 <h2 id="matt-nigh的crispe-prompt-framework"><strong>Matt Nigh的CRISPE Prompt Framework</strong></h2>
 <h2 id="how-to-build-prompts---crispe-example">How to Build Prompts -&gt; CRISPE Example</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>Step</th>
@@ -288,7 +288,7 @@ contract SimpleAuction {
 <td>Experiment</td>
 <td><code>Give me multiple different examples.</code></td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p><strong>CR：Capacity and Role（能力与角色）。你希望 ChatGPT 扮演怎样的角色。</strong><br><strong>I：Insight（洞察），背景信息和上下文。</strong><br><strong>S：Statement（陈述），你希望 ChatGPT 做什么。</strong><br><strong>P：Personality（个性），你希望 ChatGPT 以什么风格或方式回答你。</strong><br><strong>E：Experiment（实验），要求 ChatGPT 为你提供多个答案。</strong></p>
 <h2 id="根据需求分析模块的收集信息进行prompt编写">根据需求分析模块的收集信息进行prompt编写</h2>
 <p>采用的technique：character</p>
@@ -350,7 +350,7 @@ contract SimpleAuction {
 <p>请注意，智能合约的需求清单可能会因不同的区块链平台和合约类型而有所不同，因此在编写需求清单时，请根据具体的合约技术和平台进行相应的调整和补充。</p>
 <p><img src="../../assets/images/2024/02/image-13.png" alt="此图片的alt属性为空；文件名为image-12.png"></p>
 <p>所以我们需要设计一个表格状态的需求清单，并且描述他们的对应特征，且为了之后的代码生成的工作，在尽可能节约prompt数量的前提下完成需求清单的传达</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>用户类型</th>
@@ -473,7 +473,7 @@ contract SimpleAuction {
 <td></td>
 <td></td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>阶段2prompt设计</p>
 
         <div class="button-row">

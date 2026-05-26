@@ -288,7 +288,7 @@
 <li><p>接着，确定校验关系，根据校验位的二进制表示，可以得到如下的表格：</p>
 </li>
 </ul>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>校验位</th>
@@ -311,11 +311,11 @@
 <td>P8</td>
 <td>H9 H10 H11 H12</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <ul>
 <li>然后，计算校验位的值，通过对每一组数据位进行异或运算，得到如下的结果：</li>
 </ul>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>校验位</th>
@@ -343,7 +343,7 @@
 <td>0000</td>
 <td>0</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <ul>
 <li>最后，将校验位和数据位组合起来，得到海明码为 011010001001。</li>
 </ul>
@@ -351,7 +351,7 @@
 <ul>
 <li>首先，对每一组校验位和数据位进行异或运算，得到如下的结果：</li>
 </ul>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>校验位</th>
@@ -379,7 +379,7 @@
 <td>0011</td>
 <td>1</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <ul>
 <li><p>然后，将这些结果组合起来，得到错误向量为 1111，这个二进制表示就是出错的位置，也就是第 15 位。</p>
 </li>

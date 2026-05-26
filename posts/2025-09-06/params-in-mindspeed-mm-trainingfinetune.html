@@ -32,7 +32,7 @@
         </div>
         <p><a href="https://gitee.com/ascend/MindSpeed-MM/">MindSpeed-MM: 华为昇腾面向大规模分布式训练的多模态大模型套件，支撑多模态生成、多模态理解。</a></p>
 <h2 id="训练相关参数配置（位于各个bash脚本中）："><strong>训练相关参数配置（位于各个bash脚本中）：</strong></h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th><strong>参数名（及其常用别名，备注中会阐释一些细微差异）</strong></th>
@@ -365,7 +365,7 @@
 <td></td>
 <td></td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>adam-beta1| <strong>Adam优化器一阶动量衰减率</strong>|  float| 0.9| | | | | 一般采取原始Adam论文取值0.9<br>adam-beta2| <strong>Adam优化器二阶动量衰减率</strong>|  float| 0.999| | | | | <strong>问题</strong> ：过大的β2可能导致早期训练不稳定，可尝试0.95<br>no-gradient-accumulation-fusion| <strong>禁用梯度累积融合</strong>|  none| none| | | | | <strong>禁用场景</strong> ：遇到NaN梯度或显存不足时<br>seed| <strong>全局随机种子</strong>|  int| 42| | | | |<br>bf16| <strong>bfloat16混合精度训练</strong>|  none| none| | | | |<br>use-flash-attn| <strong>启用FlashAttention优化</strong> 通过IO感知算法减少注意力计算的HBM访问| none| none| | | | |<br>use-distributed-optimizer| <strong>分布式优化器（ZeRO-3级）</strong> 将优化器状态（动量、方差）分散到所有设备| none| none| | | | |<br>--no-load-optim &amp; --no-load-rng| <strong>不保存优化器状态/随机状态</strong>| | | | | | | <strong>背景</strong> ：优化器状态通常占检查点70%+空间<br>num_workers| 加载子进程数| int| | | | | |<br>| | | | | | | |   </p>
 <h2 id="模型相关参数配置（位于modeljson中，需要和bash脚本中一些参数完成联动）">模型相关参数配置（位于model.json中，需要和bash脚本中一些参数完成联动）</h2>
 <p>注意，当开启PP时，<code>model.json</code>中配置的<code>vision_encoder</code>和<code>text_decoder</code>的<code>pipeline_num_layer</code>参数控制了各自的PP切分策略。对于流水线并行，要先处理<code>vision_encoder</code>再处理<code>text_decoder</code>。</p>

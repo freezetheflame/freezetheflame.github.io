@@ -460,7 +460,7 @@ WHERE EXISTS (SELECT column_name FROM another_table WHERE condition);</p>
 <p>覆盖索引的含义：</p>
 <p>覆盖索引是指一个索引包含了查询所需的所有列，因此不需要访问表中的数据行就能完成查询。</p>
 <h2 id="数据库的几种连接">数据库的几种连接</h2>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>连接类型</th>
@@ -488,11 +488,11 @@ WHERE EXISTS (SELECT column_name FROM another_table WHERE condition);</p>
 <td>返回两个表<strong>所有行</strong> （不匹配的字段均显示为 <code>NULL</code>）</td>
 <td>合并左右表所有数据</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p><img src="../../assets/images/2025/04/image-50.png" alt=""></p>
 <h3 id="example">example</h3>
 <h4 id="1️⃣-employees-表">1️⃣ <strong>employees 表</strong></h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>id</th>
@@ -520,9 +520,9 @@ WHERE EXISTS (SELECT column_name FROM another_table WHERE condition);</p>
 <td>David</td>
 <td>NULL</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h4 id="2️⃣-departments-表">2️⃣ <strong>departments 表</strong></h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>id</th>
@@ -541,14 +541,14 @@ WHERE EXISTS (SELECT column_name FROM another_table WHERE condition);</p>
 <td>3</td>
 <td>HR</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h3 id="left-join">left join</h3>
 <pre><code>SELECT * 
 </code></pre>
 <p>FROM employees
 LEFT JOIN departments 
 ON employees.department_id = departments.id;</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>id</th>
@@ -586,14 +586,14 @@ ON employees.department_id = departments.id;</p>
 <td>NULL</td>
 <td>NULL</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h3 id="right-join">right join</h3>
 <pre><code>SELECT * 
 </code></pre>
 <p>FROM employees
 RIGHT JOIN departments 
 ON employees.department_id = departments.id;</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>id</th>
@@ -631,14 +631,14 @@ ON employees.department_id = departments.id;</p>
 <td>3</td>
 <td>HR</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h3 id="full-outer-join（全连接）">FULL OUTER JOIN（全连接）</h3>
 <p>（在 MySQL 中需用 <code>UNION</code> 模拟）：</p>
 <pre><code>SELECT * FROM employees LEFT JOIN departments ON employees.department_id = departments.id
 </code></pre>
 <p>UNION
 SELECT * FROM employees RIGHT JOIN departments ON employees.department_id = departments.id;</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>id</th>
@@ -683,7 +683,7 @@ SELECT * FROM employees RIGHT JOIN departments ON employees.department_id = depa
 <td>3</td>
 <td>HR</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h3 id="in和exist的差别">in和exist的差别</h3>
 <p>当使用 IN 时，MySQL 会首先执行子查询，然后将子查询的结果集用于外部查询的条件。这意味着子查询的结果集需要全部加载到内存中。</p>
 <p>而 EXISTS 会对外部查询的每一行，执行一次子查询。如果子查询返回任何行，则 <code>EXISTS</code> 条件为真。<code>EXISTS</code> 关注的是子查询是否返回行，而不是返回的具体值。</p>

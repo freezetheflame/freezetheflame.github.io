@@ -58,7 +58,7 @@
 </blockquote>
 <p>但在现实中，<strong>P_train ≠ P_test</strong> ，这就是<strong>分布偏移（distribution shift）</strong> 。</p>
 <p>虽然我们无法直接“看到”整个分布，但可以通过以下方式来<strong>量化两个分布之间的差异</strong> ：</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>方法</th>
@@ -103,7 +103,7 @@
 <td>✅（无标签也可用）</td>
 <td>[6]</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h4 id="二-两样本问题（two-sample-problem）"><strong>二. 两样本问题（Two-sample Problem）</strong></h4>
 <p>假设有两组观测到的样本集X={x1....xm}X=\\{ {x_1....x_m} \\}  和Y={y1,......ym}Y = \\{ y_1,...... y_m \\} 分别独立同分布采样自分布 p 和分布 q，如何通过 和 判断分布 p 和 q 是否相同？也就是说，我们<strong>无法直接获取到关于分布 p 和 分布 q 的任何信息</strong> ，比如均值和方差，是否是高斯分布等，<strong>只能基于观察到的两组样本判断它们背后是否来自于同一个分布</strong> ？</p>
 <p><img src="../../assets/images/2025/12/image.png" alt=""></p>

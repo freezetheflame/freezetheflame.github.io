@@ -322,7 +322,7 @@ return output_tensor, partial(loss_func, loss_mask)
 <p>首先从initialize_megatron 开始一步步向下解释初始化的实现</p>
 <h3 id="1-initialize_megatron">1. initialize_megatron</h3>
 <p>initialize_megatron是 Megatron 框架中用于初始化分布式训练环境的核心函数。它负责设置全局变量、初始化分布式通信、配置随机种子、加载依赖等</p>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>关键函数</th>
@@ -365,7 +365,7 @@ return output_tensor, partial(loss_func, loss_mask)
 <td>_initialize_tp_communicators</td>
 <td>初始化<a href="https://zhida.zhihu.com/search?content_id=253076883&content_type=Article&match_order=1&q=%E5%BC%A0%E9%87%8F%E6%A8%A1%E5%9E%8B%E5%B9%B6%E8%A1%8C&zhida_source=entity">张量模型并行</a>的通信器，支持通信与计算重叠优化。</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p><strong>这段代码主要是基于解析的参数，调用_initialize_distributed 进行分布式的初始化。</strong></p>
 <p><strong>源代码如下：</strong></p>
 <pre><code>#megatron 训练初始化。 主要是分布式环境。
@@ -464,7 +464,7 @@ else:
 </li>
 </ol>
 <h4 id="32-需要关注的关键全局变量，进程组创建完成后，会保存以下全局环境变量中"><strong>3.2 需要关注的关键全局变量，进程组创建完成后，会保存以下全局环境变量中</strong></h4>
-<table>
+<div class="table-wrap"><table>
 <thead>
 <tr>
 <th>变量名</th>
@@ -491,7 +491,7 @@ else:
 <td>_MODEL_PARALLEL_GROUP</td>
 <td>模型并行（TP+PP）的组合组</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <h4 id="33-torchdistributednew_group">3.3 torch.distributed.new_group</h4>
 <p>这里介绍一个关键函数，<code>torch.distributed.new_group</code>是 PyTorch 分布式通信的核心函数，用于<strong>创建新的进程组（Process Group）</strong> ，允许用户定义不同的进程子集进行独立的通信操作。</p>
 <p>** <em>源代码中每个并行策略的进程组，都是先基于RankGenerator 实现的逻辑生成分配的rank list， 然后使用 torch.distributed.new_group 创建进程组，最后保存的全局变量中，供训练通信使用。</em>**</p>
