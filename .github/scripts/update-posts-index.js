@@ -201,6 +201,16 @@ ${cards}
         activeTag = tagEl.dataset.tag;
         filter();
       });
+
+      // read ?tag= from URL on page load
+      (function() {
+        var params = new URLSearchParams(window.location.search);
+        var tagParam = params.get('tag');
+        if (tagParam) {
+          activeTag = tagParam;
+          filter();
+        }
+      })();
     })();
   </script>
   <script>
@@ -549,14 +559,12 @@ ${postItems}
 
       searchInput.addEventListener('input', filter);
 
-      // click tag in list or cloud
+      // click tag in cloud → navigate to posts page with filter
       document.addEventListener('click', function(e) {
         var tagEl = e.target.closest('.tag-link');
         if (!tagEl) return;
         e.preventDefault();
-        activeTag = tagEl.dataset.tag;
-        filter();
-        document.querySelector('.sections').scrollIntoView({behavior: 'smooth'});
+        window.location.href = 'posts/index.html?tag=' + encodeURIComponent(tagEl.dataset.tag);
       });
     })();
   </script>

@@ -985,6 +985,16 @@
         activeTag = tagEl.dataset.tag;
         filter();
       });
+
+      // read ?tag= from URL on page load
+      (function() {
+        var params = new URLSearchParams(window.location.search);
+        var tagParam = params.get('tag');
+        if (tagParam) {
+          activeTag = tagParam;
+          filter();
+        }
+      })();
     })();
   </script>
   <script>
