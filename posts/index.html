@@ -927,8 +927,43 @@
         </div>
         <aside class="panel side-panel" aria-label="文章侧栏">
           <section class="side-block">
+            <h2>标签云</h2>
+            <div class="tag-cloud" id="tagCloud">
+              <span class="tag-link" data-tag="Windows相关" style="font-size:24px">Windows相关 (25)</span>
+              <span class="tag-link" data-tag="AI" style="font-size:20px">AI (15)</span>
+              <span class="tag-link" data-tag="计算机基础" style="font-size:19px">计算机基础 (13)</span>
+              <span class="tag-link" data-tag="C++" style="font-size:18px">C++ (12)</span>
+              <span class="tag-link" data-tag="CG" style="font-size:18px">CG (12)</span>
+              <span class="tag-link" data-tag="服务器后端内容" style="font-size:18px">服务器后端内容 (12)</span>
+              <span class="tag-link" data-tag="Java" style="font-size:17px">Java (9)</span>
+              <span class="tag-link" data-tag="深度学习" style="font-size:17px">深度学习 (9)</span>
+              <span class="tag-link" data-tag="data science" style="font-size:16px">data science (7)</span>
+              <span class="tag-link" data-tag="LLM" style="font-size:16px">LLM (6)</span>
+              <span class="tag-link" data-tag="python" style="font-size:16px">python (6)</span>
+              <span class="tag-link" data-tag="算法与数据结构" style="font-size:16px">算法与数据结构 (6)</span>
+              <span class="tag-link" data-tag="软件工程理论" style="font-size:15px">软件工程理论 (4)</span>
+              <span class="tag-link" data-tag="framework" style="font-size:14px">framework (2)</span>
+              <span class="tag-link" data-tag="PL理论" style="font-size:14px">PL理论 (2)</span>
+              <span class="tag-link" data-tag="RUST" style="font-size:14px">RUST (2)</span>
+              <span class="tag-link" data-tag="图论" style="font-size:14px">图论 (2)</span>
+              <span class="tag-link" data-tag="基础语法" style="font-size:14px">基础语法 (2)</span>
+              <span class="tag-link" data-tag="随笔" style="font-size:14px">随笔 (2)</span>
+              <span class="tag-link" data-tag="2PC" style="font-size:13px">2PC (1)</span>
+              <span class="tag-link" data-tag="algorithm" style="font-size:13px">algorithm (1)</span>
+              <span class="tag-link" data-tag="java垃圾回收" style="font-size:13px">java垃圾回收 (1)</span>
+              <span class="tag-link" data-tag="Linux相关" style="font-size:13px">Linux相关 (1)</span>
+              <span class="tag-link" data-tag="MindSpeed" style="font-size:13px">MindSpeed (1)</span>
+              <span class="tag-link" data-tag="MoE" style="font-size:13px">MoE (1)</span>
+              <span class="tag-link" data-tag="MySQL" style="font-size:13px">MySQL (1)</span>
+              <span class="tag-link" data-tag="SQL" style="font-size:13px">SQL (1)</span>
+              <span class="tag-link" data-tag="tools" style="font-size:13px">tools (1)</span>
+              <span class="tag-link" data-tag="transformer" style="font-size:13px">transformer (1)</span>
+              <span class="tag-link" data-tag="TTT" style="font-size:13px">TTT (1)</span>
+            </div>
+          </section>
+          <section class="side-block">
             <h2>目录状态</h2>
-            <p>文章中心只展示稳定可访问的内容。</p>
+            <p>文章中心只展示稳定可访问的内容。共 118 篇文章，40 个标签。</p>
           </section>
         </aside>
       </section>
@@ -977,9 +1012,9 @@
 
       searchInput.addEventListener('input', filter);
 
-      // click tag to filter
-      postGrid.addEventListener('click', function(e) {
-        var tagEl = e.target.closest('.tag');
+      // click tag (list or cloud) to filter
+      document.addEventListener('click', function(e) {
+        var tagEl = e.target.closest('.tag, .tag-link');
         if (!tagEl) return;
         e.preventDefault();
         activeTag = tagEl.dataset.tag;

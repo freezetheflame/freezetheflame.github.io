@@ -75,9 +75,32 @@ function writeDataJson(posts) {
   console.log(`Generated posts/data.json with ${data.length} posts.`);
 }
 
+// ── shared: tag cloud ────────────────────────────────────
+
+function tagCount(posts) {
+  const cnt = {};
+  posts.forEach((p) => {
+    p.tags.forEach((t) => { cnt[t] = (cnt[t] || 0) + 1; });
+  });
+  return cnt;
+}
+
+function buildTagCloud(posts) {
+  const cnt = tagCount(posts);
+  const maxCount = Math.max(...Object.values(cnt), 1);
+  const sorted = Object.entries(cnt)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 30);
+  return sorted.map(([tag, count]) => {
+    const size = Math.round(13 + (count / maxCount) * 11);
+    return `<span class="tag-link" data-tag="${esc(tag)}" style="font-size:${size}px">${esc(tag)} (${count})</span>`;
+  }).join('\n              ');
+}
+
 // ── posts/index.html ─────────────────────────────────────
 
 function renderPostsPage(posts) {
+  const tagCloudHtml = buildTagCloud(posts);
   const cards = posts.map((p) => {
     const tags = p.tags.map((t) => `<span class="tag" data-tag="${esc(t)}">${esc(t)}</span>`).join('\n                ');
     const href = p.path.replace(/^posts\//, '');
@@ -143,8 +166,14 @@ ${cards}
         </div>
         <aside class="panel side-panel" aria-label="文章侧栏">
           <section class="side-block">
+            <h2>标签云</h2>
+            <div class="tag-cloud" id="tagCloud">
+              ${tagCloudHtml}
+            </div>
+          </section>
+          <section class="side-block">
             <h2>目录状态</h2>
-            <p>文章中心只展示稳定可访问的内容。</p>
+            <p>文章中心只展示稳定可访问的内容。共 ${posts.length} 篇文章，${Object.keys(tagCount(posts)).length} 个标签。</p>
           </section>
         </aside>
       </section>
@@ -193,9 +222,9 @@ ${cards}
 
       searchInput.addEventListener('input', filter);
 
-      // click tag to filter
-      postGrid.addEventListener('click', function(e) {
-        var tagEl = e.target.closest('.tag');
+      // click tag (list or cloud) to filter
+      document.addEventListener('click', function(e) {
+        var tagEl = e.target.closest('.tag, .tag-link');
         if (!tagEl) return;
         e.preventDefault();
         activeTag = tagEl.dataset.tag;
@@ -242,20 +271,8 @@ function renderHomepage(posts) {
             </li>`;
   }).join('\n');
 
-  // tag cloud — count frequency, cap at 30 tags
-  const tagCount = {};
-  posts.forEach((p) => {
-    p.tags.forEach((t) => { tagCount[t] = (tagCount[t] || 0) + 1; });
-  });
-  const maxCount = Math.max(...Object.values(tagCount), 1);
-  const sortedTags = Object.entries(tagCount)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, 30);
-  const tagCloud = sortedTags.map(([tag, count]) => {
-    // font size: 13px (1 post) → 24px (max posts)
-    const size = Math.round(13 + (count / maxCount) * 11);
-    return `<span class="tag-link" data-tag="${esc(tag)}" style="font-size:${size}px">${esc(tag)} (${count})</span>`;
-  }).join('\n              ');
+  // tag cloud
+  const tagCloudHtml = buildTagCloud(posts);
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -495,7 +512,7 @@ ${postItems}
           <section class="side-block">
             <h3>标签云</h3>
             <div class="tag-cloud" id="tagCloud">
-              ${tagCloud}
+              ${tagCloudHtml}
             </div>
           </section>
 
