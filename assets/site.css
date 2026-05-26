@@ -257,6 +257,35 @@ a {
   font-weight: 800;
 }
 
+/* tag cloud link pills */
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.tag-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 0 11px;
+  background: rgba(49, 95, 157, 0.1);
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 160ms ease, transform 120ms ease;
+  user-select: none;
+}
+
+.tag-link:hover {
+  background: rgba(49, 95, 157, 0.2);
+  transform: scale(1.05);
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;
