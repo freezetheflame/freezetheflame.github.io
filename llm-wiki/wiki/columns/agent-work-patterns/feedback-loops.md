@@ -147,8 +147,11 @@ Accepting agent output without verification, then discovering problems later. Al
 
 ## Sources
 
-- Hands-on iteration patterns from Hermes Agent, Claude Code, and Codex CLI workflows
-- Review practices adapted from human code review literature and pair programming research
+- [LLM Powered Autonomous Agents](https://lilianweng.github.io/posts/2023-06-23-agent/) — Lilian Weng (Jun 2023). Definitive survey of agent architectures with planning, reflection/self-criticism, and iterative refinement — the theoretical foundation for review-correct-optimize cycles.
+- [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629) — Yao et al. (2022). Foundational paper introducing the think-act-observe loop that underpins modern agent iteration patterns and feedback cycles.
+- [Claude Code quality reports update](https://simonwillison.net/2026/Apr/24/recent-claude-code-quality-reports/) — Simon Willison (Apr 2026). Real-world case study: community feedback about quality regression → investigation → fixes, demonstrating the practical review-correct cycle.
+- [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) — Simon Willison. Curated patterns covering iteration workflows and quality gates across multiple agent tools.
+- Review practices adapted from human code review literature and pair programming research.
 
 ## Related Pages
 

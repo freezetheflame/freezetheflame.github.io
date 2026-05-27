@@ -126,8 +126,11 @@ A good first message:
 
 ## Sources
 
-- Patterns derived from hands-on use of Hermes Agent, Claude Code, and Codex CLI
-- Context-window behavior documented in LLM benchmarking literature (lost-in-the-middle effect, attention dilution)
+- [Prompt Engineering Overview](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview) — Anthropic (Official Documentation). Definitive guide on prompt construction, what information to include/exclude, system prompts, and context window management.
+- [Prompt Engineering](https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/) — Lilian Weng (Mar 2023). Comprehensive academic survey of prompt engineering techniques including chain-of-thought, self-consistency, and knowledge augmentation.
+- [Claude Skills are awesome](https://simonwillison.net/2025/Oct/16/claude-skills/) — Simon Willison (Oct 2025). Covers Anthropic's "Skills" mechanism for injecting curated context at runtime — a practical implementation of context layering.
+- [OpenAI Prompt Engineering Guide](https://platform.openai.com/docs/guides/prompt-engineering) — OpenAI (Official Documentation). Strategies for giving clear instructions, providing reference text, and splitting complex tasks.
+- Direct experience with Hermes Agent, Claude Code, and Codex CLI.
 
 ## Related Pages
 

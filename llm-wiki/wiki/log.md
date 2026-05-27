@@ -6,6 +6,8 @@
 - Added column index, core pages, and cross-references to existing concepts (Compilation Over Retrieval, Memory Harness).
 - Updated `wiki/index.md` to list the new column under a subsection.
 - Updated `app/wiki-data.js` with entries for all four new pages (index + 3 topic pages).
+- Added authoritative web references to all three topic pages: Anthropic engineering blog (Building Effective Agents, Prompt Engineering), Lilian Weng's surveys (LLM Agents, Prompt Engineering), Simon Willison's agent coverage (Claude Cowork, Codex CLI, Claude Skills, quality reports), ReAct paper (Yao et al. 2022), and OpenAI's prompt engineering guide.
+- Fixed markdown table rendering in `wiki-core.js` and added table CSS styles.
 
 ## 2026-05-05
 

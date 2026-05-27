@@ -90,8 +90,10 @@ Before submitting a delegation, verify:
 
 ## Sources
 
-- Direct experience with Hermes Agent, Claude Code, Codex CLI, and OpenCode
-- Patterns observed across the AI SE Testing column's literature on agent evaluation
+- [Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) — Anthropic Engineering Blog (Dec 2024). The canonical guide on when to build agents vs. simple workflows, task decomposition, and the "agent loop" pattern. Essential reading for understanding how to scope work for agents.
+- [First impressions of Claude Cowork](https://simonwillison.net/2026/Jan/12/claude-cowork/) — Simon Willison (Jan 2026). Practical analysis of Anthropic's general-purpose agent, demonstrating how large ambiguous tasks get decomposed and delegated.
+- [Codex CLI adds /goal](https://simonwillison.net/2026/Apr/30/codex-goals/) — Simon Willison (Apr 2026). OpenAI's goal-based delegation pattern where the agent iterates until a goal is complete.
+- [Agentic Engineering Patterns](https://simonwillison.net/guides/agentic-engineering-patterns/) — Simon Willison. Curated collection of patterns for building with AI coding agents, covering delegation strategies across multiple models and tools.
 
 ## Related Pages
 
