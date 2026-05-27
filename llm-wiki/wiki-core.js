@@ -68,13 +68,14 @@ export function columnPages(pages, prefix) {
   return readerPages(pages).filter((page) => page.path.startsWith(prefix));
 }
 
-export function markdownToHtml(markdown) {
+export function markdownToHtml(markdown, { toc = false } = {}) {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const html = [];
   let inList = false;
   let inCode = false;
   let inTable = false;
   let inTbody = false;
+  let inBlockquote = false;
   let paragraph = [];
 
   const flushParagraph = () => {
@@ -87,6 +88,12 @@ export function markdownToHtml(markdown) {
     if (!inList) return;
     html.push("</ul>");
     inList = false;
+  };
+
+  const closeBlockquote = () => {
+    if (!inBlockquote) return;
+    html.push("</blockquote>");
+    inBlockquote = false;
   };
 
   const closeTable = () => {
@@ -106,10 +113,14 @@ export function markdownToHtml(markdown) {
       .split("|")
       .map((cell) => cell.trim());
 
+  // Pre-build TOC if requested
+  const tocHtml = toc ? buildTOC(markdown) : "";
+
   for (const line of lines) {
     if (line.startsWith("```")) {
       flushParagraph();
       closeList();
+      closeBlockquote();
       closeTable();
       if (inCode) {
         html.push("</code></pre>");
@@ -126,13 +137,41 @@ export function markdownToHtml(markdown) {
       continue;
     }
 
+    // Blockquote
+    const blockquoteMatch = /^>\s?(.*)$/.exec(line);
+    if (blockquoteMatch) {
+      flushParagraph();
+      closeList();
+      closeTable();
+      if (!inBlockquote) {
+        html.push("<blockquote>");
+        inBlockquote = true;
+      }
+      html.push(`<p>${renderInline(blockquoteMatch[1] || "&nbsp;")}</p>`);
+      continue;
+    }
+
+    if (inBlockquote) {
+      closeBlockquote();
+    }
+
+    // Horizontal rule
+    if (/^(-{3,}|\*{3,})\s*$/.test(line.trim())) {
+      flushParagraph();
+      closeList();
+      closeBlockquote();
+      closeTable();
+      html.push("<hr>");
+      continue;
+    }
+
     // Table handling
     if (isTableRow(line)) {
       flushParagraph();
       closeList();
+      closeBlockquote();
 
       if (!inTable) {
-        // Start of table: first row is header
         html.push("<table>");
         html.push("<thead>");
         html.push("<tr>");
@@ -147,7 +186,6 @@ export function markdownToHtml(markdown) {
       }
 
       if (isTableSep(line)) {
-        // Separator row — skip, start tbody
         if (!inTbody) {
           html.push("<tbody>");
           inTbody = true;
@@ -155,9 +193,7 @@ export function markdownToHtml(markdown) {
         continue;
       }
 
-      // Data row
       if (!inTbody) {
-        // separator was missing — start tbody anyway
         html.push("<tbody>");
         inTbody = true;
       }
@@ -170,7 +206,6 @@ export function markdownToHtml(markdown) {
     }
 
     if (inTable) {
-      // Non-table line after a table — close it
       closeTable();
     }
 
@@ -178,6 +213,7 @@ export function markdownToHtml(markdown) {
     if (heading) {
       flushParagraph();
       closeList();
+      closeBlockquote();
       const level = heading[1].length;
       const text = heading[2].trim();
       html.push(`<h${level} id="${slugify(text)}">${renderInline(text)}</h${level}>`);
@@ -186,6 +222,7 @@ export function markdownToHtml(markdown) {
 
     if (/^[-*]\s+/.test(line)) {
       flushParagraph();
+      closeBlockquote();
       if (!inList) {
         html.push("<ul>");
         inList = true;
@@ -197,6 +234,7 @@ export function markdownToHtml(markdown) {
     if (line.trim() === "") {
       flushParagraph();
       closeList();
+      closeBlockquote();
       continue;
     }
 
@@ -205,9 +243,39 @@ export function markdownToHtml(markdown) {
 
   flushParagraph();
   closeList();
+  closeBlockquote();
   closeTable();
   if (inCode) html.push("</code></pre>");
-  return html.join("\n");
+
+  const body = html.join("\n");
+  return tocHtml ? tocHtml + body : body;
+}
+
+export function buildTOC(markdown) {
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  const items = [];
+  let inCode = false;
+
+  for (const line of lines) {
+    if (line.startsWith("```")) { inCode = !inCode; continue; }
+    if (inCode) continue;
+
+    const heading = /^(#{2,3})\s+(.+)$/.exec(line);
+    if (!heading) continue;
+
+    const level = heading[1].length;
+    const text = heading[2].trim();
+    items.push({ level, text, id: slugify(text) });
+  }
+
+  if (items.length < 3) return "";
+
+  const links = items.map((item) => {
+    const cls = item.level === 2 ? "toc-h2" : "toc-h3";
+    return `<a class="${cls}" href="#${item.id}">${escapeHtml(item.text)}</a>`;
+  }).join("");
+
+  return `<nav class="toc"><p class="toc-title">On this page</p><div class="toc-list">${links}</div></nav>`;
 }
 
 function renderInline(value) {
