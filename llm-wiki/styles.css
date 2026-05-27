@@ -452,6 +452,37 @@ body {
 .content strong { font-weight: 650; color: #1c1917; }
 
 /* ══════════════════════════════════════════════
+   BREADCRUMB
+   ══════════════════════════════════════════════ */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+.breadcrumb a {
+  color: var(--fg-muted);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color var(--transition);
+}
+.breadcrumb a:hover { color: var(--fg); }
+.breadcrumb .sep {
+  color: var(--fg-dim);
+  font-weight: 300;
+  margin: 0 2px;
+  user-select: none;
+}
+.breadcrumb .current {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════════════
    TOC (Table of Contents)
    ══════════════════════════════════════════════ */
 .toc {

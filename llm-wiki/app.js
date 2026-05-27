@@ -64,7 +64,8 @@ async function renderPage(path) {
     content.innerHTML = renderHome(markdown);
   } else {
     const useTOC = !path.endsWith("/index.md") && !path.startsWith("agent/");
-    content.innerHTML = markdownToHtml(markdown, { toc: useTOC });
+    const breadcrumb = buildBreadcrumb(page);
+    content.innerHTML = breadcrumb + markdownToHtml(markdown, { toc: useTOC });
   }
 
   content.querySelectorAll("a[data-path]").forEach((link) => {
@@ -192,6 +193,35 @@ function renderTags() {
     button.addEventListener("click", () => { searchInput.value = tag; handleSearch(); });
     tagList.append(button);
   });
+}
+
+function buildBreadcrumb(page) {
+  const parts = [];
+  // Always start with Wiki Index
+  parts.push(`<a href="#/${encodeURIComponent("wiki/index.md")}" data-path="wiki/index.md">Wiki Index</a>`);
+
+  const pathParts = page.path.replace("wiki/", "").split("/");
+  // Remove filename
+  const fileName = pathParts.pop();
+
+  // Build intermediate paths
+  let accumulated = "wiki";
+  for (const part of pathParts) {
+    accumulated += "/" + part;
+    const indexPage = state.pages.find((p) => p.path === accumulated + "/index.md");
+    if (indexPage) {
+      parts.push(`<a href="#/${encodeURIComponent(indexPage.path)}" data-path="${indexPage.path}">${indexPage.title}</a>`);
+    } else {
+      // Capitalize the segment as fallback
+      const label = part.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      parts.push(`<span>${label}</span>`);
+    }
+  }
+
+  // Current page (not a link)
+  parts.push(`<span class="current">${page.title}</span>`);
+
+  return `<nav class="breadcrumb" aria-label="Breadcrumb">${parts.join(' <span class="sep">/</span> ')}</nav>`;
 }
 
 init().catch((error) => { content.innerHTML = `<p class="error">${error.message}</p>`; });
