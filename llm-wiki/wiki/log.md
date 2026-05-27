@@ -2,12 +2,10 @@
 
 ## 2026-05-27
 
-- Created the Agent Work Patterns column with three initial pages: Effective Delegation, Context Engineering, and Feedback Loops. This column captures practical patterns for human-agent collaboration — task scoping, context design, and iteration discipline — complementing the research-oriented AI SE Testing column.
-- Added column index, core pages, and cross-references to existing concepts (Compilation Over Retrieval, Memory Harness).
-- Updated `wiki/index.md` to list the new column under a subsection.
-- Updated `app/wiki-data.js` with entries for all four new pages (index + 3 topic pages).
-- Added authoritative web references to all three topic pages: Anthropic engineering blog (Building Effective Agents, Prompt Engineering), Lilian Weng's surveys (LLM Agents, Prompt Engineering), Simon Willison's agent coverage (Claude Cowork, Codex CLI, Claude Skills, quality reports), ReAct paper (Yao et al. 2022), and OpenAI's prompt engineering guide.
-- Fixed markdown table rendering in `wiki-core.js` and added table CSS styles.
+- Created the Agent Work Patterns column with three initial pages: Effective Delegation, Context Engineering, and Feedback Loops.
+- Added authoritative web references to all three topic pages.
+- Fixed markdown table rendering in wiki-core.js and added table CSS styles.
+- Complete UI redesign inspired by lucasastorian/llmwiki: modern CSS design system, tree sidebar navigation, auto-generated TOC, blockquote/horizontal-rule markdown support, dual-column homepage dashboard.
 
 ## 2026-05-05
 
