@@ -1,5 +1,12 @@
 # Log
 
+## 2026-05-27
+
+- Created the Agent Work Patterns column with three initial pages: Effective Delegation, Context Engineering, and Feedback Loops. This column captures practical patterns for human-agent collaboration — task scoping, context design, and iteration discipline — complementing the research-oriented AI SE Testing column.
+- Added column index, core pages, and cross-references to existing concepts (Compilation Over Retrieval, Memory Harness).
+- Updated `wiki/index.md` to list the new column under a subsection.
+- Updated `app/wiki-data.js` with entries for all four new pages (index + 3 topic pages).
+
 ## 2026-05-05
 
 - Finalized the first research direction as `RepoMemoryBench`, a benchmark-first study of whether current general software agents fail on testing tasks because they lack testing-specific project memory.

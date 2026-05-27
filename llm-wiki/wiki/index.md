@@ -47,6 +47,7 @@ The active research direction is now benchmark-first: use **RepoMemoryBench** to
 
 ## Columns
 
+### AI SE Testing
 - [[wiki/columns/ai-se-testing/index.md|AI SE Testing Column]]: the main hub for the current research direction.
 - [[wiki/columns/ai-se-testing/reading-list.md|AI SE Testing Reading List]]: primary papers, benchmark pages, and project reports.
 - [[wiki/columns/ai-se-testing/test-generation.md|Test Generation]]
@@ -58,6 +59,12 @@ The active research direction is now benchmark-first: use **RepoMemoryBench** to
 - [[wiki/columns/ai-se-testing/experiment-design-repomemorytest.md|RepoMemoryTest Experiment Design]]
 - [[wiki/columns/ai-se-testing/literature-collection-plan.md|RepoMemoryBench Literature Collection Plan]]
 - [[wiki/columns/ai-se-testing/repomemorybench-source-matrix.md|RepoMemoryBench Source Matrix]]
+
+### Agent Work Patterns
+- [[wiki/columns/agent-work-patterns/index.md|Agent Work Patterns Column]]: practical patterns for working effectively with AI coding agents.
+- [[wiki/columns/agent-work-patterns/effective-delegation.md|Effective Delegation]]: how to scope and describe tasks so agents succeed.
+- [[wiki/columns/agent-work-patterns/context-engineering.md|Context Engineering]]: designing the information agents receive for focus and accuracy.
+- [[wiki/columns/agent-work-patterns/feedback-loops.md|Feedback Loops]]: the review-correct-optimize cycle for reliable agent output.
 
 ## Open Research Tracks
 

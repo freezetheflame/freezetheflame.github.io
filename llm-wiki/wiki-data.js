@@ -1,6 +1,6 @@
 export const wikiManifest = {
   title: "LLM Wiki Starter",
-  updated: "2026-05-05",
+  updated: "2026-05-27",
   pages: [
     {
       path: "wiki/index.md",
@@ -115,6 +115,30 @@ export const wikiManifest = {
       title: "RepoMemoryBench Source Matrix",
       tags: ["column", "research", "sources", "benchmark"],
       summary: "Primary-source matrix for building the RepoMemoryBench related-work base.",
+    },
+    {
+      path: "wiki/columns/agent-work-patterns/index.md",
+      title: "Agent Work Patterns Column",
+      tags: ["column", "agent", "workflow"],
+      summary: "Practical patterns for working effectively with AI coding agents — delegation, context, and iteration.",
+    },
+    {
+      path: "wiki/columns/agent-work-patterns/effective-delegation.md",
+      title: "Effective Delegation",
+      tags: ["column", "agent", "delegation"],
+      summary: "How to scope and describe tasks so AI agents succeed on the first attempt.",
+    },
+    {
+      path: "wiki/columns/agent-work-patterns/context-engineering.md",
+      title: "Context Engineering",
+      tags: ["column", "agent", "context"],
+      summary: "Designing the information agents receive — what to include, what to withhold, and how to layer context.",
+    },
+    {
+      path: "wiki/columns/agent-work-patterns/feedback-loops.md",
+      title: "Feedback Loops",
+      tags: ["column", "agent", "iteration"],
+      summary: "The review-correct-optimize cycle that turns agent output from draft to production-grade.",
     },
     {
       path: "agent/profile.md",
