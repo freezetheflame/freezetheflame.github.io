@@ -71,6 +71,20 @@ async function renderPage(path) {
   content.querySelectorAll("a[data-path]").forEach((link) => {
     link.addEventListener("click", () => { state.currentPath = link.dataset.path; });
   });
+
+  // Fix internal anchor links (href="#something") — scroll instead of breaking hash route
+  content.querySelectorAll("a[href^='#']").forEach((link) => {
+    const href = link.getAttribute("href");
+    if (href.startsWith("#/")) return; // wiki route — handled by hashchange
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const id = href.slice(1);
+      const target = document.getElementById(id);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
 }
 
 async function loadMarkdown(path) {
