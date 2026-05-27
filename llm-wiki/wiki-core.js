@@ -73,6 +73,8 @@ export function markdownToHtml(markdown) {
   const html = [];
   let inList = false;
   let inCode = false;
+  let inTable = false;
+  let inTbody = false;
   let paragraph = [];
 
   const flushParagraph = () => {
@@ -87,10 +89,28 @@ export function markdownToHtml(markdown) {
     inList = false;
   };
 
+  const closeTable = () => {
+    if (!inTable) return;
+    if (inTbody) html.push("</tbody>");
+    html.push("</table>");
+    inTable = false;
+    inTbody = false;
+  };
+
+  const isTableRow = (line) => /^\|.+\|$/.test(line.trim());
+  const isTableSep = (line) => /^\|[\s\-:]+\|[\s\-:|]+$/.test(line.trim());
+
+  const parseTableCells = (line) =>
+    line.trim()
+      .replace(/^\||\|$/g, "")
+      .split("|")
+      .map((cell) => cell.trim());
+
   for (const line of lines) {
     if (line.startsWith("```")) {
       flushParagraph();
       closeList();
+      closeTable();
       if (inCode) {
         html.push("</code></pre>");
         inCode = false;
@@ -104,6 +124,54 @@ export function markdownToHtml(markdown) {
     if (inCode) {
       html.push(`${escapeHtml(line)}\n`);
       continue;
+    }
+
+    // Table handling
+    if (isTableRow(line)) {
+      flushParagraph();
+      closeList();
+
+      if (!inTable) {
+        // Start of table: first row is header
+        html.push("<table>");
+        html.push("<thead>");
+        html.push("<tr>");
+        for (const cell of parseTableCells(line)) {
+          html.push(`<th>${renderInline(cell)}</th>`);
+        }
+        html.push("</tr>");
+        html.push("</thead>");
+        inTable = true;
+        inTbody = false;
+        continue;
+      }
+
+      if (isTableSep(line)) {
+        // Separator row — skip, start tbody
+        if (!inTbody) {
+          html.push("<tbody>");
+          inTbody = true;
+        }
+        continue;
+      }
+
+      // Data row
+      if (!inTbody) {
+        // separator was missing — start tbody anyway
+        html.push("<tbody>");
+        inTbody = true;
+      }
+      html.push("<tr>");
+      for (const cell of parseTableCells(line)) {
+        html.push(`<td>${renderInline(cell)}</td>`);
+      }
+      html.push("</tr>");
+      continue;
+    }
+
+    if (inTable) {
+      // Non-table line after a table — close it
+      closeTable();
     }
 
     const heading = /^(#{1,4})\s+(.+)$/.exec(line);
@@ -137,6 +205,7 @@ export function markdownToHtml(markdown) {
 
   flushParagraph();
   closeList();
+  closeTable();
   if (inCode) html.push("</code></pre>");
   return html.join("\n");
 }

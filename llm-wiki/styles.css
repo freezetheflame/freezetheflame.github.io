@@ -380,6 +380,42 @@ body {
   color: #e8edf5;
 }
 
+.content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0 24px;
+  font-size: 14px;
+}
+
+.content thead {
+  border-bottom: 2px solid var(--ink);
+}
+
+.content th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.content td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  color: #263244;
+  vertical-align: top;
+}
+
+.content tr:last-child td {
+  border-bottom: 0;
+}
+
+.content td code,
+.content th code {
+  font-size: 13px;
+  background: #f0f3f7;
+}
+
 .error {
   color: var(--accent-2);
 }
