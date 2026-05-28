@@ -141,6 +141,36 @@ export const wikiManifest = {
       summary: "The review-correct-optimize cycle that turns agent output from draft to production-grade.",
     },
     {
+      path: "wiki/columns/vibe-code-maintenance/index.md",
+      title: "Vibe Code Maintenance Column",
+      tags: ["column", "testing", "vibe-code"],
+      summary: "Using traditional testing discipline to diagnose, heal, and maintain vibe-coded repositories.",
+    },
+    {
+      path: "wiki/columns/vibe-code-maintenance/problem-statement.md",
+      title: "Problem Statement: Vibe Code Maintenance",
+      tags: ["column", "testing", "vibe-code"],
+      summary: "Why vibe coding creates specification debt, predictable failure modes, and the issue explosion pattern.",
+    },
+    {
+      path: "wiki/columns/vibe-code-maintenance/testing-strategies.md",
+      title: "Testing Strategies for Vibe-Coded Repos",
+      tags: ["column", "testing", "strategy"],
+      summary: "Inverted testing pyramid: which test types give the highest ROI for vibe-code maintenance.",
+    },
+    {
+      path: "wiki/columns/vibe-code-maintenance/diagnostic-workflow.md",
+      title: "Diagnostic Workflow",
+      tags: ["column", "testing", "workflow"],
+      summary: "Repeatable 4-phase process for triaging a vibe-coded repo in 1–3 hours.",
+    },
+    {
+      path: "wiki/columns/vibe-code-maintenance/case-studies.md",
+      title: "Case Studies: Vibe Code Maintenance",
+      tags: ["column", "testing", "case-study"],
+      summary: "Real-world vibe-coded repositories under testing intervention — candidates, patterns, and results.",
+    },
+    {
       path: "agent/profile.md",
       title: "Wiki Agent Profile",
       tags: ["agent", "memory"],

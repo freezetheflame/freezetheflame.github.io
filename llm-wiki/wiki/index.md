@@ -66,6 +66,13 @@ The active research direction is now benchmark-first: use **RepoMemoryBench** to
 - [[wiki/columns/agent-work-patterns/context-engineering.md|Context Engineering]]: designing the information agents receive for focus and accuracy.
 - [[wiki/columns/agent-work-patterns/feedback-loops.md|Feedback Loops]]: the review-correct-optimize cycle for reliable agent output.
 
+### Vibe Code Maintenance
+- [[wiki/columns/vibe-code-maintenance/index.md|Vibe Code Maintenance Column]]: using traditional testing discipline to diagnose, heal, and maintain vibe-coded repositories.
+- [[wiki/columns/vibe-code-maintenance/problem-statement.md|Problem Statement]]: why vibe coding creates specification debt and predictable failure modes.
+- [[wiki/columns/vibe-code-maintenance/testing-strategies.md|Testing Strategies]]: which testing approaches give the highest ROI for vibe-code maintenance.
+- [[wiki/columns/vibe-code-maintenance/diagnostic-workflow.md|Diagnostic Workflow]]: repeatable 4-phase process for triaging a vibe-coded repo in 1-3 hours.
+- [[wiki/columns/vibe-code-maintenance/case-studies.md|Case Studies]]: real-world vibe-coded repos and testing interventions.
+
 ## Open Research Tracks
 
 - **Verified test generation**: generate tests, then filter by execution, coverage, mutation signal, and flakiness.
@@ -74,6 +81,7 @@ The active research direction is now benchmark-first: use **RepoMemoryBench** to
 - **GUI/E2E testing agents**: translate user intent into browser or app interactions with inspectable assertions.
 - **Fuzzing and security testing**: use LLMs for seed generation, fuzz driver creation, and exploit triage while preserving reproducibility.
 - **Project memory for testing**: benchmark whether current agents miss commands, failure modes, flaky tests, and setup notes across repeated repository work.
+- **Vibe code maintenance**: develop a repeatable testing-first workflow for healing vibe-coded repos, build a case study catalog, and measure testing ROI on specification debt.
 
 ## Workflows
 

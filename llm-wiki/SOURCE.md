@@ -2,7 +2,7 @@
 
 - Source repository: `https://github.com/freezetheflame/LLM_WIKI`
 - Synced branch: `main`
-- Synced commit: `c6e4337`
+- Synced commit: `3763ba4`
 - Integration mode: vendored static copy with blog-specific path and style adaptation
 
 This directory is intentionally committed as static files instead of a Git submodule so GitHub Pages can publish it directly and reliably.

@@ -1,5 +1,11 @@
 # Log
 
+## 2026-05-29
+
+- Created the Vibe Code Maintenance column with four initial pages: Problem Statement, Testing Strategies, Diagnostic Workflow, and Case Studies. This column flips the AI-testing relationship: instead of using AI to generate tests, use traditional testing discipline to heal vibe-coded repositories. It complements AI SE Testing (can AI test?) and Agent Work Patterns (how to work with AI).
+- Added the column to wiki/index.md, app/wiki-data.js, and the Open Research Tracks.
+- Set up idea capture system: ~/ideas/inbox.md for quick-capture, ~/ideas/add-idea.sh for CLI addition, and a daily cron job (check-idea-inbox.py) that nudges on stale (>3 day) ideas.
+
 ## 2026-05-27
 
 - Created the Agent Work Patterns column with three initial pages: Effective Delegation, Context Engineering, and Feedback Loops.
