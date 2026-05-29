@@ -257,7 +257,7 @@
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 6px;
+      margin-bottom: 14px;
     }
 
     .section-header h2 {
@@ -301,24 +301,37 @@
 
     .post-list {
       display: grid;
-      gap: 0;
+      gap: 12px;
       margin: 0;
       padding: 0;
       list-style: none;
     }
 
     .post-card {
-      padding: 15px 0;
-      border-bottom: 1px solid var(--border);
-      transition: padding var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-panel);
+      transition: border-color var(--transition), box-shadow var(--transition);
     }
 
-    .post-card:last-child { border-bottom: none; }
+    .post-card:hover {
+      border-color: var(--border-strong);
+      box-shadow: 0 2px 12px rgba(28, 25, 23, 0.06);
+    }
+
+    .post-card-body {
+      flex: 1;
+      min-width: 0;
+    }
 
     .post-card-title {
-      margin: 0 0 5px;
+      margin: 0 0 4px;
       font-size: 17px;
-      font-weight: 600;
+      font-weight: 650;
       line-height: 1.3;
     }
 
@@ -330,6 +343,17 @@
 
     .post-card-title a:hover { color: var(--green); }
 
+    .post-preview {
+      margin: 0 0 8px;
+      color: var(--fg-muted);
+      font-size: 13px;
+      line-height: 1.55;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
     .post-card-meta {
       display: flex;
       flex-wrap: wrap;
@@ -337,7 +361,7 @@
       gap: 6px;
     }
 
-    .post-date { color: var(--fg-dim); font-size: 13px; }
+    .post-date { color: var(--fg-dim); font-size: 12px; }
 
     .post-card-tags {
       display: flex;
@@ -352,6 +376,24 @@
       color: var(--blue);
       font-size: 11px;
       font-weight: 600;
+    }
+
+    .post-card-arrow {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px; height: 32px;
+      border-radius: var(--radius-sm);
+      color: var(--fg-dim);
+      text-decoration: none;
+      font-size: 16px;
+      transition: all var(--transition);
+    }
+
+    .post-card:hover .post-card-arrow {
+      background: var(--green);
+      color: #fff;
     }
 
     .view-all {
@@ -496,109 +538,169 @@
 
       <ul class="post-list" id="postList">
           <li class="post-card" data-tags="AI,工程">
-            <h3 class="post-card-title"><a href="posts/2026-05-30/llm-understand-large-codebase-strategies.html">LLM 如何理解大型代码仓库：主流策略与技术选型指南</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2026-05-30</span>
-              <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">工程</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-05-30/llm-understand-large-codebase-strategies.html">LLM 如何理解大型代码仓库：主流策略与技术选型指南</a></h3>
+              <p class="post-preview">随着 AI coding agent 的成熟（Codex CLI 86k⭐、Claude Code、Aider 等），一个核心工程问题浮出水面：大模型怎么&quot;看懂&quot;一个动辄几万行、几十万行的代码仓库</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-05-30</span>
+                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">工程</span></span>
+              </div>
             </div>
+            <a href="posts/2026-05-30/llm-understand-large-codebase-strategies.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="AI,python">
-            <h3 class="post-card-title"><a href="posts/2025-12-15/python中的一些特别性质文件.html">python中的一些特别性质文件</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-12-15</span>
-              <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">python</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-12-15/python中的一些特别性质文件.html">python中的一些特别性质文件</a></h3>
+              <p class="post-preview">init.py 在Python工程里，当python检测到一个目录下存在init.py文件时，python就会把它当成一个模块(module)。Module跟C＋＋的命名空间和Java的Package的概念很像，都是为了科学地组织化工...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-12-15</span>
+                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">python</span></span>
+              </div>
             </div>
+            <a href="posts/2025-12-15/python中的一些特别性质文件.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="AI,深度学习,LLM,TTT">
-            <h3 class="post-card-title"><a href="posts/2025-12-10/test-time-training.html">Test Time Training</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-12-10</span>
-              <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">TTT</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-12-10/test-time-training.html">Test Time Training</a></h3>
+              <p class="post-preview">Most models in machine learning today are fixed during deployment</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-12-10</span>
+                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">TTT</span></span>
+              </div>
             </div>
+            <a href="posts/2025-12-10/test-time-training.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="python">
-            <h3 class="post-card-title"><a href="posts/2025-11-30/pip包管理机制.html">pip包管理机制</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-11-30</span>
-              <span class="post-card-tags"><span class="post-tag">python</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-11-30/pip包管理机制.html">pip包管理机制</a></h3>
+              <p class="post-preview">学到python之后，所有初学者接触到的第一件事（除开语法之外），实际上就是python的包管理方式，其中，如果要下载一个新的python依赖库，初学者大多数会采取pip install 的方式完成对python依赖包的安装，当然在对...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-11-30</span>
+                <span class="post-card-tags"><span class="post-tag">python</span></span>
+              </div>
             </div>
+            <a href="posts/2025-11-30/pip包管理机制.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="博客,入门,教程">
-            <h3 class="post-card-title"><a href="posts/2025-11-18/我的第一篇博客文章.html">我的第一篇博客文章</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-11-18</span>
-              <span class="post-card-tags"><span class="post-tag">博客</span><span class="post-tag">入门</span><span class="post-tag">教程</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-11-18/我的第一篇博客文章.html">我的第一篇博客文章</a></h3>
+              <p class="post-preview">欢迎来到这个新的博客空间。这篇文章用于确认博客的基础结构已经跑通：文章目录可以访问、正文样式清晰、代码块和列表也能正常展示</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-11-18</span>
+                <span class="post-card-tags"><span class="post-tag">博客</span><span class="post-tag">入门</span><span class="post-tag">教程</span></span>
+              </div>
             </div>
+            <a href="posts/2025-11-18/我的第一篇博客文章.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="AI,深度学习,framework">
-            <h3 class="post-card-title"><a href="posts/2025-11-01/动态图and静态图（dl-frameworks）.html">动态图and静态图（DL Frameworks）</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-11-01</span>
-              <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">framework</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-11-01/动态图and静态图（dl-frameworks）.html">动态图and静态图（DL Frameworks）</a></h3>
+              <p class="post-preview">参考内容：4.1</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-11-01</span>
+                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">framework</span></span>
+              </div>
             </div>
+            <a href="posts/2025-11-01/动态图and静态图（dl-frameworks）.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="Windows相关,深度学习,LLM">
-            <h3 class="post-card-title"><a href="posts/2025-10-24/optimizer-in-neural-network.html">Optimizer in Neural Network</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-10-24</span>
-              <span class="post-card-tags"><span class="post-tag">Windows相关</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-10-24/optimizer-in-neural-network.html">Optimizer in Neural Network</a></h3>
+              <p class="post-preview">参考文章：理解神经网络优化器：从梯度到 AdamW 之旅 by Shashank Sane Oct, 2025 Medium Understanding Neural Network Optimizers: A Journey fro...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-10-24</span>
+                <span class="post-card-tags"><span class="post-tag">Windows相关</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span></span>
+              </div>
             </div>
+            <a href="posts/2025-10-24/optimizer-in-neural-network.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="AI">
-            <h3 class="post-card-title"><a href="posts/2025-10-17/大语言模型的数值精度llm-percision.html">大语言模型的数值精度(llm percision)</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-10-17</span>
-              <span class="post-card-tags"><span class="post-tag">AI</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-10-17/大语言模型的数值精度llm-percision.html">大语言模型的数值精度(llm percision)</a></h3>
+              <p class="post-preview">引文：淺談DeepLearning的浮點數精度FP32/FP16/TF32/BF16........(以LLM為例) 揭开 LLMs 中的精度之谜：低比特格式如何赋能大型语言模型 by Yogesh Kumar Medium Demy...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-10-17</span>
+                <span class="post-card-tags"><span class="post-tag">AI</span></span>
+              </div>
             </div>
+            <a href="posts/2025-10-17/大语言模型的数值精度llm-percision.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="算法与数据结构,图论,algorithm,最短路">
-            <h3 class="post-card-title"><a href="posts/2025-09-29/最短路问题实战.html">最短路问题实战</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-09-29</span>
-              <span class="post-card-tags"><span class="post-tag">算法与数据结构</span><span class="post-tag">图论</span><span class="post-tag">algorithm</span><span class="post-tag">最短路</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-09-29/最短路问题实战.html">最短路问题实战</a></h3>
+              <p class="post-preview">当出现一个复杂度ok，可以直接套用最短路算法处理的问题时，是否经历过：想不起来，不知道如何选择Floyd，SPFA，Dijkstra？这篇文章会根据OI wiki的介绍全面覆盖这几个算法以及最简单的实现描述，并且结合更加具体的题目描述</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-09-29</span>
+                <span class="post-card-tags"><span class="post-tag">算法与数据结构</span><span class="post-tag">图论</span><span class="post-tag">algorithm</span><span class="post-tag">最短路</span></span>
+              </div>
             </div>
+            <a href="posts/2025-09-29/最短路问题实战.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="AI">
-            <h3 class="post-card-title"><a href="posts/2025-09-26/attention-in-an-article.html">Attention in an article</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-09-26</span>
-              <span class="post-card-tags"><span class="post-tag">AI</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-09-26/attention-in-an-article.html">Attention in an article</a></h3>
+              <p class="post-preview">explanation cartoon recommended:Transformer Explainer: LLM Transformer Model Visually Explained 参考文章： (99+ 封私信 / 81 条...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-09-26</span>
+                <span class="post-card-tags"><span class="post-tag">AI</span></span>
+              </div>
             </div>
+            <a href="posts/2025-09-26/attention-in-an-article.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="AI,深度学习,LLM,transformer">
-            <h3 class="post-card-title"><a href="posts/2025-09-18/rope-in-llm.html">RoPE in LLM</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-09-18</span>
-              <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">transformer</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-09-18/rope-in-llm.html">RoPE in LLM</a></h3>
+              <p class="post-preview">引用以下文章： RoPE: A Detailed Guide to Rotary Position Embedding in Modern LLMs by Allen Liang Medium Rotary Positional Em...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-09-18</span>
+                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">transformer</span></span>
+              </div>
             </div>
+            <a href="posts/2025-09-18/rope-in-llm.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="AI,深度学习,LLM,framework">
-            <h3 class="post-card-title"><a href="posts/2025-09-16/高可用的ai-application系统设计.html">高可用的AI application系统设计</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-09-16</span>
-              <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">framework</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-09-16/高可用的ai-application系统设计.html">高可用的AI application系统设计</a></h3>
+              <p class="post-preview">以上就是一个关于数据标注系统的AI application的系统架构，我们本篇文章主要围绕agent作为核心的框架进行探讨，更加偏向于基于api调用的模型核心构成的AI Application而非模型微调训练为核心的框架（这样能够动态...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-09-16</span>
+                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">framework</span></span>
+              </div>
             </div>
+            <a href="posts/2025-09-16/高可用的ai-application系统设计.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="AI,深度学习,LLM,MindSpeed">
-            <h3 class="post-card-title"><a href="posts/2025-09-06/params-in-mindspeed-mm-trainingfinetune.html">Params in MindSpeed-MM Training&amp;amp;Finetune</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-09-06</span>
-              <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">MindSpeed</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-09-06/params-in-mindspeed-mm-trainingfinetune.html">Params in MindSpeed-MM Training&amp;amp;Finetune</a></h3>
+              <p class="post-preview">MindSpeedMM: 华为昇腾面向大规模分布式训练的多模态大模型套件，支撑多模态生成、多模态理解</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-09-06</span>
+                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">MindSpeed</span></span>
+              </div>
             </div>
+            <a href="posts/2025-09-06/params-in-mindspeed-mm-trainingfinetune.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="服务器后端内容,软件工程理论,2PC,高可用">
-            <h3 class="post-card-title"><a href="posts/2025-09-05/高可用中的2pc3pc以及幂等性概念.html">高可用中的2PC,3PC以及幂等性概念</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-09-05</span>
-              <span class="post-card-tags"><span class="post-tag">服务器后端内容</span><span class="post-tag">软件工程理论</span><span class="post-tag">2PC</span><span class="post-tag">高可用</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-09-05/高可用中的2pc3pc以及幂等性概念.html">高可用中的2PC,3PC以及幂等性概念</a></h3>
+              <p class="post-preview">在分布式系统中，协调跨多个资源的交易可能很复杂。想象一下，你有多套系统或数据库需要同步工作，确保在失败的情况下所有操作都提交或回滚 。实现这一目标的两种著名协议是两阶段提交（2PC）和三阶段提交（3PC）。这两种协议在确保数据一致性方...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-09-05</span>
+                <span class="post-card-tags"><span class="post-tag">服务器后端内容</span><span class="post-tag">软件工程理论</span><span class="post-tag">2PC</span><span class="post-tag">高可用</span></span>
+              </div>
             </div>
+            <a href="posts/2025-09-05/高可用中的2pc3pc以及幂等性概念.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="算法与数据结构,图论,算法,数据结构">
-            <h3 class="post-card-title"><a href="posts/2025-09-04/图的存储专项.html">图的存储专项</a></h3>
-            <div class="post-card-meta">
-              <span class="post-date">2025-09-04</span>
-              <span class="post-card-tags"><span class="post-tag">算法与数据结构</span><span class="post-tag">图论</span><span class="post-tag">算法</span><span class="post-tag">数据结构</span></span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2025-09-04/图的存储专项.html">图的存储专项</a></h3>
+              <p class="post-preview">在 OI 中，想要对图进行操作，就需要先学习图的存储方式</p>
+              <div class="post-card-meta">
+                <span class="post-date">2025-09-04</span>
+                <span class="post-card-tags"><span class="post-tag">算法与数据结构</span><span class="post-tag">图论</span><span class="post-tag">算法</span><span class="post-tag">数据结构</span></span>
+              </div>
             </div>
+            <a href="posts/2025-09-04/图的存储专项.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
       </ul>
 

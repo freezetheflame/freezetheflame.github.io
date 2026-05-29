@@ -43,6 +43,33 @@ function findMd(dir, list = []) {
   return list;
 }
 
+function extractPreview(content) {
+  // strip frontmatter
+  const body = content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '');
+  // strip markdown syntax: headers, links, images, code blocks, html tags
+  let text = body
+    .replace(/```[\s\S]*?```/g, '')    // code blocks
+    .replace(/`[^`]+`/g, '')           // inline code
+    .replace(/!\[.*?\]\(.*?\)/g, '')   // images
+    .replace(/\[([^\]]*)\]\(.*?\)/g, '$1') // links → keep text
+    .replace(/^#{1,6}\s+/gm, '')       // headers
+    .replace(/[*_~>|\\-]/g, '')        // formatting chars
+    .replace(/\n{2,}/g, '\n')          // collapse blank lines
+    .replace(/^\s*[-*+]\s+/gm, '')     // list markers
+    .replace(/<[^>]+>/g, '')           // html tags
+    .trim();
+
+  // take first meaningful sentence(s), cap at ~100 chars
+  const sentences = text.split(/[。！？\n.!?](?=\s|$)/).filter(s => s.trim().length > 5);
+  let preview = sentences[0] || text.slice(0, 100);
+  preview = preview.replace(/\s+/g, ' ').trim();
+
+  if (preview.length > 120) {
+    preview = preview.slice(0, 117) + '...';
+  }
+  return preview || text.slice(0, 100).trim() || '';
+}
+
 function collectPost(filePath) {
   const content = fs.readFileSync(filePath, 'utf8');
   const fm = parseFrontmatter(content);
@@ -50,7 +77,8 @@ function collectPost(filePath) {
   const date = fm.date || path.dirname(filePath).match(/\d{4}-\d{2}-\d{2}/)?.[0] || '';
   const tags = fm.tags || [];
   const htmlPath = filePath.replace(/\.md$/, '.html').replace(/\\/g, '/');
-  return { title, date, tags, path: htmlPath };
+  const preview = extractPreview(content);
+  return { title, date, tags, path: htmlPath, preview };
 }
 
 function esc(s) {
@@ -271,12 +299,17 @@ function renderHomepage(posts) {
   const postItems = latest.map((p) => {
     const tags = p.tags.map((t) => `<span class="post-tag">${esc(t)}</span>`).join('');
     const href = 'posts/' + p.path.replace(/^posts\//, '');
+    const preview = p.preview ? `<p class="post-preview">${esc(p.preview)}</p>` : '';
     return `          <li class="post-card" data-tags="${esc(p.tags.join(','))}">
-            <h3 class="post-card-title"><a href="${href}">${esc(p.title)}</a></h3>
-            <div class="post-card-meta">
-              ${p.date ? `<span class="post-date">${esc(p.date)}</span>` : ''}
-              <span class="post-card-tags">${tags}</span>
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="${href}">${esc(p.title)}</a></h3>
+              ${preview}
+              <div class="post-card-meta">
+                ${p.date ? `<span class="post-date">${esc(p.date)}</span>` : ''}
+                <span class="post-card-tags">${tags}</span>
+              </div>
             </div>
+            <a href="${href}" class="post-card-arrow" aria-hidden="true">→</a>
           </li>`;
   }).join('\n');
 
@@ -541,7 +574,7 @@ function renderHomepage(posts) {
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 6px;
+      margin-bottom: 14px;
     }
 
     .section-header h2 {
@@ -585,24 +618,37 @@ function renderHomepage(posts) {
 
     .post-list {
       display: grid;
-      gap: 0;
+      gap: 12px;
       margin: 0;
       padding: 0;
       list-style: none;
     }
 
     .post-card {
-      padding: 15px 0;
-      border-bottom: 1px solid var(--border);
-      transition: padding var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-panel);
+      transition: border-color var(--transition), box-shadow var(--transition);
     }
 
-    .post-card:last-child { border-bottom: none; }
+    .post-card:hover {
+      border-color: var(--border-strong);
+      box-shadow: 0 2px 12px rgba(28, 25, 23, 0.06);
+    }
+
+    .post-card-body {
+      flex: 1;
+      min-width: 0;
+    }
 
     .post-card-title {
-      margin: 0 0 5px;
+      margin: 0 0 4px;
       font-size: 17px;
-      font-weight: 600;
+      font-weight: 650;
       line-height: 1.3;
     }
 
@@ -614,6 +660,17 @@ function renderHomepage(posts) {
 
     .post-card-title a:hover { color: var(--green); }
 
+    .post-preview {
+      margin: 0 0 8px;
+      color: var(--fg-muted);
+      font-size: 13px;
+      line-height: 1.55;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
     .post-card-meta {
       display: flex;
       flex-wrap: wrap;
@@ -621,7 +678,7 @@ function renderHomepage(posts) {
       gap: 6px;
     }
 
-    .post-date { color: var(--fg-dim); font-size: 13px; }
+    .post-date { color: var(--fg-dim); font-size: 12px; }
 
     .post-card-tags {
       display: flex;
@@ -636,6 +693,24 @@ function renderHomepage(posts) {
       color: var(--blue);
       font-size: 11px;
       font-weight: 600;
+    }
+
+    .post-card-arrow {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px; height: 32px;
+      border-radius: var(--radius-sm);
+      color: var(--fg-dim);
+      text-decoration: none;
+      font-size: 16px;
+      transition: all var(--transition);
+    }
+
+    .post-card:hover .post-card-arrow {
+      background: var(--green);
+      color: #fff;
     }
 
     .view-all {
