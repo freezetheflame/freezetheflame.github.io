@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM 如何理解大型代码仓库：主流策略与技术选型指南 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-05-30</p>
+        <h1>LLM 如何理解大型代码仓库：主流策略与技术选型指南</h1>
+        <div class="post-meta">
+          <span>2026-05-30</span>
+          <span class="tag">AI</span><span class="tag">工程</span>
+        </div>
+        <p>随着 AI coding agent 的成熟（Codex CLI 86k⭐、Claude Code、Aider 等），一个核心工程问题浮出水面：<strong>大模型怎么&quot;看懂&quot;一个动辄几万行、几十万行的代码仓库？</strong> 直接把整个 repo 塞进 context window 显然不现实。本文梳理了目前主流工具采用的六大策略，以及它们的组合方式。</p>
+<hr>
+<h2 id="总览">总览</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>策略</th>
+<th>核心思路</th>
+<th>代表工具</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>向量嵌入 + 语义搜索</td>
+<td>代码切片 → embedding → 向量库 → 语义检索</td>
+<td>Continue.dev, CocoIndex, Bloop</td>
+</tr>
+<tr>
+<td>AST 符号提取 + 相关性排序</td>
+<td>tree-sitter 提取 def/ref，构建符号图排序</td>
+<td>Aider (repo map)</td>
+</tr>
+<tr>
+<td>混合搜索</td>
+<td>BM25 关键词 + 向量相似度 RRF 融合</td>
+<td>coco-search, Bloop</td>
+</tr>
+<tr>
+<td>仓库打包</td>
+<td>整仓扁平化为单文件塞 prompt</td>
+<td>Repomix, Gitingest</td>
+</tr>
+<tr>
+<td>MCP 标准化接口</td>
+<td>上述能力封装为 MCP server，agent 按需调用</td>
+<td>cocoindex-code, code-memory, rpg-encoder</td>
+</tr>
+<tr>
+<td>依赖图分析</td>
+<td>import/call graph 遍历定位相关文件</td>
+<td>多为辅助手段</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="一、向量嵌入--语义搜索">一、向量嵌入 + 语义搜索</h2>
+<p>这是目前最主流的方法。流程：</p>
+<pre><code>代码仓库 → 切片(chunk) → embedding 模型向量化 → 存入向量数据库
+用户查询 → embedding → 向量相似度检索 → 返回相关代码片段 → 注入 prompt
+</code></pre>
+<h3 id="chunk-策略：naive-vs-ast-感知">Chunk 策略：Naive vs AST 感知</h3>
+<p><strong>Naive 分块（Continue.dev 的 basicChunker）</strong>：按 token 数机械切分，每 N 个 token 一刀。优点是简单，缺点是经常把函数拦腰截断。</p>
+<p><strong>AST 感知分块（Continue.dev 的 codeChunker + CocoIndex）</strong>：用 tree-sitter 解析 AST，在函数/类边界切分。对超大函数/类有一个精巧的折叠策略：</p>
+<pre><code>class AuthService {          ← 保留类签名
+  login() { ... }            ← 小方法保留完整实现
+  refreshToken() { ... }
+  processBatch() { ... }     ← 超限！collapsed 为 processBatch() { ... }
+  validateSession() { ... }  ← 继续删除末尾方法直到不超限
+}
+</code></pre>
+<p>不是截断中间——而是从<strong>最后一个方法开始折叠/删除</strong>，保证前面的重要代码完整。</p>
+<h3 id="向量数据库选型">向量数据库选型</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>数据库</th>
+<th>使用者</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LanceDB</td>
+<td>Continue.dev</td>
+<td>嵌入式列存，零配置</td>
+</tr>
+<tr>
+<td>Qdrant</td>
+<td>Bloop</td>
+<td>Rust 高性能</td>
+</tr>
+<tr>
+<td>pgvector</td>
+<td>coco-search</td>
+<td>复用 PostgreSQL</td>
+</tr>
+<tr>
+<td>SQLite + FAISS</td>
+<td>各种小工具</td>
+<td>最轻量</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="二、ast-符号提取--相关性排序（repo-map）">二、AST 符号提取 + 相关性排序（Repo Map）</h2>
+<p>这是 Aider 的招牌策略，<strong>完全不用 embedding</strong>，纯靠代码结构推理。</p>
+<p>流程：</p>
+<pre><code>1. tree-sitter 提取所有文件的定义(def)和引用(ref)
+   例：auth.ts 定义了 login()，api.ts 引用了 login()
+   
+2. 构建符号关系图
+   auth.ts ──定义──▶ login()
+   api.ts  ──引用──▶ login()
+   → auth.ts 与 api.ts 相关
+
+3. 用户修改文件 A 时，把所有文件按与 A 的关联度排序
+   
+4. 在 token 预算内，输出排名最高的文件列表 + 关键符号
+   → 生成 &quot;repo map&quot; 文本注入 prompt
+</code></pre>
+<p><strong>优点</strong>：零 API 成本，纯 CPU，不需要 GPU。<strong>缺点</strong>：只能靠符号引用判断相关度，理解不了自然语言语义——你问&quot;用户认证怎么做的&quot;，它不知道 <code>authenticate()</code> 比 <code>login()</code> 更相关，除非符号名本身匹配。</p>
+<p>核心实现就在 Aider 的 <code>repomap.py</code> 这一个文件中，不到 500 行。非常精巧。</p>
+<hr>
+<h2 id="三、混合搜索：关键词--语义">三、混合搜索：关键词 + 语义</h2>
+<p>两种检索方式互补：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>关键词搜索（BM25/FT5）</th>
+<th>语义搜索（向量相似度）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>擅长</td>
+<td>精确函数名、import 路径、字符串常量</td>
+<td>&quot;用户鉴权逻辑在哪&quot; &quot;session 怎么管理的&quot;</td>
+</tr>
+<tr>
+<td>盲区</td>
+<td>不同命名但功能相同的代码</td>
+<td>import 链追踪</td>
+</tr>
+</tbody></table></div>
+<p>融合方式用 <strong>RRF（Reciprocal Rank Fusion）</strong>：两路各自打分，按倒数排名融合。coco-search 和 Bloop 都在用这个策略。</p>
+<pre><code>RRF_score(doc) = Σ 1/(k + rank_i(doc))
+
+k=60 是常用常数，rank_i 是 doc 在第 i 路检索中的排名
+</code></pre>
+<hr>
+<h2 id="四、仓库打包（repo-to-prompt）">四、仓库打包（Repo to Prompt）</h2>
+<p>简单粗暴：把整个仓库（或选定子集）生成一个带目录树的文本文件，一次性塞进 prompt。</p>
+<pre><code>Repomix 输出示例：
+================
+Repository: my-project
+Directory structure:
+  src/
+    auth.ts
+    api.ts
+    utils.ts
+================
+File: src/auth.ts
+```typescript
+export function login() { ... }
+</code></pre>
+<p>================
+File: src/api.ts
+...</p>
+<pre><code>
+**代表工具**：Repomix（25k⭐）、Gitingest
+
+**优缺点极端**：
+- ✅ 零信息损失，LLM 看到完整上下文
+- ❌ token 爆炸，中型仓库就扛不住
+- 适合：小仓库、code review、提交前检查
+
+---
+
+## 五、MCP 标准化接口（最新趋势）
+
+MCP（Model Context Protocol）本身不是策略，而是**交付模式**。2025-2026 年几乎每个新出的代码理解工具都提供 MCP server：
+</code></pre>
+<p>Agent 说：&quot;帮我找到用户认证相关的代码&quot;
+  → 调用 MCP tool: search_code(&quot;user authentication&quot;)
+  → MCP server 返回相关代码片段（带路径、行号、相似度）
+  → Agent 基于结果继续推理、编辑</p>
+<pre><code>
+支持 MCP 的 agent：Claude Code、Codex CLI、Cursor、OpenCode...
+
+支持 MCP 的代码搜索工具：
+
+| 工具 | ⭐ | 特点 |
+|------|-----|------|
+| cocoindex-code | 1,755 | AST 分块 + sentence-transformers 本地嵌入 + MCP/Skill 双模式 |
+| autodev-codebase | 117 | 向量嵌入 + Ollama 全本地 + MCP |
+| code-memory | 41 | 本地向量搜索 + Git 历史 + MCP |
+| rpg-encoder | 28 | Rust + tree-sitter + 15 语言 + 28 tool + MCP |
+| Argyph | 16 | 零配置全本地 MCP server |
+
+---
+
+## 六、补充技巧
+
+**增量索引**：不每次全量重建，用文件 mtime 做缓存失效标记，只重索引修改过的文件。Aider 用 diskcache，CocoIndex 用后台 daemon 自动 watch 文件变化。
+
+**语言检测**：根据文件扩展名 + 内容嗅探自动选择 tree-sitter parser，覆盖 30+ 语言。
+
+**本地优先**：Ollama + sentence-transformers 做全本地 embedding，零 API 调用成本。CocoIndex 的 `full` 版本内置了 Snowflake arctic-embed-xs 模型。
+
+**后台 daemon**：索引服务常驻，embedding 模型只加载一次，跨 session 保持温热。CocoIndex 和 Kestr 都用了这个模式。
+
+---
+
+## 选型指南
+</code></pre>
+<p>你的场景                            推荐策略
+─────────────────────────────────────────────────
+小仓库（&lt;1万行）                    直接 Repomix 打包
+中型仓库 + 自然语言提问              向量嵌入 + 语义搜索
+大型仓库 + 精确代码导航              AST 符号图（Aider repo map）
+混合需求                            关键词 + 语义混合（coco-search）
+已有 AI agent（Claude/Codex）       任意 MCP 工具接入
+全离线 / 隐私敏感                    Ollama 本地嵌入（CocoIndex full）</p>
+<pre><code>
+---
+
+## 结语
+
+这些策略不是互斥的。成熟的工具通常会组合 2-3 种——比如 Bloop 同时用了 Tantivy FTS + Qdrant 向量 + tree-sitter 符号提取。
+
+回到这个博客一直在关注的方向——用测试方法论去修 vibe-coded 的仓库——理解这些代码库理解策略很关键。如果一个 AI agent 连仓库里有什么都看不清，那它写的测试再好也是盲人摸象。下一篇文章计划挑一个实际的 vibe repo，用 CocoIndex + Aider 的组合跑一遍诊断流程，看看效果如何。
+</code></pre>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
