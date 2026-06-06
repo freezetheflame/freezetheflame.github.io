@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triton GPU 编程入门（一）：从 Vector Add 到 GPU 执行模型 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-06</p>
+        <h1>Triton GPU 编程入门（一）：从 Vector Add 到 GPU 执行模型</h1>
+        <div class="post-meta">
+          <span>2026-06-06</span>
+          <span class="tag">AI Infra</span><span class="tag">Triton</span><span class="tag">GPU 编程</span>
+        </div>
+        <p>OpenAI Triton 是一个用 Python 写 GPU kernel 的 DSL。它的核心卖点是「CUDA 的性能、Python 的体验」——编译器自动处理 tiling、memory coalescing 和 shared memory 优化。本文是 Triton 系列的第一篇，从最基础的 vector add 入手，建立 GPU 执行模型的心理表征。</p>
+<p><strong>环境</strong>：RTX 4070 SUPER (Compute Capability 8.9)，Triton 3.6.0，CUDA 13.0</p>
+<hr>
+<h2 id="一、gpu-执行模型速览">一、GPU 执行模型速览</h2>
+<p>在 Triton 中写 kernel，需要理解三层抽象：</p>
+<h3 id="1-grid-→-blocks-→-threads">1. Grid → Blocks → Threads</h3>
+<pre><code>Grid (2D example: 4×3 blocks)
+┌──────┬──────┬──────┐
+│ B00  │ B01  │ B02  │
+├──────┼──────┼──────┤
+│ B10  │ B11  │ B12  │
+├──────┼──────┼──────┤
+│ B20  │ B21  │ B22  │     每个 Block 内: 数百个 thread 并行
+├──────┼──────┼──────┤
+│ B30  │ B31  │ B32  │
+└──────┴──────┴──────┘
+
+Triton 对应：
+  grid = (4, 3)          → 4×3 = 12 个 program
+  program_id(0) ∈ [0,4)  → 行号
+  program_id(1) ∈ [0,3)  → 列号
+</code></pre>
+<p><strong>关键区别</strong>：Triton 的 &quot;program&quot; 映射到 CUDA 的 &quot;thread block&quot;。一个 program 内 Triton 自动管理 threads 的并行。</p>
+<h3 id="2-内存层次">2. 内存层次</h3>
+<pre><code>速度递增 →
+┌─────────────────────────────────────────────────────┐
+│ Global Memory (HBM)     │ 慢 (~1TB/s)，大 (12GB)   │
+├─────────────────────────┤                           │
+│ L2 Cache                │                           │
+├─────────────────────────┤                           │
+│ Shared Memory (SRAM)    │ 快，block 内共享 (128KB) │
+├─────────────────────────┤                           │
+│ Registers               │ 最快 (每 thread 255个)   │
+└─────────────────────────────────────────────────────┘
+</code></pre>
+<p>性能优化的本质：<strong>尽量减少 global memory 访问，尽量用 registers 和 shared memory</strong>。</p>
+<hr>
+<h2 id="二、hello-triton：vector-add">二、Hello Triton：Vector Add</h2>
+<pre><code class="hljs language-python"><span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">add_kernel</span>(<span class="hljs-params">x_ptr, y_ptr, output_ptr, n_elements, BLOCK_SIZE: tl.constexpr</span>):
+    pid = tl.program_id(<span class="hljs-number">0</span>)                           <span class="hljs-comment"># 我是第几个 block？</span>
+    offsets = pid * BLOCK_SIZE + tl.arange(<span class="hljs-number">0</span>, BLOCK_SIZE)  <span class="hljs-comment"># 我处理哪些元素？</span>
+    mask = offsets &lt; n_elements                      <span class="hljs-comment"># 越界保护</span>
+    x = tl.load(x_ptr + offsets, mask=mask)           <span class="hljs-comment"># 从 global memory 读</span>
+    y = tl.load(y_ptr + offsets, mask=mask)
+    tl.store(output_ptr + offsets, x + y, mask=mask)  <span class="hljs-comment"># 写回 global memory</span>
+</code></pre>
+<h3 id="逐行解释">逐行解释</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>代码</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>tl.program_id(0)</code></td>
+<td>当前 block 在 grid 第 0 维的索引。grid=(4,) 时取值为 0,1,2,3</td>
+</tr>
+<tr>
+<td><code>tl.arange(0, BS)</code></td>
+<td>生成 <code>[0, 1, 2, ..., BS-1]</code> 的向量，一个 thread 一个元素</td>
+</tr>
+<tr>
+<td><code>pid * BS + arange</code></td>
+<td>将程序级偏移 + 线程级偏移 = 全局索引</td>
+</tr>
+<tr>
+<td><code>mask = offsets &lt; N</code></td>
+<td>当 N 不能被 BS 整除时，最后一个 block 部分线程越界</td>
+</tr>
+<tr>
+<td><code>tl.load(ptr, mask=)</code></td>
+<td>从 global memory 读取。mask=True 正常读，mask=False 跳过</td>
+</tr>
+<tr>
+<td><code>tl.store(ptr, val, mask=)</code></td>
+<td>写回 global memory</td>
+</tr>
+</tbody></table></div>
+<h3 id="启动-kernel">启动 Kernel</h3>
+<pre><code class="hljs language-python">output = torch.empty(N, device=<span class="hljs-string">&#x27;cuda&#x27;</span>, dtype=torch.float32)
+BLOCK_SIZE = <span class="hljs-number">256</span>
+grid = (triton.cdiv(N, BLOCK_SIZE),)  <span class="hljs-comment"># ceil(N/256)</span>
+
+add_kernel[grid](x, y, output, N, BLOCK_SIZE=BLOCK_SIZE)
+<span class="hljs-comment">#          ^^^^  grid 写在中括号里</span>
+<span class="hljs-comment">#                BLOCK_SIZE 作为 keyword argument（constexpr 要求）</span>
+</code></pre>
+<hr>
+<h2 id="三、实测性能">三、实测性能</h2>
+<p>在 RTX 4070S 上测试 N=10M 个元素：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>实现</th>
+<th>耗时</th>
+<th>带宽</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>PyTorch (<code>x + y</code>)</td>
+<td>0.29 ms</td>
+<td>413 GB/s</td>
+</tr>
+<tr>
+<td>Triton</td>
+<td>0.27 ms</td>
+<td>438 GB/s</td>
+</tr>
+</tbody></table></div>
+<p>Triton 在 N=10M 时比 PyTorch 略快 ~6%，说明 Triton compiler 生成的 kernel 在 element-wise 操作上与 cuBLAS 优化的 PyTorch 算子持平甚至更优。437 GB/s 的带宽接近 RTX 4070S 的理论峰值（504 GB/s），说明内存带宽已接近饱和。</p>
+<hr>
+<h2 id="四、关键心智模型">四、关键心智模型</h2>
+<h3 id="vector-add-的并行化">Vector Add 的并行化</h3>
+<pre><code>N=1000, BLOCK_SIZE=256 → grid=(4,)
+
+Block 0 (pid=0):  处理 indices [0,   255]
+Block 1 (pid=1):  处理 indices [256, 511]
+Block 2 (pid=2):  处理 indices [512, 767]
+Block 3 (pid=3):  处理 indices [768, 999]  ← mask 保护 1000-1023
+
+每个 block 内，256 个 thread 同时 load → compute → store
+所有 block 在 GPU 上并行执行
+</code></pre>
+<p>这就是 GPU 编程的核心思想：<strong>分解 + 并行 + 掩码保护</strong>。</p>
+<hr>
+<h2 id="五、下一步">五、下一步</h2>
+<p>本文建立了最基础的 mental model。下一篇将实现 ReLU/GELU/SiLU 等逐元素激活函数，并讨论 memory coalescing —— 为什么连续访存比跳跃访存快 10 倍。</p>
+<hr>
+<p><em>本系列所有代码见 <a href="https://github.com/freezetheflame/triton-benchmark-prep">triton-benchmark-prep</a></em></p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

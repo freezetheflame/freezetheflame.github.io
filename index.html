@@ -475,6 +475,7 @@
           <button class="tag-pill" data-tag="python">python<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="算法与数据结构">算法与数据结构<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="软件工程理论">软件工程理论<span class="tag-count">4</span></button>
+          <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="framework">framework<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="PL理论">PL理论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="RUST">RUST<span class="tag-count">2</span></button>
@@ -482,8 +483,8 @@
           <button class="tag-pill" data-tag="基础语法">基础语法<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="随笔">随笔<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="algorithm">algorithm<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="GPU 编程">GPU 编程<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="java垃圾回收">java垃圾回收<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MindSpeed">MindSpeed<span class="tag-count">1</span></button>
@@ -492,6 +493,7 @@
           <button class="tag-pill" data-tag="SQL">SQL<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="tools">tools<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="transformer">transformer<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TTT">TTT<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TypeScript/JavaScript">TypeScript/JavaScript<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="vLLM">vLLM<span class="tag-count">1</span></button>
@@ -510,7 +512,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 120 篇文章
+      共 121 篇文章
     </div>
   </aside>
 
@@ -534,12 +536,23 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 120</span>
+        <span class="section-count" id="visibleCount">15 / 121</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="AI Infra,Triton,GPU 编程">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-06/triton-intro-vector-add.html">Triton GPU 编程入门（一）：从 Vector Add 到 GPU 执行模型</a></h3>
+              <p class="post-preview">OpenAI Triton 是一个用 Python 写 GPU kernel 的 DSL。它的核心卖点是「CUDA 的性能、Python 的体验」——编译器自动处理 tiling、memory coalescing 和 shared ...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-06</span>
+                <span class="post-card-tags"><span class="post-tag">AI Infra</span><span class="post-tag">Triton</span><span class="post-tag">GPU 编程</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-06/triton-intro-vector-add.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="AI Infra,vLLM,推理引擎">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-06-06/vllm-deep-dive-1-benchmark.html">vLLM 源码剖析（一）：从零搭建推理压测环境</a></h3>
@@ -694,20 +707,9 @@
             </div>
             <a href="posts/2025-09-06/params-in-mindspeed-mm-trainingfinetune.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="服务器后端内容,软件工程理论,2PC,高可用">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2025-09-05/高可用中的2pc3pc以及幂等性概念.html">高可用中的2PC,3PC以及幂等性概念</a></h3>
-              <p class="post-preview">在分布式系统中，协调跨多个资源的交易可能很复杂。想象一下，你有多套系统或数据库需要同步工作，确保在失败的情况下所有操作都提交或回滚 。实现这一目标的两种著名协议是两阶段提交（2PC）和三阶段提交（3PC）。这两种协议在确保数据一致性方...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2025-09-05</span>
-                <span class="post-card-tags"><span class="post-tag">服务器后端内容</span><span class="post-tag">软件工程理论</span><span class="post-tag">2PC</span><span class="post-tag">高可用</span></span>
-              </div>
-            </div>
-            <a href="posts/2025-09-05/高可用中的2pc3pc以及幂等性概念.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 120 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 121 篇文章 →</a>
     </section>
   </main>
 
