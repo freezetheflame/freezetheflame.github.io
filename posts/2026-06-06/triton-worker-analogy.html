@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triton GPU 编程入门（二）：用「工人分卡片」理解算子、Grid 与并行模型 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-06</p>
+        <h1>Triton GPU 编程入门（二）：用「工人分卡片」理解算子、Grid 与并行模型</h1>
+        <div class="post-meta">
+          <span>2026-06-06</span>
+          <span class="tag">AI Infra</span><span class="tag">Triton</span><span class="tag">GPU 编程</span>
+        </div>
+        <p>上一篇用 Vector Add 跑通了第一个 Triton kernel。本文换一个角度：<strong>不写代码，用类比建立 GPU 并行的心理模型</strong>。这个类比来自一次和 GPT 的讨论，非常直观。</p>
+<hr>
+<h2 id="一、场景：给-1024-张卡片加-1">一、场景：给 1024 张卡片加 1</h2>
+<p>假设你有一个大箱子，里面装着 <strong>1024 张数字卡片</strong>。你要给每张卡片上的数字加 1。</p>
+<p>这就是一个最简单的<strong>算子</strong>（operator）：对一组数据执行同一个操作。</p>
+<p>我们把这个场景拆成四个概念：</p>
+<hr>
+<h2 id="二、四个核心概念">二、四个核心概念</h2>
+<h3 id="1-总数据量--1024-张卡片">1. 总数据量 = 1024 张卡片</h3>
+<p>有多少数据要处理。在 Triton 里，这对应你写的循环终止条件：<code>offsets &lt; n_elements</code>。</p>
+<h3 id="2-写算子--描述如何对一张卡片加-1">2. 写算子 = 描述&quot;如何对一张卡片加 1&quot;</h3>
+<p>你写一段规则：<code>x + 1</code>。这段规则就是 Triton kernel 的<strong>函数体</strong>。</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 这不只是 Python——这是「对每个数据元素做什么」的描述</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">add_one</span>(<span class="hljs-params">x</span>):
+    <span class="hljs-keyword">return</span> x + <span class="hljs-number">1</span>
+</code></pre>
+<h3 id="3-program（工人）-每个工人负责一部分卡片">3. Program（工人）= 每个工人负责一部分卡片</h3>
+<p>你雇了工人来干活。<strong>每个工人只从箱子里取走一部分卡片</strong>（比如 64 张），独立完成工作。</p>
+<p>在 Triton 里，每个 &quot;program&quot; 对应 GPU 上的一个 <strong>thread block</strong>（线程块）。一个 program 内部有成百上千个线程，Triton 自动管理这些线程的并行——你不需要手动分配线程。</p>
+<h3 id="4-grid--你需要雇多少工人">4. Grid = 你需要雇多少工人</h3>
+<pre><code>grid = 总卡片数 ÷ 每个工人负责的卡片数
+     = 1024 ÷ 64
+     = 16 个工人
+</code></pre>
+<p>在 Triton 里：<code>grid = (triton.cdiv(1024, 64),)</code> → <code>(16,)</code>。</p>
+<hr>
+<h2 id="三、这个类比为什么管用">三、这个类比为什么管用</h2>
+<p><strong>写 Triton kernel 的本质</strong>：</p>
+<ol>
+<li>描述&quot;对一个数据元素做什么&quot;（算子逻辑）</li>
+<li>告诉框架&quot;一共有多少数据&quot;（n_elements）</li>
+<li>决定&quot;每个工人分多少数据&quot;（BLOCK_SIZE）</li>
+<li>框架自动计算需要多少工人（grid）并调度他们</li>
+</ol>
+<p><strong>你不需要关心的事</strong>（Triton 自动处理）：</p>
+<ul>
+<li>16 个工人怎么分配到 GPU 的 SM（流处理器）上</li>
+<li>每个工人内部 256 个线程怎么协作</li>
+<li>显存访问是否合并（memory coalescing）</li>
+<li>什么时候用 shared memory、什么时候用 registers</li>
+</ul>
+<p>这就解释了为什么 Triton 比 CUDA 好写 10 倍——你只描述&quot;做什么&quot;，不用描述&quot;怎么调度&quot;。</p>
+<hr>
+<h2 id="四、推广到更复杂的算子">四、推广到更复杂的算子</h2>
+<h3 id="scalar-add（逐元素加-1）">Scalar add（逐元素加 1）</h3>
+<pre><code>每个工人做的事: x + 1
+工人之间关系:   完全独立，不需要通信
+性能特征:       memory-bound（瓶颈在读写显存，不在计算）
+</code></pre>
+<h3 id="softmax">Softmax</h3>
+<pre><code>每个工人做的事: 扫一遍数据找 max → 再扫一遍归一化
+工人之间关系:   同一个样本的工人需要共享 max 和 sum
+性能特征:       memory-bound（多轮读写）
+</code></pre>
+<h3 id="矩阵乘法">矩阵乘法</h3>
+<pre><code>每个工人做的事: 计算 C 的一个 tile = A_tile @ B_tile
+工人之间关系:   独立（每个工人负责输出矩阵的不同区域）
+性能特征:       compute-bound（瓶颈在计算，Tensor Core 全速运转）
+</code></pre>
+<h3 id="flashattention">FlashAttention</h3>
+<pre><code>每个工人做的事: 对 Q 的一块 × K 的全部 → online softmax → 乘 V
+工人之间关系:   不同 Q 块的工人独立；同一 Q 块的工人需要遍历所有 K 块
+性能特征:       compute-bound（但显存存取从 O(n²) 降为 O(1)）
+</code></pre>
+<hr>
+<h2 id="五、triton-的自动调度到底做了什么">五、Triton 的&quot;自动调度&quot;到底做了什么</h2>
+<p>回到工人类比。如果你自己管工人（手写 CUDA），你需要：</p>
+<ol>
+<li>决定 16 个工人分几班（grid 的 2D/3D 排列）</li>
+<li>决定每班工人怎么共享工具（shared memory 分配）</li>
+<li>决定工人在仓库里怎么走动不撞到一起（同步 barrier）</li>
+<li>决定工人的取货路线以最短路径（memory coalescing）</li>
+</ol>
+<p>Triton 做了其中 3 和 4（编译器自动优化），简化了 2（用 <code>tl.constexpr</code> 声明 shared memory 大小），只让你决定 1（grid 维度）。这就是「CUDA 的性能，Python 的体验」的本质。</p>
+<hr>
+<h2 id="六、一个反直觉的结论">六、一个反直觉的结论</h2>
+<p><strong>Worker 越多不一定越快。</strong></p>
+<p>回到 1024 张卡片的例子：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>每工人卡片数</th>
+<th>工人数</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1024</td>
+<td>1</td>
+<td>1 个工人搬全部——累死，其他 SM 闲着</td>
+</tr>
+<tr>
+<td>64</td>
+<td>16</td>
+<td>刚好填满所有 SM（假设 16 个 SM）</td>
+</tr>
+<tr>
+<td>1</td>
+<td>1024</td>
+<td>1024 个工人各搬 1 张——调度开销远超计算开销</td>
+</tr>
+</tbody></table></div>
+<p>GPU 上同理。BLOCK_SIZE 太小 → 每个 block 的计算不够填满 GPU core，overhead 占比高。BLOCK_SIZE 太大 → 寄存器不够用，溢出到 slow memory。<strong>关键在于找到 sweet spot</strong>——这就是 triton-benchmark 要测的东西。</p>
+<hr>
+<p><em>本系列所有代码见 <a href="https://github.com/freezetheflame/triton-benchmark-prep">triton-benchmark-prep</a></em></p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
