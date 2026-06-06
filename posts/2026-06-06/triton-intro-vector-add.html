@@ -120,7 +120,66 @@ add_kernel[grid](x, y, output, N, BLOCK_SIZE=BLOCK_SIZE)
 <span class="hljs-comment">#                BLOCK_SIZE 作为 keyword argument（constexpr 要求）</span>
 </code></pre>
 <hr>
-<h2 id="三、实测性能">三、实测性能</h2>
+<h2 id="三、为什么需要-offset？">三、为什么需要 offset？</h2>
+<p>上面 kernel 里最关键也最容易被忽略的一行：</p>
+<pre><code class="hljs language-python">offsets = pid * BLOCK_SIZE + tl.arange(<span class="hljs-number">0</span>, BLOCK_SIZE)
+</code></pre>
+<p><strong>一句话：Triton 会同时启动 N 个完全相同的 kernel 实例，每个实例必须知道自己管哪段数据，offset 就是它算出来的「这是我的地盘」。</strong></p>
+<h3 id="没有-offset-会怎样？">没有 offset 会怎样？</h3>
+<p>假设 1024 个元素，BLOCK_SIZE=256，启动了 4 个 block。没有 offset：</p>
+<pre><code>每个 block 做的事：处理第 0 到第 255 个元素
+</code></pre>
+<p>结果：4 个 block 全部冲去处理前 256 个——后面 768 个没人管。</p>
+<h3 id="offset-拆成两部分">offset 拆成两部分</h3>
+<pre><code>offset = pid × BLOCK_SIZE  +  tl.arange(0, BLOCK_SIZE)
+         ↑                      ↑
+    我这个 block 从哪开始    我在 block 内部排第几
+    （全局基址）              （块内偏移）
+</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Worker</th>
+<th>pid×256</th>
+<th>tl.arange</th>
+<th>负责的元素</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>0</td>
+<td>[0,1,...,255]</td>
+<td>[0, 255]</td>
+</tr>
+<tr>
+<td>1</td>
+<td>256</td>
+<td>[0,1,...,255]</td>
+<td>[256, 511]</td>
+</tr>
+<tr>
+<td>2</td>
+<td>512</td>
+<td>[0,1,...,255]</td>
+<td>[512, 767]</td>
+</tr>
+<tr>
+<td>3</td>
+<td>768</td>
+<td>[0,1,...,255]</td>
+<td>[768, 1023]</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li><code>pid × BLOCK_SIZE</code> 回答：<strong>我的工位在流水线最左边在哪？</strong></li>
+<li><code>tl.arange(0, BLOCK_SIZE)</code> 回答：<strong>我在自己工位上具体管哪一个元素？</strong></li>
+</ul>
+<h3 id="为什么不能直接用-pid-当索引？">为什么不能直接用 pid 当索引？</h3>
+<pre><code>index = pid    # 错！每个 block 只处理一个元素
+</code></pre>
+<p>4 个 block 只能处理 4 个元素，剩下 1020 个没人管。GPU 的设计是一个 block 里有 256 个线程，每个线程拿一个元素——所以需要 <code>tl.arange</code> 生成 256 个不同的索引。</p>
+<hr>
+<h2 id="四、实测性能">四、实测性能</h2>
 <p>在 RTX 4070S 上测试 N=10M 个元素：</p>
 <div class="table-wrap"><table>
 <thead>
