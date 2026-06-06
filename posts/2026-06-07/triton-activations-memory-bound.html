@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triton GPU 编程入门（三）：激活函数与 Memory-Bound 分析 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-07</p>
+        <h1>Triton GPU 编程入门（三）：激活函数与 Memory-Bound 分析</h1>
+        <div class="post-meta">
+          <span>2026-06-07</span>
+          <span class="tag">AI Infra</span><span class="tag">Triton</span><span class="tag">GPU 编程</span>
+        </div>
+        <p>上一篇用 Vector Add 理解了 GPU 的并行模型。本文实现三个实际算子——ReLU、GELU、SiLU——并引出 GPU 性能优化的核心概念：<strong>memory-bound vs compute-bound</strong>。</p>
+<hr>
+<h2 id="一、三个激活函数">一、三个激活函数</h2>
+<h3 id="relu">ReLU</h3>
+<pre><code>ReLU(x) = max(0, x)
+</code></pre>
+<p>最简单的激活函数。GPU 上只需要一次比较和一次条件赋值。</p>
+<h3 id="gelu（gaussian-error-linear-unit）">GELU（Gaussian Error Linear Unit）</h3>
+<pre><code>GELU(x) = x · Φ(x)
+
+其中 Φ 是标准正态分布的 CDF。精确计算需要 erf 函数，
+实践中用 tanh 近似：
+
+GELU(x) ≈ 0.5x · (1 + tanh(√(2/π) · (x + 0.044715x³)))
+</code></pre>
+<p>GELU 是 BERT、GPT-2/3 用的激活函数——比 ReLU 平滑，梯度更好。</p>
+<h3 id="silu（sigmoid-linear-unit，也叫-swish）">SiLU（Sigmoid Linear Unit，也叫 Swish）</h3>
+<pre><code>SiLU(x) = x · σ(x) = x / (1 + e^(-x))
+</code></pre>
+<p>Llama 系列用的就是 SiLU。比 GELU 简单，但效果相当。</p>
+<hr>
+<h2 id="二、triton-实现">二、Triton 实现</h2>
+<p>ReLU 最简单——<code>tl.maximum(x, 0.0)</code> 一行搞定。</p>
+<p>SiLU 同样简单——<code>tl.sigmoid(x)</code> 可用：</p>
+<pre><code>y = x * tl.sigmoid(x)
+</code></pre>
+<p>GELU 有一个坑：**Triton 3.x 没有 <code>tl.tanh</code>**。</p>
+<p>需要自己用指数函数实现：</p>
+<pre><code>tanh(z) = (e^(2z) - 1) / (e^(2z) + 1)
+</code></pre>
+<p>完整 GELU kernel：</p>
+<pre><code>sqrt_2_over_pi = 0.7978845608028654
+inner = sqrt_2_over_pi * (x + 0.044715 * x^3)
+exp_2z = exp(2 * inner)
+y = 0.5 * x * (1 + (exp_2z - 1) / (exp_2z + 1))
+</code></pre>
+<hr>
+<h2 id="三、实测性能（rtx-4070s，n10m）">三、实测性能（RTX 4070S，N=10M）</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>算子</th>
+<th>Triton (ms)</th>
+<th>Triton 带宽</th>
+<th>PyTorch (ms)</th>
+<th>PyTorch 带宽</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ReLU</td>
+<td>0.184</td>
+<td>436 GB/s</td>
+<td>0.183</td>
+<td>436 GB/s</td>
+</tr>
+<tr>
+<td>GELU</td>
+<td>0.183</td>
+<td>436 GB/s</td>
+<td>0.183</td>
+<td>437 GB/s</td>
+</tr>
+<tr>
+<td>SiLU</td>
+<td>0.184</td>
+<td>435 GB/s</td>
+<td>0.187</td>
+<td>429 GB/s</td>
+</tr>
+</tbody></table></div>
+<p><strong>两个反直觉的发现</strong>：</p>
+<ol>
+<li>Triton 和 PyTorch 几乎一模一样。说明对于 element-wise 操作，Triton compiler 生成的 CUDA kernel 和 PyTorch 用的 cuDNN kernel 质量相同。</li>
+<li>三个函数的性能完全一样。说明计算不是瓶颈——<strong>瓶颈在读显存</strong>。</li>
+</ol>
+<hr>
+<h2 id="四、memory-bound-vs-compute-bound">四、Memory-Bound vs Compute-Bound</h2>
+<p>这是 GPU 性能优化最重要的概念。</p>
+<h3 id="算一笔账">算一笔账</h3>
+<p>RTX 4070 SUPER 的理论性能：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>数值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>显存带宽</td>
+<td>504 GB/s</td>
+</tr>
+<tr>
+<td>FP32 算力</td>
+<td>~35 TFLOPS</td>
+</tr>
+</tbody></table></div>
+<p>处理 10M 个 float32 元素（共 40MB 数据）：</p>
+<ul>
+<li>读输入 x（40MB）+ 写输出 y（40MB）= 80MB 数据搬运</li>
+<li>耗时 0.184ms → 实际带宽 = 80MB / 0.184ms = <strong>435 GB/s</strong></li>
+</ul>
+<p>理论带宽 504 GB/s，实际达到 435 GB/s——**带宽利用率 86%**。</p>
+<h3 id="再看计算">再看计算</h3>
+<p>10M 个 GELU 需要多少次运算？</p>
+<pre><code>GELU: 乘法、加法、exp、除法... 大约每个元素 10-15 次浮点运算
+总计算量：~150M FLOP
+耗时 0.183ms → ~0.8 TFLOPS
+
+而 GPU 理论算力是 35 TFLOPS —— 只用了 2.3%
+</code></pre>
+<p><strong>结论：这些算子 98% 的时间在等显存，2% 的时间在算。这就是 memory-bound。</strong></p>
+<h3 id="memory-bound-意味着什么">Memory-Bound 意味着什么</h3>
+<ul>
+<li>优化计算速度没用——再快也得等显存</li>
+<li>优化方向是<strong>减少显存读写</strong>——fused kernel（把多个操作合并到一个 kernel 里）</li>
+<li>element-wise 操作天然 memory-bound，不需要复杂的 tiling 技巧</li>
+<li>矩阵乘法才是 compute-bound——那是 Tiling 和 Tensor Core 的主场</li>
+</ul>
+<hr>
+<h2 id="五、实际教训">五、实际教训</h2>
+<h3 id="tanh-缺失是好事">Tanh 缺失是好事</h3>
+<p>Triton 没有 <code>tl.tanh</code> 这件事，初看是缺点，实际上是提醒：</p>
+<p><strong>你在写 GPU kernel，不是在写 Python。任何高级函数都要理解它的底层实现。</strong></p>
+<p>手写一次 tanh 让你知道它用了几个 exp、几个加减乘除，这些直接对应 GPU 指令。当你在 Ascend NPU 上移植 Triton 时，每个数学函数的指令数和精度都会不同——这正是 benchmark 要测的东西。</p>
+<h3 id="带宽就是天花板">带宽就是天花板</h3>
+<p>如果你的 kernel 是 memory-bound（大部分 element-wise 操作都是），性能上限由 <code>数据量 / 显存带宽</code> 决定。再怎么优化 kernel 代码也突破不了这个物理极限——除非减少数据搬运。</p>
+<hr>
+<h2 id="六、下一步">六、下一步</h2>
+<p>下一篇实现 Softmax。和 element-wise 不同，softmax 需要跨元素通信（找全局最大、全局求和），将引出 <strong>cross-thread reduction</strong> 和 <strong>online stable algorithm</strong>。</p>
+<hr>
+<p><em>本系列所有代码见 <a href="https://github.com/freezetheflame/triton-benchmark-prep">triton-benchmark-prep</a></em></p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

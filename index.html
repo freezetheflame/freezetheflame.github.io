@@ -474,15 +474,16 @@
           <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="python">python<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="算法与数据结构">算法与数据结构<span class="tag-count">6</span></button>
+          <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">5</span></button>
+          <button class="tag-pill" data-tag="GPU 编程">GPU 编程<span class="tag-count">4</span></button>
+          <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">4</span></button>
           <button class="tag-pill" data-tag="软件工程理论">软件工程理论<span class="tag-count">4</span></button>
-          <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="framework">framework<span class="tag-count">2</span></button>
-          <button class="tag-pill" data-tag="GPU 编程">GPU 编程<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="PL理论">PL理论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="RUST">RUST<span class="tag-count">2</span></button>
-          <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="图论">图论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="基础语法">基础语法<span class="tag-count">2</span></button>
+          <button class="tag-pill" data-tag="算法">算法<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="随笔">随笔<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="algorithm">algorithm<span class="tag-count">1</span></button>
@@ -505,14 +506,13 @@
           <button class="tag-pill" data-tag="教程">教程<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据库">数据库<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据结构">数据结构<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="算法">算法<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="计网">计网<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="高可用">高可用<span class="tag-count">1</span></button>
       </div>
     </div>
 
     <div class="sidebar-footer">
-      共 122 篇文章
+      共 124 篇文章
     </div>
   </aside>
 
@@ -536,12 +536,34 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 122</span>
+        <span class="section-count" id="visibleCount">15 / 124</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="AI Infra,Triton,GPU 编程">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-07/triton-activations-memory-bound.html">Triton GPU 编程入门（三）：激活函数与 Memory-Bound 分析</a></h3>
+              <p class="post-preview">上一篇用 Vector Add 理解了 GPU 的并行模型。本文实现三个实际算子——ReLU、GELU、SiLU——并引出 GPU 性能优化的核心概念：memorybound vs computebound</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-07</span>
+                <span class="post-card-tags"><span class="post-tag">AI Infra</span><span class="post-tag">Triton</span><span class="post-tag">GPU 编程</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-07/triton-activations-memory-bound.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
+          <li class="post-card" data-tags="AI Infra,Triton,GPU 编程,算法">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-07/triton-softmax-online.html">Triton GPU 编程入门（四）：Softmax 的两种写法与 Online 算法</a></h3>
+              <p class="post-preview">上一篇写了 ReLU/GELU/SiLU——它们都是 elementwise 的，一个线程处理一个元素，线程之间不需要通信。Softmax 不同：在归一化之前，你需要知道整行的最大值和整行的指数和。这就要求线程之间共享信息</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-07</span>
+                <span class="post-card-tags"><span class="post-tag">AI Infra</span><span class="post-tag">Triton</span><span class="post-tag">GPU 编程</span><span class="post-tag">算法</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-07/triton-softmax-online.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="AI Infra,Triton,GPU 编程">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-06-06/triton-intro-vector-add.html">Triton GPU 编程入门（一）：从 Vector Add 到 GPU 执行模型</a></h3>
@@ -685,31 +707,9 @@
             </div>
             <a href="posts/2025-09-26/attention-in-an-article.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="AI,深度学习,LLM,transformer">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2025-09-18/rope-in-llm.html">RoPE in LLM</a></h3>
-              <p class="post-preview">引用以下文章： RoPE: A Detailed Guide to Rotary Position Embedding in Modern LLMs by Allen Liang Medium Rotary Positional Em...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2025-09-18</span>
-                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">transformer</span></span>
-              </div>
-            </div>
-            <a href="posts/2025-09-18/rope-in-llm.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
-          <li class="post-card" data-tags="AI,深度学习,LLM,framework">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2025-09-16/高可用的ai-application系统设计.html">高可用的AI application系统设计</a></h3>
-              <p class="post-preview">以上就是一个关于数据标注系统的AI application的系统架构，我们本篇文章主要围绕agent作为核心的框架进行探讨，更加偏向于基于api调用的模型核心构成的AI Application而非模型微调训练为核心的框架（这样能够动态...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2025-09-16</span>
-                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">framework</span></span>
-              </div>
-            </div>
-            <a href="posts/2025-09-16/高可用的ai-application系统设计.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 122 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 124 篇文章 →</a>
     </section>
   </main>
 

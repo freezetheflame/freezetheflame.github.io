@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triton GPU 编程入门（四）：Softmax 的两种写法与 Online 算法 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-07</p>
+        <h1>Triton GPU 编程入门（四）：Softmax 的两种写法与 Online 算法</h1>
+        <div class="post-meta">
+          <span>2026-06-07</span>
+          <span class="tag">AI Infra</span><span class="tag">Triton</span><span class="tag">GPU 编程</span><span class="tag">算法</span>
+        </div>
+        <p>上一篇写了 ReLU/GELU/SiLU——它们都是 element-wise 的，一个线程处理一个元素，线程之间不需要通信。Softmax 不同：在归一化之前，你需要知道<strong>整行的最大值</strong>和<strong>整行的指数和</strong>。这就要求线程之间共享信息。</p>
+<p>本文对比两种实现：</p>
+<ul>
+<li><strong>2-pass</strong>：直观但慢（扫两遍）</li>
+<li><strong>1-pass online</strong>：精巧且快（一遍扫完）</li>
+</ul>
+<hr>
+<h2 id="一、标准-softmax-为什么需要两轮">一、标准 Softmax 为什么需要两轮</h2>
+<pre><code>softmax(x_i) = exp(x_i) / Σ exp(x_j)
+</code></pre>
+<p>直接算有两个问题：</p>
+<ol>
+<li><strong>数值溢出</strong>：x 很大时 exp(x) 直接爆 float 上限</li>
+<li><strong>需要全局信息</strong>：分母 Σ exp(x_j) 需要知道所有 x_j</li>
+</ol>
+<p>标准解法（subtract max）：</p>
+<pre><code>max_x = max(x_1, ..., x_n)
+softmax(x_i) = exp(x_i - max_x) / Σ exp(x_j - max_x)
+</code></pre>
+<p>先减最大值，再算 exp。但这需要<strong>两轮扫描</strong>：</p>
+<pre><code>第一轮：找到 max(x)
+第二轮：用 max 算 exp 并求和归一化
+</code></pre>
+<p>在 GPU 上，每轮扫描都是一次完整的显存读写。两轮 = 两倍数据搬运。</p>
+<hr>
+<h2 id="二、2-pass-实现思路">二、2-Pass 实现思路</h2>
+<pre><code>pass 1:
+  acc_max = -inf
+  for each chunk of the row:
+    load chunk from global memory
+    acc_max = max(acc_max, max(chunk))
+  → 现在知道了整行的 max
+
+pass 2:
+  acc_sum = 0
+  for each chunk of the row:
+    load chunk again
+    exp_vals = exp(chunk - acc_max)
+    acc_sum += sum(exp_vals)
+    store exp_vals somewhere (or load a third time)
+
+pass 3 (normalize):
+  for each chunk:
+    load exp_vals
+    store exp_vals / acc_sum
+</code></pre>
+<p>实际可以合并 pass 2 和 pass 3，但至少需要<strong>两轮完整读取</strong>每一行。</p>
+<hr>
+<h2 id="三、online-softmax：一轮搞定">三、Online Softmax：一轮搞定</h2>
+<p>核心观察：<strong>可以在遍历过程中动态更新统计量，发现新的最大值时&quot;重新缩放&quot;历史结果。</strong></p>
+<h3 id="算法">算法</h3>
+<pre><code>初始化：m = -inf, d = 0
+
+对于每一块数据：
+  m_new = max(m, max(block))
+  d_new = d × exp(m - m_new) + sum(exp(block - m_new))
+  m = m_new
+  d = d_new
+
+处理完所有块后：
+  output = exp(x_i - m) / d
+</code></pre>
+<h3 id="直观理解">直观理解</h3>
+<p>假设计算一行 <code>[1, 5, 3, 9, 2]</code> 的 softmax，分两块：<code>[1, 5, 3]</code> 和 <code>[9, 2]</code>。</p>
+<p>**第一块 <code>[1, 5, 3]</code>**：</p>
+<ul>
+<li>m = 5（当前最大值）</li>
+<li>d = exp(1-5) + exp(5-5) + exp(3-5) = exp(-4) + 1 + exp(-2) ≈ 0.0183 + 1 + 0.1353 = 1.1536</li>
+</ul>
+<p><strong>第二块 <code>[9, 2]</code>——发现更大的值</strong>：</p>
+<ul>
+<li>m_new = max(5, max(9, 2)) = 9</li>
+<li>alpha = exp(m - m_new) = exp(5-9) = exp(-4) ≈ 0.0183</li>
+<li>d_new = 1.1536 × 0.0183 + exp(9-9) + exp(2-9)
+  = 0.0211 + 1 + exp(-7)
+  ≈ 1.0212</li>
+</ul>
+<p>可以看到 <code>d</code> 在遇到更大的 9 时，旧数据被&quot;贬值&quot;了（乘以 ≈0.018），而新数据以新最大值归一化后加入。</p>
+<hr>
+<h2 id="四、为什么-online-算法数学正确">四、为什么 Online 算法数学正确</h2>
+<p>关键在于：给所有 exp 项减去同一个常数 M，softmax 结果不变。</p>
+<pre><code>exp(x_i - M_1) / Σ exp(x_j - M_1)
+= exp(x_i - M_2) / Σ exp(x_j - M_2)
+</code></pre>
+<p>其中 M_1 是第一块的最大值，M_2 是全部数据的真实最大值。</p>
+<p>Online 算法通过 <code>exp(m_old - m_new)</code> 这个缩放因子，在发现更优的 M 时无缝切换归一化基准。最终结果等同于一次性减去全局最大值后的 softmax。</p>
+<hr>
+<h2 id="五、实测性能（rtx-4070s，4096×4096）">五、实测性能（RTX 4070S，4096×4096）</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>实现</th>
+<th>耗时</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Online softmax (Triton)</td>
+<td>0.47 ms</td>
+<td>单次扫描</td>
+</tr>
+<tr>
+<td>PyTorch softmax</td>
+<td>0.32 ms</td>
+<td>cuDNN 高度优化</td>
+</tr>
+</tbody></table></div>
+<p>Triton 比 PyTorch 慢 ~47%。但这不能说明 online 算法不好——PyTorch 的 softmax 用了 cuDNN 里手写汇编级别的优化，几十年的积累。</p>
+<p>重要的是：<strong>Online 算法的单轮扫描性质，使它成为 FlashAttention 的核心组件。</strong> 在 FlashAttention 里，O(n²) 的 attention matrix 不能多次扫描——online 是唯一可行的方式。</p>
+<hr>
+<h2 id="六、从-softmax-到-flashattention">六、从 Softmax 到 FlashAttention</h2>
+<p>Softmax 是 FlashAttention 的 50%。</p>
+<p>在 attention 里，对于 Q 的每一行：</p>
+<pre><code>S = Q_row @ K^T            # 得到一行 [1, seq_len] 的分数
+P = softmax(S)              # 对这个分数做 softmax
+O_row = P @ V               # 用 softmax 权重对 V 加权求和
+</code></pre>
+<p>看到了吗？<strong>S 做完 softmax 就是普通的 softmax</strong>。不同之处在于：S 本身不是直接从显存读的，而是 Q @ K^T 算出来的。所以 FlashAttention 的处理单元不是&quot;一行数据&quot;，而是&quot;一个 tile 的点积结果&quot;。</p>
+<p>Online softmax 让这个计算可以在不保存完整 S 矩阵的情况下完成：Q 按行分块 → 每个 Q 块遍历所有 K,V 块 → online softmax 累加 → 写完 output。</p>
+<hr>
+<h2 id="七、一个容易被忽略的细节">七、一个容易被忽略的细节</h2>
+<p>如果你写 2-pass softmax，注意 <strong>Triton 的 <code>for</code> 循环中局部变量不会跨迭代保留</strong>。</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 这段 Triton 代码是错的：</span>
+m = <span class="hljs-built_in">float</span>(<span class="hljs-string">&quot;-inf&quot;</span>)
+<span class="hljs-keyword">for</span> start <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">0</span>, N, BLOCK):
+    x = tl.load(...)
+    m = <span class="hljs-built_in">max</span>(m, <span class="hljs-built_in">max</span>(x))  <span class="hljs-comment"># 看似在累加，但每次迭代是独立的！</span>
+</code></pre>
+<p>Triton compiler 可能会把循环展开，导致每次迭代的 <code>m</code> 是独立变量。正确的做法是把 <code>m</code> 的更新显式地用 <code>tl.where</code> 或在循环结束后统一处理。</p>
+<p>实际上这个问题在写 online softmax 时更隐蔽——<code>m</code> 和 <code>d</code> 都需要跨迭代保持。这就是为什么 Exercise 4（FlashAttention）容易出现数值错误的原因之一。</p>
+<hr>
+<p><em>本系列所有代码见 <a href="https://github.com/freezetheflame/triton-benchmark-prep">triton-benchmark-prep</a></em></p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
