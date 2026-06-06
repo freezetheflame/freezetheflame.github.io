@@ -28,186 +28,268 @@
         <h1>自演进 Skill：当 AI Agent 学会「积累经验」—— 从微软两篇新论文看 Hermes 的实践</h1>
         <div class="post-meta">
           <span>2026-06-07</span>
-          <span class="tag">AI Agent</span><span class="tag">自演进</span><span class="tag">Skill</span><span class="tag">Hermes</span><span class="tag">微软</span><span class="tag">LLM</span>
+          <span class="tag">AI Agent</span><span class="tag">自演进</span><span class="tag">Skill</span><span class="tag">Hermes</span><span class="tag">微软</span><span class="tag">LLM</span><span class="tag">SkillOpt</span>
         </div>
-        <p>昨天看到一篇文章刷爆了技术圈：微软一口气发了两篇关于「自进化 Skill」的论文。大意是说，未来的 AI Agent 不应该只是个一次性工具人——它应该能<strong>从经验中学习</strong>，把自己解决过的问题提炼成可复用的「技能」，下次遇到类似任务直接调用，而不是每次都从头推理。</p>
-<p>这听起来很前沿，但如果你用过 Hermes Agent，你会觉得这描述有点耳熟。</p>
-<h2 id="什么是「自演进-skill」">什么是「自演进 Skill」</h2>
-<p>传统的 LLM Agent 工作模式：用户给任务 → Agent 推理 → 调用工具 → 返回结果。下次用户给<strong>类似</strong>任务，Agent 重新推理一遍。一千次类似任务，一千次重复推理。浪费 token，浪费时间，而且每次推理结果可能还不一致。</p>
-<p>「自演进 Skill」的核心思路是：<strong>Agent 完成任务后，把成功路径保存为结构化的「技能文档」</strong>。下次遇到匹配的场景，直接加载技能，按照已验证的步骤执行，跳过重复推理。技能还会随使用自动维护——用的多的保留，过时的归档，这就是「演进」。</p>
-<p>本质上，这是在给 Agent 装一个「长期记忆」+「经验积累」系统。</p>
-<h2 id="微软的两篇论文（推测）">微软的两篇论文（推测）</h2>
-<p>由于微信文章的反爬验证太严格，我没办法直接读正文。但结合标题「彻底爆了，微软也连发了2篇自进化Skill」和当前 Agent 领域的研究脉络，这两篇大概率围绕：</p>
-<ol>
-<li><p><strong>技能表示与检索</strong>：如何把一次成功的任务执行记录，自动提炼成结构化的技能描述（步骤、前置条件、已知陷阱）。这涉及到 prompt 工程 + 结构化输出 + 嵌入检索。</p>
-</li>
-<li><p><strong>技能生命周期管理</strong>：技能不是存了就完了——会过时（API 变了）、会冲突（两个技能互相矛盾）、需要合并（多次执行同一任务产生多个版本）。需要一套自动化机制来判断技能的「健康状况」。</p>
-</li>
-</ol>
-<p>这两个方向恰恰是 Hermes Agent 已经工程化实现了的。</p>
-<h2 id="hermes-的-skill-系统：理念先行">Hermes 的 Skill 系统：理念先行</h2>
-<p>Hermes Agent 是目前少数几个把「自演进 Skill」作为<strong>核心设计理念</strong>而非事后功能补丁的 Agent 框架。它怎么做的？</p>
-<h3 id="1-经验保存：skill_manageactioncreate">1. 经验保存：skill_manage(action=&#39;create&#39;)</h3>
-<p>当 Hermes 完成一个复杂任务（5 次以上工具调用）、克服了一个棘手错误、或用户纠正了它的做法，它可以调用 <code>skill_manage</code> 把这个过程保存为结构化技能：</p>
-<pre><code>---
-name: triton-kernel-development
-description: &quot;Write, debug, and benchmark Triton GPU kernels&quot;
----
-
-# Triton Kernel Development
-
-## Pitfalls
-- `tl.math.tanh` doesn&#x27;t exist in Triton 3.6, hand-write it
-- `tl.dot` requires same dtype for both operands
-- TF32 can introduce ~2% error, use tf32=False for precision
-- Always warmup 10x before benchmarking
-</code></pre>
-<p>这个技能下次加载时，Agent 就不会再踩同样的坑。</p>
-<h3 id="2-上下文注入">2. 上下文注入</h3>
-<p>每次会话启动，Hermes 扫描 <code>~/.hermes/skills/</code> 目录，把所有匹配当前任务的技能注入到系统提示中。Agent 看到的不只是「你是一个 AI 助手」，而是「你是一个 AI 助手，并且你已知以下已验证的工作流程...」。</p>
-<h3 id="3-curator：自动化的技能管家">3. Curator：自动化的技能管家</h3>
-<p>这是 Hermes 最接近「自演进」的设计——<code>/curator</code> 子系统：</p>
+        <p>不改一行模型代码、不微调任何权重。只是把系统提示换成一张训练出来的 Skill 文档，Agent 的表现就从 41.8 飙到 80.7。</p>
+<p>这不是思想实验。这是微软刚刚发表的两篇论文的真实结果。</p>
+<p>如果你用过 Hermes Agent，你会觉得这个故事有点耳熟。</p>
+<h2 id="两篇论文讲了什么">两篇论文讲了什么</h2>
+<p>微软一口气发了两篇：</p>
 <ul>
-<li><strong>追踪使用</strong>：每个技能有 <code>use_count</code>、<code>patch_count</code>、<code>last_activity_at</code></li>
-<li><strong>标记过时</strong>：超过 <code>stale_after_days</code> 未使用的技能自动标记</li>
-<li><strong>归档清理</strong>：过时超过 <code>archive_after_days</code> 的技能自动归档（不删除，防误删）</li>
-<li><strong>钉选保护</strong>：重要技能可以 pin，豁免一切自动操作</li>
-<li><strong>备份机制</strong>：每次操作前自动 tar.gz 备份</li>
+<li><strong>SkillOpt</strong>（<a href="https://arxiv.org/abs/2605.23904">arXiv: 2605.23904</a>）：把 Agent Skill 当成模型一样训练——引入学习率控制、验证门、拒绝缓冲区、epoch 级慢更新。52 个测试场景全胜，平均提升 23.5 分。</li>
+<li><strong>Skill 生命周期研究</strong>（<a href="https://arxiv.org/abs/2605.23899">arXiv: 2605.23899</a>）：5 个领域 × 6 个模型，系统性地回答了一个更根本的问题——模型自动生成的 Skill，到底什么时候有用，什么时候反而帮倒忙？答案是：75% 有帮助，25% 会反噬。</li>
 </ul>
-<p>技能不是静态文件——它们在被使用、被修补、被归档的过程中持续「演进」。</p>
-<h3 id="4-memory：跨会话的知识持久化">4. Memory：跨会话的知识持久化</h3>
-<p>Skill 之外，Hermes 还有一个独立的 Memory 系统，用于保存更轻量的「事实」——用户的偏好、环境的怪癖、工具的坑。Memory 和 Skill 的分工很清晰：</p>
+<p>下面我们仔细拆解这两篇论文，然后讨论一个关键问题：<strong>Hermes Agent 的 Skill 系统跟论文比起来，处于什么位置？能不能把论文的思路做成插件？</strong></p>
+<h2 id="skillopt：把深度学习的方法论搬到了-skill-优化上">SkillOpt：把深度学习的方法论搬到了 Skill 优化上</h2>
+<p>SkillOpt 的核心思路是：把 Skill 文档当成&quot;外部可训练状态&quot;，用一个更强的模型（优化器）来编辑这个文档。整个过程像极了深度学习的训练循环：</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th></th>
-<th>Memory</th>
-<th>Skill</th>
+<th>组件</th>
+<th>对应训练概念</th>
+<th>作用</th>
 </tr>
 </thead>
 <tbody><tr>
-<td>粒度</td>
-<td>单条事实</td>
-<td>完整工作流</td>
+<td>Rollout batch</td>
+<td>训练数据</td>
+<td>目标模型用当前 Skill 跑一批任务，产出成功 + 失败的轨迹</td>
 </tr>
 <tr>
-<td>用例</td>
-<td>&quot;用户喜欢简洁回复&quot;</td>
-<td>&quot;如何在 Triton 中写 FlashAttention&quot;</td>
+<td>小批量反思</td>
+<td>反向传播</td>
+<td>优化器把轨迹分成成功组和失败组，分别提炼&quot;什么该保留&quot;&quot;什么要修正&quot;</td>
 </tr>
 <tr>
-<td>生命周期</td>
-<td>手动管理</td>
-<td>Curator 自动管理</td>
+<td>文本学习率</td>
+<td>步长控制</td>
+<td>每次最多改 L 条规则，防止一次改太多把有用的东西改没了</td>
+</tr>
+<tr>
+<td>验证门</td>
+<td>Early Stopping</td>
+<td>改完的 Skill 必须在验证集上严格提升才被接受，否则拒绝</td>
+</tr>
+<tr>
+<td>拒绝缓冲区</td>
+<td>负样本记忆</td>
+<td>被拒绝的编辑不会丢掉，作为&quot;什么不能改&quot;的负反馈留给后续步骤</td>
+</tr>
+<tr>
+<td>Epoch 级慢更新</td>
+<td>动量</td>
+<td>每个 epoch 结束后比较前后两版 Skill，把长期有效的经验写进受保护区域</td>
 </tr>
 </tbody></table></div>
-<h2 id="为什么-hermes-不需要一个「自演进-skill-插件」">为什么 Hermes 不需要一个「自演进 Skill 插件」</h2>
-<p>这是一个很有意思的问题。用户问我：能不能把文章里说的「自演进 Skill」作为一个<strong>插件</strong>装到 Hermes 上？</p>
-<p>答案是：<strong>它已经是核心功能了，不需要插件。</strong></p>
-<p>Hermes 的 Skill 系统从 Day 1 就是为此设计的。对比一下：</p>
+<p>这个设计的关键不是某个单独组件，而是它们的组合：</p>
+<ul>
+<li>没有学习率控制 → 优化器会一次重写太多内容</li>
+<li>没有验证门 → 看似合理的修改可能悄悄拉低表现</li>
+<li>没有拒绝缓冲区 → 优化器会反复犯同样的错误</li>
+</ul>
+<h3 id="数字说话：52-场景全胜，平均-235-分">数字说话：52 场景全胜，平均 +23.5 分</h3>
+<p>SkillOpt 在全部 52 个（模型 × 基准 × 执行模式）测试场景中，击败了人类手写 Skill、一次性 LLM 生成、Trace2Skill、TextGrad、GEPA、EvoSkill 六种基线。</p>
+<p>GPT-5.5 直接聊天模式下的表现（节选）：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>基准</th>
+<th>无 Skill</th>
+<th>SkillOpt</th>
+<th>提升</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SpreadsheetBench</td>
+<td>41.8</td>
+<td>80.7</td>
+<td>+38.9</td>
+</tr>
+<tr>
+<td>OfficeQA</td>
+<td>33.1</td>
+<td>72.1</td>
+<td>+39.0</td>
+</tr>
+<tr>
+<td>LiveMath</td>
+<td>37.6</td>
+<td>66.9</td>
+<td>+29.3</td>
+</tr>
+<tr>
+<td>ALFWorld</td>
+<td>83.6</td>
+<td>95.5</td>
+<td>+11.9</td>
+</tr>
+<tr>
+<td>SearchQA</td>
+<td>77.7</td>
+<td>87.3</td>
+<td>+9.6</td>
+</tr>
+<tr>
+<td>DocVQA</td>
+<td>78.8</td>
+<td>91.2</td>
+<td>+12.4</td>
+</tr>
+</tbody></table></div>
+<p>六项平均 +23.5 分。在 Codex 执行模式下平均 +24.8 分，在 Claude Code 模式下平均 +19.1 分。</p>
+<p>更值得注意的是：<strong>越弱的模型受益越大</strong>。GPT-5.4-nano 在 ALFWorld 上从 34.3 翻到 69.4（×2.0），在 DocVQA 上从 30.8 到 80.2（+49.4 分）。这意味着训练好的 Skill 可以给小模型补上它们权重里没有的程序性知识。</p>
+<h2 id="但-skill-不是万能的25-会反噬">但 Skill 不是万能的——25% 会反噬</h2>
+<p>第二篇论文更值得警惕。研究团队在 5 个领域上，用 6 个目标模型和 5 个提取器，系统性地测了 Skill 生命周期的三个阶段：<strong>经验生成 → Skill 提取 → Skill 消费</strong>。</p>
+<p>核心发现：模型生成的 Skill 在 75% 的情况下有帮助，但有 <strong>25% 会造成负迁移</strong>——用了 Skill 反而变差。而且负迁移风险因领域而异：</p>
+<ul>
+<li>表格操作和软件工程最低（仅 13%）</li>
+<li>机器人规划（ALFWorld）高达 <strong>47%</strong></li>
+</ul>
+<h3 id="三个反直觉的发现">三个反直觉的发现</h3>
+<p><strong>发现一：更强的模型不一定是更好的 Skill 提取器。</strong></p>
+<p>在 SpreadsheetBench 上，轻量级 Gemini-3.1-Flash-Lite 的提取效能最高，而 GPT-5.4 尽管任务执行能力最强，提取效能反而排在最后。提取 Skill 和执行任务是两种不同的能力。</p>
+<p><strong>发现二：看起来写得好的 Skill 反而效果最差。</strong></p>
+<p>研究者让 GPT-5.4 当评委，只看 Skill 文本判断哪个更好。结果准确率 **46.4%**——跟抛硬币没区别。而且差距越大的 Skill 对（一个明显好一个明显差），评委判断准确率反而越低——差距 ≥5 分的极端情况下，准确率只有 **15.8%**。</p>
+<p>也就是说，读起来更流畅的 Skill，往往在实际使用中表现更差。</p>
+<p><strong>发现三：什么才是好 Skill？不是文笔，是故障机制。</strong></p>
+<p>通过自动化对比分析，研究者发现了 3 个真正能预测 Skill 效用的维度：</p>
+<ol>
+<li><strong>故障机制编码</strong>——有没有识别出领域特定的失败模式</li>
+<li><strong>可执行特异性</strong>——有没有给出具体的、可操作的补救措施，而不是泛泛的建议</li>
+<li><strong>高风险操作黑名单</strong>——有没有明确标注哪些操作绝对不能做</li>
+</ol>
+<p>举例说明。SpreadsheetBench 上，高效果 Skill 写的是：</p>
+<blockquote>
+<p>&quot;公式注入谬误——在无头执行环境中，公式字符串不会触发计算引擎，所以必须在 Python 中预计算静态值再写入。&quot;</p>
+</blockquote>
+<p>低效果 Skill 写的是：</p>
+<blockquote>
+<p>&quot;编辑前先检查，编辑时保持最小改动。&quot;</p>
+</blockquote>
+<p>前者是具体的故障机制 + 可执行方案，后者是正确的废话。</p>
+<p>把这三个维度作为&quot;Meta-Skill&quot;插入提取器的系统提示后，所有 9 个测试场景都改善了（平均 +1.55 分），SpreadsheetBench 最大提升达到 +3.7 分。而用 LLM 直觉列出的&quot;合理性评分标准&quot;（清晰性、完整性、简洁性等 7 个维度），反而让平均性能下降了 0.59 分。</p>
+<h2 id="hermes-的-skill-系统跟论文比，处于什么位置？">Hermes 的 Skill 系统跟论文比，处于什么位置？</h2>
+<p>回到用户的问题：能不能把这两篇论文的思路做成 Hermes 插件？</p>
+<p>答案是：<strong>SkillOpt 的&quot;训练循环&quot;确实是一个高级功能，Hermes 目前没有。但 Skill 的基础设施——保存、加载、生命周期管理——Hermes 已经完整实现了。</strong></p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>能力</th>
-<th>微软论文（推测）</th>
+<th>论文提出</th>
 <th>Hermes 现状</th>
 </tr>
 </thead>
 <tbody><tr>
 <td>技能保存</td>
-<td>论文提出</td>
+<td>Skill 提取器</td>
 <td><code>skill_manage(action=&#39;create&#39;)</code> ✅</td>
 </tr>
 <tr>
 <td>技能加载</td>
-<td>论文提出</td>
-<td>上下文自动注入 ✅</td>
+<td>上下文注入</td>
+<td>自动注入系统提示 ✅</td>
 </tr>
 <tr>
 <td>生命周期管理</td>
-<td>论文提出</td>
-<td>Curator 自动化 ✅</td>
+<td>经验生成 → 提取 → 消费</td>
+<td>Curator（stale → archive） ✅</td>
 </tr>
 <tr>
 <td>使用统计</td>
-<td>论文提出</td>
-<td><code>.usage.json</code> 追踪 ✅</td>
+<td>效果追踪</td>
+<td><code>.usage.json</code> ✅</td>
+</tr>
+<tr>
+<td>质量把关</td>
+<td>Meta-Skill 三维度</td>
+<td>❌ 缺失</td>
+</tr>
+<tr>
+<td><strong>迭代优化</strong></td>
+<td><strong>SkillOpt 训练循环</strong></td>
+<td>❌ 缺失（核心差异）</td>
 </tr>
 <tr>
 <td>跨平台共享</td>
-<td>可能讨论</td>
+<td>?</td>
 <td>Skills Hub + GitHub tap ✅</td>
 </tr>
-<tr>
-<td>失效检测</td>
-<td>论文提出</td>
-<td>stale → archive 流水线 ✅</td>
-</tr>
-<tr>
-<td>钉选保护</td>
-<td>?</td>
-<td>Pin 豁免机制 ✅</td>
-</tr>
 </tbody></table></div>
-<p>换句话说，Hermes 不是「正在研究自演进 Skill」——它已经在生产环境跑了。当微软的研究人员还在写 LaTeX 的时候，Hermes 用户已经在用这套系统每天节省 token 了。</p>
-<h2 id="但还有空间：从「经验保存」到「自动发现」">但还有空间：从「经验保存」到「自动发现」</h2>
-<p>当然，这不代表 Hermes 的 Skill 系统已经完美了。当前还有一些可以增强的方向：</p>
-<h3 id="1-自动技能发现">1. 自动技能发现</h3>
-<p>目前 Hermes 需要 Agent <strong>主动</strong>调用 <code>skill_manage(action=&#39;create&#39;)</code> 来保存技能。能否实现自动检测？</p>
-<p>思路：每次会话结束后，分析对话历史，自动识别：</p>
+<p>**真正的差距在&quot;训练循环&quot;**。Hermes 的 Skill 目前是&quot;一次性生成 + 手动修补&quot;模式——Agent 完成一个任务后保存经验，下次手动 patch 修正。SkillOpt 做的事是让这个过程自动化：跑一批任务 → 对比成功/失败 → 自动编辑 Skill → 验证 → 拒绝坏编辑 → epoch 迭代。</p>
+<p>换句话说，Hermes 有&quot;肌肉&quot;，但没有&quot;健身教练&quot;。</p>
+<h2 id="论文对-hermes-skill-系统的三个启示">论文对 Hermes Skill 系统的三个启示</h2>
+<h3 id="启示一：curator-需要加一个质量打分器">启示一：Curator 需要加一个&quot;质量打分器&quot;</h3>
+<p>目前 Curator 只追踪 <code>use_count</code> 和 <code>patch_count</code>，不追踪<strong>技能加载后任务成功率是否提升</strong>。论文的 25% 负迁移率告诉我们：不能假设存下来的 Skill 一定有用。</p>
+<p>Hermes 可以做的事情：</p>
 <ul>
-<li>是否解决了新的问题类型？</li>
-<li>是否发现了新的工具怪癖？</li>
-<li>是否有用户纠正？</li>
+<li>追踪&quot;加载 Skill A 后，同类任务的首次成功率是否高于不加载的情况&quot;</li>
+<li>对高损技能自动降级（移到候选区而不是直接加载）</li>
+<li>用论文的三维度（故障机制、可执行特异性、高风险黑名单）作为生成 Skill 时的内置质量模板</li>
 </ul>
-<p>如果检测到，自动生成技能草稿，下次会话时提示用户确认。这需要一套离线的会话分析 pipeline。</p>
-<h3 id="2-跨实例技能同步">2. 跨实例技能同步</h3>
-<p>用户可能有多台机器、多个 Hermes 实例。目前技能需要通过 Skills Hub 或 GitHub tap 手动共享。可以做一个自动同步层：</p>
-<pre><code>Hermes A (工作机) ←→ Sync Server ←→ Hermes B (家用机)
-        技能自动推送              技能自动拉取
+<h3 id="启示二：skills-格式天然契合故障机制编码">启示二：Skills 格式天然契合&quot;故障机制编码&quot;</h3>
+<p>回头看你自己的 Hermes 技能库——比如 Triton kernel development 这个 Skill：</p>
+<pre><code>## Pitfalls
+- `tl.math.tanh` doesn&#x27;t exist in Triton 3.6, hand-write it
+- `tl.dot` requires same dtype for both operands
+- TF32 can introduce ~2% error, use tf32=False for precision
+- Always warmup 10x before benchmarking
 </code></pre>
-<h3 id="3-技能质量评估">3. 技能质量评估</h3>
-<p>技能多了以后，需要一个自动化的「技能好用吗」评估：</p>
+<p>这恰好就是论文说的&quot;故障机制编码 + 可执行特异性&quot;。不是&quot;注意精度问题&quot;这种正确的废话，而是&quot;TF32 会带来 ~2% 误差，使用 tf32=False 可避免&quot;。Hermes 的 Skill 格式（尤其是 Pitfalls 段）天然适合记录故障机制——只要 Agent 养成这个习惯。</p>
+<h3 id="启示三：手写-skill-和训练-skill-可以共存">启示三：手写 Skill 和训练 Skill 可以共存</h3>
+<p>SkillOpt 的结论不是说&quot;永远不要手写 Skill&quot;。而是说：<strong>对于高频、重复、有明确成败标准的任务，训练出来的 Skill 远优于手写</strong>。</p>
+<p>这对 Hermes 用户的实操意义：</p>
 <ul>
-<li>加载该技能后，任务成功率是否提升？</li>
-<li>加载该技能后，平均 token 消耗是否降低？</li>
-<li>用户是否频繁修补（patch）该技能？（说明质量不高）</li>
+<li><strong>高频任务</strong>（每天做几十次的操作）→ 值得跑 SkillOpt 风格的自动优化</li>
+<li><strong>低频探索型任务</strong>（偶尔为之的新领域）→ 手写 Skill 足够</li>
+<li><strong>有明确验证手段的任务</strong>（自动化测试能跑）→ 可以上训练循环</li>
+<li><strong>用户交互型任务</strong>（需要审美的、主观判断的）→ 手写更好</li>
 </ul>
-<p>基于这些指标，可以给技能打分，高分技能优先加载，低分技能降级。</p>
-<h3 id="4-分层技能：从「怎么做」到「为什么这么做」">4. 分层技能：从「怎么做」到「为什么这么做」</h3>
-<p>当前 Skill 主要是「流程文档」——步骤 1 做什么，步骤 2 做什么。但高级用户需要的是「原理文档」——为什么这么做，trade-off 是什么，什么情况下不适用。</p>
-<p>后续可以让 Skill 支持分层结构：</p>
-<ul>
-<li><strong>Execution 层</strong>（给 Agent）：精确步骤</li>
-<li><strong>Rationale 层</strong>（给用户）：设计原理</li>
-<li><strong>Context 层</strong>（给模型）：适配判断条件</li>
-</ul>
-<p>这恰好契合你在 Triton 学习中偏好的「理论文档 + 测试框架」模式——现有 Skill 格式已经是这么做的，但可以更系统化。</p>
-<h2 id="为什么这件事很重要">为什么这件事很重要</h2>
-<p>回到那篇刷屏文章。它之所以火，不是因为「微软发了论文」——微软天天发论文。而是因为<strong>行业共识正在形成</strong>：</p>
+<h2 id="一个可能的实现路径：把-skillopt-装进-hermes">一个可能的实现路径：把 SkillOpt 装进 Hermes</h2>
+<p>如果你真的想把论文的思路做成 Hermes 的插件/功能，架构可能是这样的：</p>
+<pre><code>                        ┌─────────────────────┐
+                        │   SkillOpt Runner    │
+                        │  (cron job or /cmd)  │
+                        └──────────┬──────────┘
+                                   │
+          ┌────────────────────────┼────────────────────────┐
+          ▼                        ▼                        ▼
+   ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+   │ Rollout Batch │       │   Optimizer  │       │  Validator   │
+   │ (跑N个任务)    │ ────► │ (对比成败轨迹) │ ────► │ (验证门)      │
+   └──────────────┘       └──────────────┘       └──────────────┘
+                                   │                        │
+                                   ▼                        ▼
+                          ┌──────────────┐       ┌──────────────┐
+                          │ Patch Skill  │       │  Accept or   │
+                          │ (文本学习率)   │       │  Reject +    │
+                          └──────────────┘       │  Buffer      │
+                                                 └──────────────┘
+</code></pre>
+<p>具体到 Hermes 的技术栈：</p>
+<ol>
+<li><strong>Rollout Batch</strong> → <code>delegate_task</code> 并行跑多个子 Agent，用同一 Skill，不同任务实例</li>
+<li><strong>Optimizer</strong> → 一个更强的模型（比如 Claude Opus / GPT-5.5）分析轨迹，生成 Skill patch</li>
+<li><strong>Validator</strong> → 在验证集上跑同样的任务，对比成功率</li>
+<li><strong>Rejection Buffer</strong> → Hermes Memory 存&quot;哪些编辑被拒绝过，为什么&quot;</li>
+<li><strong>Epoch Loop</strong> → <code>cronjob</code> 定期触发，每次迭代后的 Skill 通过 <code>skill_manage(action=&#39;patch&#39;)</code> 更新</li>
+</ol>
+<p>这是完全可以工程化的，而且每个组件在 Hermes 里都有现成工具。不算&quot;从零开发&quot;，更像是&quot;组装现有积木&quot;。</p>
+<h2 id="最后：为什么这件事值得关心">最后：为什么这件事值得关心</h2>
+<p>论文里有一个数字我反复看了好几遍：</p>
 <blockquote>
-<p>AI Agent 的下一个瓶颈不是模型能力，而是经验积累。</p>
+<p>不改一行模型代码、不微调任何权重。只是把 Skill 换成训练出来的版本，得分从 41.8 到 80.7。</p>
 </blockquote>
-<p>现在的 Agent 像是一个每次醒来都失忆的天才。它能解决复杂问题，但不记得自己昨天解决过。每次都要从头推理，每次都要重新踩坑。</p>
-<p>自演进 Skill 要解决的问题就是：<strong>让 Agent 拥有「工作经验」</strong>。</p>
-<p>Hermes 的 Skill + Memory + Curator 三位一体，是目前开源社区中最接近这个愿景的工程实现。而微软的论文加入战场，说明大厂也认可了这个方向。</p>
-<p>未来 6-12 个月，我预测我们会看到：</p>
-<ul>
-<li>更多关于「技能表示格式」的标准化尝试</li>
-<li>Agent-to-Agent 的技能交换协议</li>
-<li>基于强化学习的自动技能优化</li>
-<li>「招聘 Agent」时看的不再是 prompt 模板，而是它的 Skill Library</li>
-</ul>
-<h2 id="写在最后">写在最后</h2>
-<p>如果你在用 Hermes，建议现在就开始养成「保存技能」的习惯。每次你花超过 5 分钟调试一个问题、发现一个非显而易见的工具行为、或者 Agent 做对了某件复杂的事——告诉它：<code>save this as a skill</code>。</p>
-<p>这些技能是你跟 Agent 协作的「肌肉记忆」。一个月后回头看，你会发现你的 Agent 已经不是当初那个工具人了。</p>
-<p>而如果你还没用 Hermes——<code>pip install hermes-agent</code>，然后试试看。它可能是目前最接近「会成长的 Agent」这个愿景的开源项目。</p>
+<p>这意味着一件事：<strong>Skill 文档可能是 LLM 时代性价比最高的&quot;模型适配&quot;手段</strong>。不需要 GPU 集群、不需要标注数据、不需要重新部署。一个 300-2000 token 的 Markdown 文件，就能给小模型补上它权重里缺失的程序性知识。</p>
+<p>而 Hermes，恰好是目前开源生态里把 Skill 当一等公民来设计的少数框架之一。当微软在发论文论证&quot;Skill 应该像模型一样被训练&quot;时，Hermes 用户已经在用 Curator 管理上百个技能的演进。</p>
+<p>接下来的 6-12 个月，这场对话还会继续。而当&quot;Skill 训练&quot;从论文走进工程实践时，Hermes 的基础设施已经是现成的了。</p>
 <hr>
 <p><em>参考：</em></p>
 <ul>
+<li><em>SkillOpt: Executive Strategy for Self-Evolving Agent Skills — <a href="https://arxiv.org/abs/2605.23904">arXiv: 2605.23904</a></em></li>
+<li><em>From Raw Experience to Skill Consumption: A Systematic Study of Model-Generated Agent Skills — <a href="https://arxiv.org/abs/2605.23899">arXiv: 2605.23899</a></em></li>
 <li><em>Hermes Agent Skill 系统文档：<a href="https://hermes-agent.nousresearch.com/docs/">https://hermes-agent.nousresearch.com/docs/</a></em></li>
 <li><em>Hermes Agent GitHub：<a href="https://github.com/NousResearch/hermes-agent">https://github.com/NousResearch/hermes-agent</a></em></li>
-<li><em>微信原文（需要微信客户端打开）：<a href="https://mp.weixin.qq.com/s/3IxI67-xTMTaOJo_fgVVKg">https://mp.weixin.qq.com/s/3IxI67-xTMTaOJo_fgVVKg</a></em></li>
+<li><em>微信原文：<a href="https://mp.weixin.qq.com/s/3IxI67-xTMTaOJo_fgVVKg">https://mp.weixin.qq.com/s/3IxI67-xTMTaOJo_fgVVKg</a></em></li>
 </ul>
 
         <div class="button-row">
