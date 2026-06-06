@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vLLM 源码剖析（一）：从零搭建推理压测环境 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-06</p>
+        <h1>vLLM 源码剖析（一）：从零搭建推理压测环境</h1>
+        <div class="post-meta">
+          <span>2026-06-06</span>
+          <span class="tag">AI Infra</span><span class="tag">vLLM</span><span class="tag">推理引擎</span>
+        </div>
+        <p>vLLM 是目前最主流的 LLM 推理引擎之一，以 PagedAttention 和 continuous batching 两大创新著称。本文是「vLLM 源码剖析」系列的第一篇，记录从零搭建环境、跑通首次推理、完成基准压测的全过程。后续文章将深入 PagedAttention、Scheduler、Block Manager 等核心模块。</p>
+<p><strong>硬件环境</strong>：RTX 4070 Super 12GB VRAM，CUDA 13.2，vLLM 0.22.1，PyTorch 2.11<br><strong>测试模型</strong>：Qwen2.5-1.5B-Instruct（2.9GB，bf16，28 层，hidden_size=1536）</p>
+<hr>
+<h2 id="一、环境搭建">一、环境搭建</h2>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 安装 vLLM（清华镜像源，国内更快）</span>
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple vllm
+
+<span class="hljs-comment"># 下载测试模型</span>
+hf download Qwen/Qwen2.5-1.5B-Instruct --local-dir ./models/qwen2.5-1.5b
+</code></pre>
+<h3 id="踩坑记录">踩坑记录</h3>
+<ol>
+<li><strong>HF_ENDPOINT 镜像冲突</strong>：如果设置了 <code>HF_ENDPOINT=https://hf-mirror.com</code>，httpx 会报 <code>UnsupportedProtocol</code> 错误。需要 <code>unset HF_ENDPOINT</code> 后再下载。</li>
+<li><strong>numpy 版本冲突</strong>：vLLM 安装会升级 numpy 到 2.3.5，和旧版 scikit-learn 二进制不兼容。升级 sklearn 即可解决：<code>pip install --upgrade scikit-learn</code>。</li>
+<li><strong>Triton JIT 编译</strong>：首次推理会触发 attention kernel 的 JIT 编译，造成延迟尖刺（latency spike）。生产环境建议通过 warmup 预热。</li>
+</ol>
+<p>选择 Qwen2.5-1.5B-Instruct 作为测试模型：参数量小（~3GB 显存），12GB 显卡可同时跑 batch=32 不会 OOM，便于快速迭代实验。</p>
+<hr>
+<h2 id="二、首次推理">二、首次推理</h2>
+<p>vLLM 提供两套 API：离线批处理（<code>vllm.LLM</code>）和 OpenAI-compatible server（<code>vllm serve</code>）。先用离线 API 跑通：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> vllm <span class="hljs-keyword">import</span> LLM, SamplingParams
+
+llm = LLM(model=<span class="hljs-string">&quot;Qwen2.5-1.5B-Instruct&quot;</span>, gpu_memory_utilization=<span class="hljs-number">0.85</span>)
+outputs = llm.generate([<span class="hljs-string">&quot;Explain PagedAttention.&quot;</span>], SamplingParams(max_tokens=<span class="hljs-number">256</span>))
+</code></pre>
+<h3 id="关键参数说明">关键参数说明</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>含义</th>
+<th>推荐值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>gpu_memory_utilization</code></td>
+<td>GPU 显存使用比例</td>
+<td>12GB 卡建议 0.85（留余量给 CUDA context）</td>
+</tr>
+<tr>
+<td><code>max_tokens</code></td>
+<td>最大生成 token 数</td>
+<td>不宜设太大，vLLM 会预分配 KV cache</td>
+</tr>
+<tr>
+<td><code>temperature</code></td>
+<td>生成随机性</td>
+<td>压测时设 0 保证确定性</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="三、基准压测">三、基准压测</h2>
+<h3 id="31-batch-size-vs-throughput">3.1 Batch Size vs Throughput</h3>
+<p>固定 max_tokens=128, temperature=0，测试不同 batch size 的吞吐量和延迟：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Batch Size</th>
+<th>Tokens/sec</th>
+<th>Requests/sec</th>
+<th>Avg Latency (ms)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>49.1</td>
+<td>0.38</td>
+<td>2607</td>
+</tr>
+<tr>
+<td>2</td>
+<td>245.4</td>
+<td>1.96</td>
+<td>512</td>
+</tr>
+<tr>
+<td>4</td>
+<td>504.0</td>
+<td>3.98</td>
+<td>252</td>
+</tr>
+<tr>
+<td>8</td>
+<td>1006.4</td>
+<td>8.05</td>
+<td>124</td>
+</tr>
+<tr>
+<td>16</td>
+<td>1857.3</td>
+<td>14.62</td>
+<td>68</td>
+</tr>
+<tr>
+<td>32</td>
+<td>3692.5</td>
+<td>29.12</td>
+<td>34</td>
+</tr>
+</tbody></table></div>
+<p><strong>关键发现</strong>：</p>
+<ul>
+<li><strong>吞吐量接近线性扩展</strong>：batch=32 达到 3692 tok/s，是 batch=1 的 <strong>75 倍</strong></li>
+<li><strong>延迟大幅下降</strong>：2607ms → 34ms，得益于 GPU 计算密度提升</li>
+<li><strong>GPU 利用率是关键</strong>：单请求时 GPU 大量时间在等待（Compute M. 低），batch 增大填满计算单元</li>
+<li>batch=1 延迟高达 2.6s 的原因：模型加载 + Triton JIT 编译开销集中体现</li>
+</ul>
+<h3 id="32-output-length-vs-latency">3.2 Output Length vs Latency</h3>
+<p>固定 batch=1, temperature=0，测试不同 max_tokens 下的延迟：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Max Tokens</th>
+<th>Actual Tokens</th>
+<th>Time (s)</th>
+<th>Tokens/sec</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>32</td>
+<td>32</td>
+<td>0.45</td>
+<td>70.9</td>
+</tr>
+<tr>
+<td>64</td>
+<td>64</td>
+<td>0.48</td>
+<td>134.0</td>
+</tr>
+<tr>
+<td>128</td>
+<td>128</td>
+<td>0.95</td>
+<td>135.2</td>
+</tr>
+<tr>
+<td>256</td>
+<td>132</td>
+<td>0.99</td>
+<td>133.7</td>
+</tr>
+<tr>
+<td>512</td>
+<td>132</td>
+<td>0.98</td>
+<td>135.3</td>
+</tr>
+</tbody></table></div>
+<p><strong>关键发现</strong>：</p>
+<ul>
+<li><strong>稳态吞吐约 135 tok/s</strong>：一旦进入 decode 阶段，速度恒定</li>
+<li><strong>首 token 延迟约 350ms</strong>：包括 tokenization + prefill + 首次 forward</li>
+<li><strong>模型自然停在第 132 token</strong>：遇到 EOS token，max_tokens=256 和 512 均提前停止</li>
+<li>短文本（32 token）的 tok/s 偏低（70.9），因为首 token 开销占比大</li>
+</ul>
+<h3 id="33-延迟分解">3.3 延迟分解</h3>
+<p>以 max_tokens=128 为例（总耗时 0.95s，生成 128 token）：</p>
+<pre><code>首 token 延迟:    ~0.35s  (tokenization + prefill + 第一次 forward)
+Decode 阶段:      ~0.60s  (127 token × 4.7ms/token)
+稳态吞吐:          135 tok/s
+</code></pre>
+<hr>
+<h2 id="四、初步发现与思考">四、初步发现与思考</h2>
+<h3 id="为什么-batch1-这么慢？">为什么 batch=1 这么慢？</h3>
+<p>单请求时，GPU 的计算单元大部分时间在空转。Qwen2.5-1.5B 只有 28 层 × 12 heads，单次 forward 的计算量填不满 RTX 4070S 的 CUDA core。等到 batch=8 以上，多个请求的矩阵乘法和 attention 可以并行，GPU 利用率才真正发挥出来。</p>
+<p>这正是 <strong>continuous batching</strong> 的核心价值——不是等到一批请求都到达才一起处理，而是动态地将新到达的请求插入正在执行的 batch 中，最大化 GPU 利用率。</p>
+<h3 id="为什么稳态约-135-toks？">为什么稳态约 135 tok/s？</h3>
+<p>这个数字由模型架构决定：每生成一个 token 需要跑一次完整的 forward pass。1.5B 参数 × 28 层，在 bf16 下，内存带宽和计算能力达到平衡点。如果换成 7B 模型，预计会降到 20-30 tok/s。</p>
+<hr>
+<h2 id="五、下一步">五、下一步</h2>
+<p>Phase 2 将深入 PagedAttention 源码：</p>
+<ul>
+<li>阅读 <code>vllm/core/block_manager.py</code>：理解 KV cache 的分页分配和回收</li>
+<li>阅读 <code>vllm/core/scheduler.py</code>：理解 continuous batching 的调度策略</li>
+<li>手动 trace 一次请求的 block table 变化</li>
+</ul>
+<hr>
+<p><em>本系列所有代码和压测数据见 <a href="https://github.com/freezetheflame/vllm-deep-dive">vllm-deep-dive</a></em></p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
