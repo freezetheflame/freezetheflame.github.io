@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlashAttention：为什么它改变了 Transformer 推理的游戏规则 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-07</p>
+        <h1>FlashAttention：为什么它改变了 Transformer 推理的游戏规则</h1>
+        <div class="post-meta">
+          <span>2026-06-07</span>
+        </div>
+        <p>Transformer 的 Self-Attention 是整个架构的核心，也是最大的显存黑洞。FlashAttention 把 Attention 的整个计算链融合进一个 GPU kernel，把 O(n²) 的显存开销降到 O(n)。这是 Triton 生态中最著名的算法，也是理解「为什么要写 fused kernel」的最佳案例。</p>
+<p>本文从标准 Attention 的显存瓶颈出发，拆解 FlashAttention 的 tiling + online softmax 设计，最后给出 Triton 实现的完整骨架。</p>
+<h2 id="1-标准-attention-的显存灾难">1. 标准 Attention 的显存灾难</h2>
+<p>无论 Self-Attention 还是 Cross-Attention，核心计算都一样：</p>
+<pre><code>S = Q @ K^T          # [B, H, seq_len, seq_len]
+P = softmax(S)
+O = P @ V
+</code></pre>
+<p>问题出在 <strong>S 矩阵</strong>。它的大小是 O(n²)，并且是整个计算链的必经中间产物：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>seq_len</th>
+<th>单个 head 的 S 矩阵 (fp16)</th>
+<th>B=1, H=16 的总量</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1024</td>
+<td>2 MB</td>
+<td>32 MB</td>
+</tr>
+<tr>
+<td>4096</td>
+<td>32 MB</td>
+<td>512 MB</td>
+</tr>
+<tr>
+<td>8192</td>
+<td>128 MB</td>
+<td>2 GB</td>
+</tr>
+<tr>
+<td>32768</td>
+<td>2 GB</td>
+<td>32 GB</td>
+</tr>
+</tbody></table></div>
+<p>RTX 4070S 只有 12 GB 显存。seq_len=8192 时，仅 S 矩阵就吃掉 2 GB——更不用说还要存 Q、K、V、模型参数、KV Cache。实际推理中，seq_len 超过 4096 就开始吃力。</p>
+<p><strong>本质问题</strong>：Attention 是 memory-bound，不是 compute-bound。GPU 的计算单元大部分时间在等数据。</p>
+<h2 id="2-flashattention-的核心思路">2. FlashAttention 的核心思路</h2>
+<p>FlashAttention 的洞察非常简单：<strong>我们不需要存 S 矩阵</strong>。</p>
+<p>S 矩阵的唯一作用是计算 softmax 的分子（exp(S)）和分母（sum(exp(S))）。如果我们能在计算 S 的每一块时，当场完成 softmax 并累加到输出 O，那 S 矩阵就不需要保存。</p>
+<p>具体做法：</p>
+<ol>
+<li><strong>Tiling</strong>：把 Q 沿序列维度切成大小为 BLOCK_M 的块，把 K/V 切成大小为 BLOCK_N 的块</li>
+<li><strong>Online Softmax</strong>：对每个 Q 块，逐块处理 K/V，维护 running max 和 running denominator</li>
+<li><strong>Fused Write</strong>：算完一个 Q 块的所有 K/V 块后，一次写回输出 O</li>
+</ol>
+<pre><code>伪代码：
+
+对于每个 Q 块 [BLOCK_M, head_dim]（外层循环）：
+  m = [-inf]        # running max，每个 query 行一个
+  d = [0]           # running denominator
+  acc = 0           # 累加输出 [BLOCK_M, head_dim]
+
+  对于每个 K,V 块 [BLOCK_N, head_dim]（内层循环）：
+    S_j = Q_block @ K_block^T * scale       # [BLOCK_M, BLOCK_N]
+    m_new = max(m, max(S_j, axis=1))        # 更新 max
+    P = exp(S_j - m_new)                     # 稳定化
+    d_new = d * exp(m - m_new) + sum(P)     # 更新分母
+    acc = acc * (d/d_new) * exp(m-m_new) + P @ V_block / d_new
+    m, d = m_new, d_new
+
+  存储 acc → output
+</code></pre>
+<p>S_j（形状 [BLOCK_M, BLOCK_N]）在每一步都在寄存器/L1 里计算和消费，从未写入显存。这就是 &quot;Flash&quot; 的含义——一闪而过。</p>
+<p>而 online softmax 的数学保证：无论中间累加了多少块，最终结果和一次性算完整 softmax 完全等价。</p>
+<h2 id="3-grid-布局：1d-self-decoding">3. Grid 布局：1D self-decoding</h2>
+<p>和矩阵乘法的 2D grid 不同，FlashAttention 用 <strong>1D grid + 自解码</strong>：</p>
+<pre><code class="hljs language-python">grid = (cdiv(seq_len, BLOCK_M) * B * H,)
+
+<span class="hljs-comment"># 每个 program 自己解码：(batch, head, block_m_start)</span>
+pid = program_id(<span class="hljs-number">0</span>)
+num_m_blocks = cdiv(seq_len, BLOCK_M)
+
+bh_id = pid // num_m_blocks     <span class="hljs-comment"># 第几个 (batch, head) 对</span>
+block_m = pid % num_m_blocks    <span class="hljs-comment"># Q 的第几个行块</span>
+
+b_idx = bh_id // H              <span class="hljs-comment"># 解码 batch id</span>
+h_idx = bh_id % H               <span class="hljs-comment"># 解码 head id</span>
+</code></pre>
+<p>例如 <code>seq_len=256, BLOCK_M=64, B=2, H=4</code>：</p>
+<ul>
+<li>num_m_blocks = 4</li>
+<li>总 programs = 4 × 2 × 4 = 32</li>
+<li>pid=10 → bh_id=2, block_m=2 → 第0个batch的第2个head，Q 的第2个行块</li>
+</ul>
+<h2 id="4-triton-实现骨架">4. Triton 实现骨架</h2>
+<pre><code class="hljs language-python"><span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">flash_attention_fwd_kernel</span>(<span class="hljs-params">
+    q_ptr, k_ptr, v_ptr, o_ptr,
+    stride_qb, stride_qh, stride_qm, stride_qd,
+    stride_kb, stride_kh, stride_kn, stride_kd,
+    stride_vb, stride_vh, stride_vk, stride_vd,
+    stride_ob, stride_oh, stride_om, stride_od,
+    B, H, seq_len, head_dim,
+    BLOCK_M: tl.constexpr,
+    BLOCK_N: tl.constexpr,
+    sm_scale: tl.constexpr,
+</span>):
+    <span class="hljs-comment"># 1. 解码 pid</span>
+    pid = tl.program_id(<span class="hljs-number">0</span>)
+    num_m_blocks = tl.cdiv(seq_len, BLOCK_M)
+    bh_id = pid // num_m_blocks
+    block_m = pid % num_m_blocks
+    b_idx = bh_id // H
+    h_idx = bh_id % H
+
+    <span class="hljs-comment"># 2. 偏移量和 Q block 加载</span>
+    offs_m = block_m * BLOCK_M + tl.arange(<span class="hljs-number">0</span>, BLOCK_M)   <span class="hljs-comment"># [BLOCK_M]</span>
+    offs_n = tl.arange(<span class="hljs-number">0</span>, BLOCK_N)                        <span class="hljs-comment"># [BLOCK_N]</span>
+    offs_d = tl.arange(<span class="hljs-number">0</span>, head_dim)                       <span class="hljs-comment"># [head_dim]</span>
+
+    q = tl.load(q_ptr + (b_idx * stride_qb + h_idx * stride_qh
+                + block_m * BLOCK_M * stride_qm)
+                + offs_m[:, <span class="hljs-literal">None</span>] * stride_qm
+                + offs_d[<span class="hljs-literal">None</span>, :] * stride_qd,
+                mask=offs_m[:, <span class="hljs-literal">None</span>] &lt; seq_len, other=<span class="hljs-number">0.0</span>)
+
+    <span class="hljs-comment"># 3. Online softmax 初始化</span>
+    m_i = tl.zeros([BLOCK_M], dtype=tl.float32) - <span class="hljs-built_in">float</span>(<span class="hljs-string">&quot;inf&quot;</span>)
+    d_i = tl.zeros([BLOCK_M], dtype=tl.float32)
+    acc = tl.zeros([BLOCK_M, head_dim], dtype=tl.float32)
+
+    <span class="hljs-comment"># 4. 循环 K/V 块</span>
+    <span class="hljs-keyword">for</span> block_n <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">0</span>, tl.cdiv(seq_len, BLOCK_N)):
+        <span class="hljs-comment"># 加载 K block</span>
+        k = tl.load(k_ptr + (b_idx * stride_kb + h_idx * stride_kh
+                    + block_n * BLOCK_N * stride_kn)
+                    + offs_n[:, <span class="hljs-literal">None</span>] * stride_kn
+                    + offs_d[<span class="hljs-literal">None</span>, :] * stride_kd,
+                    mask=offs_n[:, <span class="hljs-literal">None</span>] &lt; seq_len, other=<span class="hljs-number">0.0</span>)
+
+        <span class="hljs-comment"># S = Q @ K^T * scale</span>
+        s = tl.dot(q, tl.trans(k)) * sm_scale    <span class="hljs-comment"># [BLOCK_M, BLOCK_N]</span>
+
+        <span class="hljs-comment"># Online softmax update</span>
+        m_new = tl.maximum(m_i, tl.<span class="hljs-built_in">max</span>(s, axis=<span class="hljs-number">1</span>))
+        alpha = tl.exp(m_i - m_new)
+        p = tl.exp(s - m_new[:, <span class="hljs-literal">None</span>])
+
+        d_new = alpha * d_i + tl.<span class="hljs-built_in">sum</span>(p, axis=<span class="hljs-number">1</span>)
+
+        <span class="hljs-comment"># 加载 V block + 累加输出</span>
+        v = tl.load(v_ptr + (b_idx * stride_vb + h_idx * stride_vh
+                    + block_n * BLOCK_N * stride_vk)
+                    + offs_n[:, <span class="hljs-literal">None</span>] * stride_vk
+                    + offs_d[<span class="hljs-literal">None</span>, :] * stride_vd,
+                    mask=offs_n[:, <span class="hljs-literal">None</span>] &lt; seq_len, other=<span class="hljs-number">0.0</span>)
+
+        acc = acc * alpha[:, <span class="hljs-literal">None</span>] * (d_i / d_new)[:, <span class="hljs-literal">None</span>]
+        acc += tl.dot(p, v) / d_new[:, <span class="hljs-literal">None</span>]
+
+        m_i = m_new
+        d_i = d_new
+
+    <span class="hljs-comment"># 5. 写回输出</span>
+    tl.store(o_ptr + (b_idx * stride_ob + h_idx * stride_oh
+             + block_m * BLOCK_M * stride_om)
+             + offs_m[:, <span class="hljs-literal">None</span>] * stride_om
+             + offs_d[<span class="hljs-literal">None</span>, :] * stride_od,
+             acc, mask=offs_m[:, <span class="hljs-literal">None</span>] &lt; seq_len)
+</code></pre>
+<h2 id="5-常见陷阱">5. 常见陷阱</h2>
+<ol>
+<li><strong>K 要转置</strong>：<code>S = Q @ K^T</code>，用 <code>tl.trans(k)</code> 而不是 <code>.T</code></li>
+<li><strong>dtype 对齐</strong>：Q/K/V 是 fp16，<code>acc</code> 必须是 float32。<code>tl.dot(Q, K)</code> 要求两个操作数同 dtype</li>
+<li><strong>acc 更新顺序</strong>：先 rescale 旧值，再加新贡献——写反了就全错</li>
+<li><strong>Mask 在正确的维度</strong>：Q 的 mask 是 <code>offs_m[:, None] &lt; seq_len</code>，K/V 是 <code>offs_n[:, None] &lt; seq_len</code></li>
+<li><strong>省略 logsumexp</strong>：生产代码需要存 LSE 给 backward 用。仅 forward 时可以跳过</li>
+</ol>
+<h2 id="6-v1-→-v2-→-v3-演进">6. v1 → v2 → v3 演进</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>版本</th>
+<th>年份</th>
+<th>关键改进</th>
+<th>硬件要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FlashAttention v1</td>
+<td>2022</td>
+<td>Tiling + online softmax + kernel fusion</td>
+<td>任意 GPU</td>
+</tr>
+<tr>
+<td>FlashAttention v2</td>
+<td>2023</td>
+<td>更好的并行策略，减少非 matmul 操作</td>
+<td>Ampere+</td>
+</tr>
+<tr>
+<td>FlashAttention v3</td>
+<td>2024</td>
+<td>TMA 异步拷贝、FP8、Hopper 专属优化</td>
+<td>H100 以上</td>
+</tr>
+</tbody></table></div>
+<p>我们实现的是 v1 的 forward pass——架构最清晰，最适合理解核心思想。</p>
+<h2 id="7-延伸阅读">7. 延伸阅读</h2>
+<ul>
+<li><a href="https://arxiv.org/abs/2205.14135">FlashAttention 论文 (NeurIPS 2022)</a></li>
+<li><a href="https://arxiv.org/abs/2307.08691">FlashAttention-2 论文</a></li>
+<li><a href="https://triton-lang.org/main/getting-started/tutorials/06-fused-attention.html">Triton 官方 Fused Attention Tutorial</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/12789107689">知乎：Triton 概念与编程入门笔记</a></li>
+</ul>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
