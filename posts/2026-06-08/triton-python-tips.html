@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triton &amp; Python 技巧录 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-08</p>
+        <h1>Triton &amp; Python 技巧录</h1>
+        <div class="post-meta">
+          <span>2026-06-08</span>
+          <span class="tag">Triton</span><span class="tag">Python</span><span class="tag">GPU 编程</span><span class="tag">技巧</span>
+        </div>
+        <p>写 Triton kernel 和做 GPU profiling 时踩到的坑，记录下来。持续更新。</p>
+<hr>
+<h2 id="1-gpu-timer-的-lambda-陷阱">1. GPU Timer 的 lambda 陷阱</h2>
+<p>用 <code>torch.cuda.Event</code> 计时时，最常见的错误是把 kernel 调用直接写进 <code>measure()</code> 参数：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># ❌ 错误 — kernel 在传入 measure 之前就执行了</span>
+timer.measure(kernel[grid](x, out, N, BLOCK_SIZE=BLOCK_SIZE))
+</code></pre>
+<p><code>kernel[grid](...)</code> 会立即执行并返回 <code>None</code>（Triton kernel 没有返回值），然后 <code>measure(None)</code> 试图计时一个 <code>None</code>……什么也测不到。</p>
+<p>正确写法：用一个<strong>零参数 callable</strong> 把调用包起来：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># ✅ 正确 — lambda 延迟执行</span>
+timer.measure(<span class="hljs-keyword">lambda</span>: kernel[grid](x, out, N, BLOCK_SIZE=BLOCK_SIZE))
+</code></pre>
+<p>等价的替代写法：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> functools <span class="hljs-keyword">import</span> partial
+
+<span class="hljs-comment"># 方式 B：partial</span>
+timer.measure(partial(kernel[grid], x, out, N, BLOCK_SIZE=BLOCK_SIZE))
+
+<span class="hljs-comment"># 方式 C：具名函数</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">run</span>():
+    kernel[grid](x, out, N, BLOCK_SIZE=BLOCK_SIZE)
+timer.measure(run)
+</code></pre>
+<p><strong>小结</strong>：lambda 最简洁。关键原则是「传入一个还没执行的函数，而不是执行结果」。</p>
+<hr>
+<h2 id="2-triton_print_autotuning1-什么时候才有用？">2. TRITON_PRINT_AUTOTUNING=1 什么时候才有用？</h2>
+<p>这个环境变量只在 kernel 用了 <code>@triton.autotune</code> 装饰器时才打印寄存器数、shared memory、occupancy。裸 <code>@triton.jit</code> 不会触发。</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 这样不会打印任何东西</span>
+<span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">my_kernel</span>(<span class="hljs-params">...</span>): ...
+
+<span class="hljs-comment"># 这样才能看到 autotune 输出</span>
+<span class="hljs-meta">@triton.autotune(<span class="hljs-params">configs=[...], key=[...]</span>)</span>
+<span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">my_kernel</span>(<span class="hljs-params">...</span>): ...
+</code></pre>
+<p>如果不想写 autotune 但又想拿编译信息，可以用 <code>triton.compile()</code> 拿到 <code>CompiledKernel</code> 对象，它的 <code>.metadata</code> 里有 <code>shared</code>、<code>num_warps</code>、<code>num_stages</code>。寄存器数仍然只能走 autotune 或 Nsight。</p>
+<hr>
+<h2 id="3-triton-36-没有-tlmathtanh">3. Triton 3.6 没有 tl.math.tanh</h2>
+<p>直接手写：<code>tanh(z) = (exp(2z) - 1) / (exp(2z) + 1)</code></p>
+<pre><code class="hljs language-python"><span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">tanh_kernel</span>(<span class="hljs-params">x_ptr, out_ptr, n, BLOCK_SIZE: tl.constexpr</span>):
+    pid = tl.program_id(<span class="hljs-number">0</span>)
+    offs = pid * BLOCK_SIZE + tl.arange(<span class="hljs-number">0</span>, BLOCK_SIZE)
+    mask = offs &lt; n
+    x = tl.load(x_ptr + offs, mask=mask)
+    y = (tl.exp(<span class="hljs-number">2</span> * x) - <span class="hljs-number">1</span>) / (tl.exp(<span class="hljs-number">2</span> * x) + <span class="hljs-number">1</span>)
+    tl.store(out_ptr + offs, y, mask=mask)
+</code></pre>
+<hr>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
