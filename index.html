@@ -472,11 +472,11 @@
           <button class="tag-pill" data-tag="深度学习">深度学习<span class="tag-count">9</span></button>
           <button class="tag-pill" data-tag="data science">data science<span class="tag-count">7</span></button>
           <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">7</span></button>
+          <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="python">python<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="算法与数据结构">算法与数据结构<span class="tag-count">6</span></button>
-          <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">5</span></button>
-          <button class="tag-pill" data-tag="GPU 编程">GPU 编程<span class="tag-count">4</span></button>
-          <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">4</span></button>
+          <button class="tag-pill" data-tag="GPU 编程">GPU 编程<span class="tag-count">5</span></button>
+          <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">5</span></button>
           <button class="tag-pill" data-tag="软件工程理论">软件工程理论<span class="tag-count">4</span></button>
           <button class="tag-pill" data-tag="framework">framework<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="PL理论">PL理论<span class="tag-count">2</span></button>
@@ -488,15 +488,18 @@
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AI Agent">AI Agent<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="algorithm">algorithm<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="CUDA">CUDA<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Hermes">Hermes<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="java垃圾回收">java垃圾回收<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MindSpeed">MindSpeed<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="MLIR">MLIR<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MoE">MoE<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MySQL">MySQL<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Skill">Skill<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="SkillOpt">SkillOpt<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="SQL">SQL<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="TileLang">TileLang<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="tools">tools<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="transformer">transformer<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TTT">TTT<span class="tag-count">1</span></button>
@@ -518,7 +521,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 127 篇文章
+      共 128 篇文章
     </div>
   </aside>
 
@@ -542,7 +545,7 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 127</span>
+        <span class="section-count" id="visibleCount">15 / 128</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
@@ -580,6 +583,17 @@
               </div>
             </div>
             <a href="posts/2026-06-07/triton-flash-attention.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
+          <li class="post-card" data-tags="AI Infra,Triton,GPU 编程,CUDA,MLIR,TileLang">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-07/triton-gpu-programming-landscape.html">GPU 编程模型全景图：从 CUDA 到 Triton，理解算子的编译与抽象层次</a></h3>
+              <p class="post-preview">要深入理解 Triton 为什么这样设计、它的 IR 栈在做什么、以及何时该用 Triton 何时不该，你需要先建立 GPU 编程模型的「全景认知」。这篇文章梳理从底层到上层的整个栈，帮你建立坐标系</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-07</span>
+                <span class="post-card-tags"><span class="post-tag">AI Infra</span><span class="post-tag">Triton</span><span class="post-tag">GPU 编程</span><span class="post-tag">CUDA</span><span class="post-tag">MLIR</span><span class="post-tag">TileLang</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-07/triton-gpu-programming-landscape.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="">
             <div class="post-card-body">
@@ -702,20 +716,9 @@
             </div>
             <a href="posts/2025-11-01/动态图and静态图（dl-frameworks）.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="Windows相关,深度学习,LLM">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2025-10-24/optimizer-in-neural-network.html">Optimizer in Neural Network</a></h3>
-              <p class="post-preview">参考文章：理解神经网络优化器：从梯度到 AdamW 之旅 by Shashank Sane Oct, 2025 Medium Understanding Neural Network Optimizers: A Journey fro...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2025-10-24</span>
-                <span class="post-card-tags"><span class="post-tag">Windows相关</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span></span>
-              </div>
-            </div>
-            <a href="posts/2025-10-24/optimizer-in-neural-network.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 127 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 128 篇文章 →</a>
     </section>
   </main>
 
