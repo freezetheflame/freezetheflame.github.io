@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triton 性能调优方法论：Roofline、Profiling 与瓶颈诊断 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-07</p>
+        <h1>Triton 性能调优方法论：Roofline、Profiling 与瓶颈诊断</h1>
+        <div class="post-meta">
+          <span>2026-06-07</span>
+          <span class="tag">AI Infra</span><span class="tag">Triton</span><span class="tag">GPU 编程</span><span class="tag">性能优化</span>
+        </div>
+        <p>写完 kernel 只是第一步。让它跑得快，靠的是系统性的性能分析和瓶颈诊断。本文梳理 Triton kernel 优化的完整方法论。</p>
+<hr>
+<h2 id="一、roofline-模型：你的-kernel-卡在哪里？">一、Roofline 模型：你的 kernel 卡在哪里？</h2>
+<p>GPU 上只有两类瓶颈：</p>
+<pre><code>                    ▲
+   Compute-bound    │  ╔═══════════════════════╗
+   (算力不够)        │  ║   Compute Roofline    ║  ← 硬件峰值 FLOPS
+                    │  ╚═══════════════════════╝
+                    │        /
+                    │       /  Memory-bound
+                    │      /   (带宽不够)
+                    │     /
+                    │    /
+                    └────────────────────────────────▶
+                         Arithmetic Intensity (FLOP/byte)
+</code></pre>
+<ul>
+<li><strong>Memory-bound</strong>（左半区）：每个 byte 数据只做很少的计算，瓶颈在显存带宽。典型：element-wise ops（ReLU, dropout, LayerNorm）</li>
+<li><strong>Compute-bound</strong>（右半区）：每个 byte 数据做大量计算，瓶颈在算力。典型：矩阵乘法、卷积</li>
+</ul>
+<p><strong>关键公式</strong>：</p>
+<pre><code>Operational Intensity = Total FLOPs / Total Bytes Moved
+
+如果是 Memory-bound: 时间 ≈ Bytes / Bandwidth
+如果是 Compute-bound: 时间 ≈ FLOPs / Peak FLOPS
+</code></pre>
+<p>**你的 RTX 4070 SUPER (AD104) **：</p>
+<ul>
+<li>峰值 FP32: ~35.5 TFLOPS</li>
+<li>显存带宽: ~504 GB/s (192-bit GDDR6X @ 21 Gbps)</li>
+<li>交叉点: ~70 FLOP/byte（低于这个值是 memory-bound）</li>
+</ul>
+<h3 id="实操：判断你的-kernel-是哪类">实操：判断你的 kernel 是哪类</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 以 vector add 为例</span>
+<span class="hljs-comment"># 读 2 个 float32 = 8 bytes，写 1 个 float32 = 4 bytes，做了 1 次加法 = 1 FLOP</span>
+<span class="hljs-comment"># AI = 1 / 12 ≈ 0.08 FLOP/byte ← 极度 memory-bound</span>
+
+<span class="hljs-comment"># 以 matmul (M=N=K=4096) 为例</span>
+<span class="hljs-comment"># FLOPs = 2 * 4096^3 = 137B FLOP</span>
+<span class="hljs-comment"># Bytes ≈ 3 * 4096^2 * 4 = 201MB</span>
+<span class="hljs-comment"># AI = 137B / 201M ≈ 682 FLOP/byte ← compute-bound</span>
+</code></pre>
+<hr>
+<h2 id="二、triton-profiling-工具链">二、Triton Profiling 工具链</h2>
+<h3 id="21-基础：gpu-event-timer">2.1 基础：GPU Event Timer</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> torch
+
+start = torch.cuda.Event(enable_timing=<span class="hljs-literal">True</span>)
+end = torch.cuda.Event(enable_timing=<span class="hljs-literal">True</span>)
+
+<span class="hljs-comment"># Warmup</span>
+<span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">10</span>):
+    kernel[grid](...)
+torch.cuda.synchronize()
+
+<span class="hljs-comment"># Measure</span>
+start.record()
+kernel[grid](...)
+end.record()
+torch.cuda.synchronize()
+elapsed_ms = start.elapsed_time(end)
+</code></pre>
+<p><strong>注意事项</strong>：</p>
+<ul>
+<li>必须 warmup（GPU 频率动态调整，前几次 run 不准确）</li>
+<li><code>torch.cuda.synchronize()</code> 确保 kernel 执行完再计时</li>
+<li>GPU clock 会因温度/功耗 throttling，长时间 benchmark 要监控频率</li>
+</ul>
+<h3 id="22-triton-内置-profiler">2.2 Triton 内置 Profiler</h3>
+<pre><code class="hljs language-bash">TRITON_PRINT_AUTOTUNING=1 python my_kernel.py
+</code></pre>
+<p>输出每个 autotune config 的：</p>
+<ul>
+<li>耗时 (ms)</li>
+<li>Register usage</li>
+<li>Shared memory usage</li>
+<li>Occupancy</li>
+</ul>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 在代码中获取编译结果</span>
+compiled = triton.<span class="hljs-built_in">compile</span>(kernel, signature=..., constants={...})
+<span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;Registers: <span class="hljs-subst">{compiled.n_regs}</span>&quot;</span>)
+<span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;Shared memory: <span class="hljs-subst">{compiled.n_spills}</span> bytes&quot;</span>)
+<span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;PTX: <span class="hljs-subst">{compiled.asm[<span class="hljs-string">&#x27;ptx&#x27;</span>][:<span class="hljs-number">500</span>]}</span>&quot;</span>)
+</code></pre>
+<h3 id="23-nvidia-nsight-systems--compute">2.3 NVIDIA Nsight Systems / Compute</h3>
+<pre><code># Nsight Systems (时间线，看整体)
+nsys profile --stats=true python my_kernel.py
+
+# Nsight Compute (单 kernel 细粒度分析)
+ncu --set full -o profile python my_kernel.py
+</code></pre>
+<p>Nsight Compute 能告诉你：</p>
+<ul>
+<li>Memory throughput 利用率 (%)</li>
+<li>Compute throughput 利用率 (%)</li>
+<li>Occupancy</li>
+<li>Register spill</li>
+<li>Bank conflict</li>
+<li>每个 warp 的 stall 原因（long scoreboard、short scoreboard、barrier 等）</li>
+</ul>
+<p><strong>对 Triton kernel 的限制</strong>：Triton 生成的 kernel 名字是自动的（如 <code>softmax_online_kernel_0d1d2d3d4d5d6</code>），需要在 ncu 输出里搜索。建议给你的 Triton kernel 设置 <code>@triton.autotune</code> 并关注输出中的 kernel name。</p>
+<hr>
+<h2 id="三、常见瓶颈与诊断">三、常见瓶颈与诊断</h2>
+<h3 id="31-寄存器溢出-register-spilling">3.1 寄存器溢出 (Register Spilling)</h3>
+<p><strong>症状</strong>：kernel 比预期慢 30-50%</p>
+<p><strong>原因</strong>：每个 SM 的寄存器数量固定（4070 SUPER: 65536 per SM）。如果你的 kernel 用了太多 local 变量，编译器只能把多余的「溢出」到 local memory（实际在 global memory 中，~500 cycles 延迟）。</p>
+<p><strong>诊断</strong>：</p>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 方法1: 看 autotune 输出</span>
+TRITON_PRINT_AUTOTUNING=1 python my_kernel.py
+<span class="hljs-comment"># 关注 n_regs — 如果接近 255（per-thread limit），问题来了</span>
+
+<span class="hljs-comment"># 方法2: 查 PTX</span>
+kernel.asm[<span class="hljs-string">&#x27;ptx&#x27;</span>]
+<span class="hljs-comment"># 搜索 st.local 或 ld.local — 出现这些就是 spill 了</span>
+</code></pre>
+<p><strong>解法</strong>：</p>
+<ul>
+<li>减少 <code>tl.arange</code> 的数量（每个 arange 占一个寄存器）</li>
+<li>用 <code>tl.maximum</code> / <code>tl.where</code> 代替 if-else（减少寄存器压力）</li>
+<li>降低 <code>BLOCK_SIZE</code>（每个 block 线程少了，per-thread 寄存器多了）</li>
+<li>调整 <code>num_warps</code>（更少的 warp = 更多的 per-thread 寄存器）</li>
+</ul>
+<h3 id="32-shared-memory-bank-conflict">3.2 Shared Memory Bank Conflict</h3>
+<p><strong>症状</strong>：shared memory 访问慢</p>
+<p><strong>原因</strong>：shared memory 有 32 个 bank（和 warp size 一样）。同一 warp 的 32 个线程如果访问了同一个 bank 的不同地址，就会串行化。</p>
+<p><strong>典型场景</strong>：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 这会导致 bank conflict（stride=32 时同一列在同一 bank）</span>
+a = tl.load(a_ptr + offsets[:, <span class="hljs-literal">None</span>] * stride + offsets[<span class="hljs-literal">None</span>, :])
+</code></pre>
+<p><strong>诊断</strong>：</p>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># Nsight Compute 直接报告 bank conflict</span>
+ncu --<span class="hljs-built_in">set</span> full --section MemoryWorkloadAnalysis python my_kernel.py
+
+<span class="hljs-comment"># 手工检查: 看你的 shared memory layout</span>
+<span class="hljs-comment"># 如果同一 warp 的线程访问 shared memory 地址 % 128 == 相同值，就是 bank conflict</span>
+</code></pre>
+<p><strong>解法</strong>：</p>
+<ul>
+<li>给 shared memory 加 padding（如分配 <code>[BLOCK_M + pad, BLOCK_K]</code> 而不是 <code>[BLOCK_M, BLOCK_K]</code>）</li>
+<li>改变数据 layout（如 AoS → SoA）</li>
+<li>使用 <code>tl.trans</code> 重排数据</li>
+</ul>
+<h3 id="33-occupancy-不足">3.3 Occupancy 不足</h3>
+<p><strong>症状</strong>：SM 利用率低</p>
+<p><strong>原因</strong>：每个 SM 最多同时驻留的 warp 数由寄存器和 shared memory 用量决定。</p>
+<pre><code>Max warps per SM = min(
+    max_warps_per_sm,      # 4070 SUPER: 48
+    regs_per_sm / (n_regs_per_thread * 32),
+    shmem_per_sm / shmem_per_block
+)
+</code></pre>
+<p>Occupancy = (实际驻留 warps) / (最大可能 warps)</p>
+<p><strong>诊断</strong>：</p>
+<pre><code class="hljs language-python">compiled = triton.<span class="hljs-built_in">compile</span>(...)
+occupancy = compiled.n_regs  <span class="hljs-comment"># 越低 occupancy 越高</span>
+</code></pre>
+<p><strong>解法</strong>：</p>
+<ul>
+<li>有时候 <strong>低 occupancy 反而是对的</strong>：如果 kernel 是 compute-bound，少 warps 但每个 warps 用满计算单元比多 warps 但每个都在等数据好</li>
+<li>关注的是 latency hiding：有足够 warps 掩盖 memory latency 即可</li>
+</ul>
+<h3 id="34-指令级瓶颈">3.4 指令级瓶颈</h3>
+<p><strong>症状</strong>：PTX 里出现低效指令序列</p>
+<p><strong>诊断</strong>：直接对比 PTX 输出</p>
+<pre><code class="hljs language-python">ptx = kernel.asm[<span class="hljs-string">&#x27;ptx&#x27;</span>]
+<span class="hljs-comment"># 搜索:</span>
+<span class="hljs-comment"># - ld.global → global memory load</span>
+<span class="hljs-comment"># - st.global → global memory store</span>
+<span class="hljs-comment"># - mma.sync → Tensor Core 指令（出现则说明用了 Tensor Core）</span>
+<span class="hljs-comment"># - bar.sync → barrier（过多说明同步开销大）</span>
+</code></pre>
+<hr>
+<h2 id="四、autotuner-深度使用">四、Autotuner 深度使用</h2>
+<pre><code class="hljs language-python"><span class="hljs-meta">@triton.autotune(<span class="hljs-params">
+    configs=[
+        triton.Config(<span class="hljs-params">{<span class="hljs-string">&#x27;BLOCK_M&#x27;</span>: <span class="hljs-number">64</span>, <span class="hljs-string">&#x27;BLOCK_N&#x27;</span>: <span class="hljs-number">64</span>, <span class="hljs-string">&#x27;BLOCK_K&#x27;</span>: <span class="hljs-number">32</span>}, num_warps=<span class="hljs-number">4</span>, num_stages=<span class="hljs-number">2</span></span>),
+        triton.Config(<span class="hljs-params">{<span class="hljs-string">&#x27;BLOCK_M&#x27;</span>: <span class="hljs-number">128</span>, <span class="hljs-string">&#x27;BLOCK_N&#x27;</span>: <span class="hljs-number">128</span>, <span class="hljs-string">&#x27;BLOCK_K&#x27;</span>: <span class="hljs-number">32</span>}, num_warps=<span class="hljs-number">8</span>, num_stages=<span class="hljs-number">3</span></span>),
+        <span class="hljs-comment"># ...</span>
+    ],
+    key=[<span class="hljs-string">&#x27;M&#x27;</span>, <span class="hljs-string">&#x27;N&#x27;</span>, <span class="hljs-string">&#x27;K&#x27;</span>],  <span class="hljs-comment"># cache key — 相同 shape 复用缓存结果</span>
+    prune_configs_by={
+        <span class="hljs-string">&#x27;early_config_prune&#x27;</span>: prune_func,  <span class="hljs-comment"># 过滤不可行 config</span>
+        <span class="hljs-string">&#x27;perf_model&#x27;</span>: <span class="hljs-keyword">lambda</span> cfg, M,N,K: estimated_time(<span class="hljs-params">cfg</span>),  <span class="hljs-comment"># 性能模型</span>
+        <span class="hljs-string">&#x27;top_k&#x27;</span>: <span class="hljs-number">10</span>,  <span class="hljs-comment"># 只跑 top-k 个 config</span>
+    }
+</span>)</span>
+<span class="hljs-meta">@triton.heuristics(<span class="hljs-params">{
+    <span class="hljs-string">&#x27;EVEN_K&#x27;</span>: <span class="hljs-keyword">lambda</span> args: args[<span class="hljs-string">&#x27;K&#x27;</span>] % BLOCK_K == <span class="hljs-number">0</span>,  <span class="hljs-comment"># 编译期常量折叠</span>
+}</span>)</span>
+<span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">my_kernel</span>(<span class="hljs-params">...</span>):
+    ...
+</code></pre>
+<p><strong>Autotune 策略</strong>：</p>
+<ol>
+<li><strong>粗搜</strong>：BLOCK 大小从 16 到 256，步长取 2 的幂</li>
+<li><strong>细搜</strong>：在粗搜最好的几个 config 附近细化</li>
+<li><strong>num_warps 规则</strong>：compute-bound kernel 用少的 warps（4），memory-bound kernel 用多的 warps（8-16）来隐藏延迟</li>
+<li><strong>num_stages</strong>：多 stage 做 software pipelining（用 shared memory 换 latency hiding），memory-bound kernel 效果好</li>
+</ol>
+<p><strong>关键参数经验</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>Memory-bound</th>
+<th>Compute-bound</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BLOCK_SIZE</td>
+<td>大 (512-2048)</td>
+<td>中 (128-256)</td>
+</tr>
+<tr>
+<td>num_warps</td>
+<td>多 (8-16)</td>
+<td>少 (4-8)</td>
+</tr>
+<tr>
+<td>num_stages</td>
+<td>多 (3-5)</td>
+<td>少 (1-2)</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="五、调试-ir-dump">五、调试 IR Dump</h2>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># Triton IR (TTIR)</span>
+MLIR_ENABLE_DUMP=1 TRITON_DUMP_IR=1 python my_kernel.py
+
+<span class="hljs-comment"># 只看某个 kernel 的 dump</span>
+TRITON_ALWAYS_COMPILE=1 python -c <span class="hljs-string">&quot;
+import triton
+@triton.jit
+def my_kernel(...): ...
+compiled = triton.compile(my_kernel, signature=...)
+print(compiled.asm[&#x27;ttir&#x27;])
+print(compiled.asm[&#x27;ttgir&#x27;])
+print(compiled.asm[&#x27;llir&#x27;])
+print(compiled.asm[&#x27;ptx&#x27;])
+&quot;</span>
+</code></pre>
+<p>Dump 中各层的作用：</p>
+<ul>
+<li><strong>TTIR</strong>：看你的 Python DSL 被翻译成了什么 IR——验证 compiler 是否理解正确</li>
+<li><strong>TTGIR</strong>：看 shared memory layout、memory layout（blocked/mma/slice）——诊断 bank conflict</li>
+<li><strong>LLVM IR</strong>：看循环展开、向量化、内联的效果</li>
+<li><strong>PTX</strong>：最终代码生成质量——数 load/store 指令，验证 coalescing</li>
+</ul>
+<hr>
+<h2 id="六、实战优化流程">六、实战优化流程</h2>
+<p>对任何一个 Triton kernel，按这个顺序来：</p>
+<pre><code>1. 确定瓶颈类型
+   AI = FLOPs / Bytes
+   ├─ AI &lt; 70 → memory-bound → 优化重点是减少访存
+   └─ AI &gt; 70 → compute-bound → 优化重点是提高 FLOP 利用率
+
+2. Baseline + Profiling
+   GPU timer 测 basline → ncu 看 stall reason
+
+3. Autotune 搜索
+   先粗后细，关注 register / shmem / occupancy
+
+4. 按瓶颈优化
+   Memory-bound:
+   ├─ 增大 BLOCK_SIZE（减少 grid launch 开销）
+   ├─ 合并访问（确保连续加载）
+   ├─ 增加 num_stages（software pipelining）
+   └─ 用 vectorized load（tl.load 的 mask 模式自动处理）
+   Compute-bound:
+   ├─ 确保用上 Tensor Core（tl.dot 在特定 BLOCK 和 dtype 下触发）
+   ├─ 减少 warp divergence
+   ├─ 寄存器压力优化（降低 num_warps 或 BLOCK_SIZE）
+   └─ 循环展开提示
+
+5. 验证
+   ncu 对比优化前后 → GPU timer 确认提升
+</code></pre>
+<hr>
+<h2 id="七、自测">七、自测</h2>
+<p>用你的 5 个 exercise kernel 做 profiling：</p>
+<ol>
+<li>算每个 kernel 的 Arithmetic Intensity，判断是 memory-bound 还是 compute-bound</li>
+<li>用 <code>TRITON_PRINT_AUTOTUNING=1</code> 查看 register/shared memory 用量</li>
+<li>对 memory-bound kernel，尝试增大 BLOCK_SIZE 或 num_stages</li>
+<li>对 compute-bound kernel，尝试不同的 num_warps</li>
+<li>记录优化前后的性能变化</li>
+</ol>
+<p>本文是 Triton 系列的一部分。上一篇：<a href="/posts/2026-06-07/triton-gpu-programming-landscape.html">GPU 编程模型全景图</a></p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
