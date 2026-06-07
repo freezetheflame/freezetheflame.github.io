@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPU 算子 Profiling 实战指南：测什么、怎么看、如何定位瓶颈 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-07</p>
+        <h1>GPU 算子 Profiling 实战指南：测什么、怎么看、如何定位瓶颈</h1>
+        <div class="post-meta">
+          <span>2026-06-07</span>
+          <span class="tag">AI Infra</span><span class="tag">Triton</span><span class="tag">GPU 编程</span><span class="tag">Profiling</span><span class="tag">性能优化</span>
+        </div>
+        <p>写完一个 GPU kernel，你怎么知道它「够不够快」？Profiling 不是跑一遍看个时间就完了——你需要知道测什么指标、怎么看数据、如何从数字反推瓶颈位置。本文是一份实用的 profiling 方法论。</p>
+<hr>
+<h2 id="一、profiling-测什么？核心指标体系">一、Profiling 测什么？核心指标体系</h2>
+<h3 id="11-延迟（latency）">1.1 延迟（Latency）</h3>
+<p>最基本的指标：kernel 执行一次要多久。</p>
+<pre><code>测量工具：
+  torch.cuda.Event     → 毫秒级精度，适合 Triton kernel
+  Nsight Systems       → 微秒级，能看到 kernel 之间的 overlap
+  Nsight Compute       → 单 kernel 细粒度，cycle 级
+</code></pre>
+<p><strong>注意</strong>：</p>
+<ul>
+<li>必须 warmup（前几次 GPU 频率未稳定）</li>
+<li><code>torch.cuda.synchronize()</code> 保证 kernel 真正跑完</li>
+<li>多测几次取中位数或 p99，不要只看第一次</li>
+</ul>
+<h3 id="12-吞吐量（throughput）">1.2 吞吐量（Throughput）</h3>
+<p>延迟的反面：单位时间能处理多少数据。</p>
+<pre><code>吞吐量 = 数据量 / 延迟
+
+例如：处理 16M 个 float32 的 ReLU，耗时 0.36 ms
+吞吐量 = 16M / 0.36ms = 44.4B elements/s ≈ 178 GB/s
+</code></pre>
+<p>对 memory-bound kernel，用<strong>带宽利用率</strong>衡量：</p>
+<pre><code>带宽利用率 = 实际吞吐量 / 理论峰值带宽 × 100%
+</code></pre>
+<p>对 compute-bound kernel，用 <strong>FLOPS 利用率</strong>衡量：</p>
+<pre><code>FLOPS 利用率 = 实际 FLOPS / 理论峰值 FLOPS × 100%
+</code></pre>
+<h3 id="13-硬件利用率指标">1.3 硬件利用率指标</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>含义</th>
+<th>从哪里看</th>
+<th>好/坏标准</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Occupancy</td>
+<td>SM 中活跃 warp 数 / 最大 warp 数</td>
+<td>Nsight Compute</td>
+<td>&gt;50% 一般够用</td>
+</tr>
+<tr>
+<td>Register usage</td>
+<td>每个线程用了多少寄存器</td>
+<td><code>TRITON_PRINT_AUTOTUNING</code></td>
+<td>&lt;128 安全，&gt;200 必定 spill</td>
+</tr>
+<tr>
+<td>Register spills</td>
+<td>溢出到 local memory 的寄存器数</td>
+<td>Nsight / PTX 中的 <code>st.local</code></td>
+<td>0 是理想值</td>
+</tr>
+<tr>
+<td>Shared memory usage</td>
+<td>每个 block 分配了多少 shared memory</td>
+<td>Autotune 输出</td>
+<td>&lt;100 KB（留 occupancy 空间）</td>
+</tr>
+<tr>
+<td>Memory throughput</td>
+<td>实际显存带宽使用率</td>
+<td>Nsight Compute</td>
+<td>memory-bound kernel 应 &gt;80%</td>
+</tr>
+<tr>
+<td>Compute throughput</td>
+<td>实际算力使用率</td>
+<td>Nsight Compute</td>
+<td>compute-bound kernel 应 &gt;50%</td>
+</tr>
+</tbody></table></div>
+<h3 id="14-stall-原因分析">1.4 Stall 原因分析</h3>
+<p>这是 Nsight Compute 最有价值的功能：<strong>你的 SM 在等什么？</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Stall 原因</th>
+<th>含义</th>
+<th>常见根因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Long Scoreboard</td>
+<td>等 global memory 加载</td>
+<td>访存未合并、L1 miss 多</td>
+</tr>
+<tr>
+<td>Short Scoreboard</td>
+<td>等 shared memory 或 L1</td>
+<td>bank conflict、shared memory 争用</td>
+</tr>
+<tr>
+<td>Barrier</td>
+<td>等同步</td>
+<td><code>__syncthreads()</code> 开销大</td>
+</tr>
+<tr>
+<td>Branch</td>
+<td>warp divergence</td>
+<td>if-else 分支导致串行</td>
+</tr>
+<tr>
+<td>Not Selected</td>
+<td>SM 没有调度这个 warp</td>
+<td>occupancy 太低</td>
+</tr>
+</tbody></table></div>
+<p><strong>实战建议</strong>：跑 <code>ncu --set full</code> 然后直接看 &quot;Warp State Statistics&quot; 饼图，哪个颜色最大就先看哪个。</p>
+<hr>
+<h2 id="二、三层-profiling-工具链">二、三层 Profiling 工具链</h2>
+<pre><code>快速诊断（秒级）               深度分析（分钟级）              终极武器（小时级）
+┌─────────────────┐    ┌─────────────────────┐    ┌──────────────────┐
+│ GPU Event Timer │ →  │ TRITON_PRINT_       │ →  │ Nsight Compute   │
+│ (延迟 + 吞吐量)  │    │ AUTOTUNING=1        │    │ (每周期每条指令)   │
+│                 │    │ (寄存器/shared mem)  │    │                  │
+└─────────────────┘    └─────────────────────┘    └──────────────────┘
+   自己写，秒出结果        环境变量，0 代码改动          硬件级，信息最全
+</code></pre>
+<h3 id="21-gpu-event-timer--入门首选">2.1 GPU Event Timer — 入门首选</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> torch
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">profile_kernel</span>(<span class="hljs-params">kernel, args, warmup=<span class="hljs-number">10</span></span>):
+    start = torch.cuda.Event(enable_timing=<span class="hljs-literal">True</span>)
+    end = torch.cuda.Event(enable_timing=<span class="hljs-literal">True</span>)
+
+    <span class="hljs-comment"># Warmup</span>
+    <span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(warmup):
+        kernel(*args)
+    torch.cuda.synchronize()
+
+    <span class="hljs-comment"># Timed</span>
+    start.record()
+    kernel(*args)
+    end.record()
+    torch.cuda.synchronize()
+
+    <span class="hljs-keyword">return</span> start.elapsed_time(end)  <span class="hljs-comment"># milliseconds</span>
+</code></pre>
+<p><strong>什么时候够了？</strong> 对比两个实现谁快、验证优化有没有效果。</p>
+<p><strong>什么时候不够？</strong> 你想知道「为什么慢」——这时候上 Nsight。</p>
+<h3 id="22-triton_print_autotuning--零成本诊断">2.2 TRITON_PRINT_AUTOTUNING — 零成本诊断</h3>
+<pre><code class="hljs language-bash">TRITON_PRINT_AUTOTUNING=1 python my_kernel.py
+</code></pre>
+<p>输出每个 config 的：</p>
+<pre><code>Triton autotuning: my_kernel (1024, 1024, 1024)
+  config 0: BLOCK_M=64, BLOCK_N=64, num_warps=4, num_stages=2
+    n_regs=48, n_spills=0, shared_mem=8192, occupancy=0.75
+    time=0.234 ms
+  config 1: BLOCK_M=128, BLOCK_N=128, num_warps=8, num_stages=3
+    n_regs=96, n_spills=4, shared_mem=16384, occupancy=0.50
+    time=0.189 ms
+</code></pre>
+<p><strong>关键解读</strong>：</p>
+<ul>
+<li><code>n_regs=96</code>：正常。超过 128 要警惕，超过 200 必定影响性能</li>
+<li><code>n_spills=4</code>：少量 spill 可接受。超过 20 要考虑降低寄存器压力</li>
+<li><code>occupancy=0.50</code>：50% — 对 compute-bound kernel 够了，memory-bound 则偏低</li>
+</ul>
+<h3 id="23-nsight-compute--深度定位">2.3 Nsight Compute — 深度定位</h3>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 快速看关键指标</span>
+ncu --<span class="hljs-built_in">set</span> basic python my_kernel.py
+
+<span class="hljs-comment"># 全面分析（慢，信息全）</span>
+ncu --<span class="hljs-built_in">set</span> full -o profile_report python my_kernel.py
+
+<span class="hljs-comment"># 只看 memory 相关</span>
+ncu --section MemoryWorkloadAnalysis python my_kernel.py
+</code></pre>
+<p><strong>Nsight 报告中优先看的 5 件事</strong>：</p>
+<ol>
+<li><strong>Kernel Duration</strong> — 确认是你关心的 kernel</li>
+<li><strong>Memory Throughput</strong> — 如果是 memory-bound kernel，看占有率</li>
+<li><strong>Compute Throughput</strong> — 如果是 compute-bound kernel，看 SM 利用率</li>
+<li><strong>Warp State Statistics</strong> — 饼图告诉你 SM 在等什么</li>
+<li><strong>Source View</strong> — 每条指令的 stall 原因，精准到行</li>
+</ol>
+<hr>
+<h2 id="三、如何从-profiling-数据定位问题">三、如何从 Profiling 数据定位问题</h2>
+<h3 id="场景-1：kernel-比预期慢-30-50">场景 1：Kernel 比预期慢 30-50%</h3>
+<p><strong>诊断流程</strong>：</p>
+<pre><code>1. GPU Timer → 确认确实慢（排除 warmup 问题）
+2. TRITON_PRINT_AUTOTUNING → 看 n_regs / n_spills
+   ├─ n_regs &gt; 200 → 寄存器溢出！降低 BLOCK_SIZE 或 num_warps
+   └─ n_regs 正常 → 进入 3
+3. Nsight Compute → 看 stall 原因
+   ├─ Long Scoreboard &gt; 60% → memory latency 主导
+   │   └─ 优化：增大 BLOCK_SIZE，增加 num_stages，检查 coalescing
+   ├─ Short Scoreboard &gt; 40% → shared memory 瓶颈
+   │   └─ 优化：padding 避免 bank conflict，减少 barrier
+   └─ Not Selected &gt; 50% → occupancy 太低
+       └─ 优化：减少寄存器或 shared memory 用量
+</code></pre>
+<h3 id="场景-2：triton-kernel-比-pytorch-慢">场景 2：Triton kernel 比 PyTorch 慢</h3>
+<p>先确认对比是否公平：</p>
+<ul>
+<li>数据类型是否一致？（fp16 vs fp32 性能差 2-8 倍）</li>
+<li>PyTorch 可能用了 cuBLAS/cuDNN 的融合 kernel</li>
+<li>PyTorch 的 <code>torch.compile</code> 可能会做算子融合</li>
+</ul>
+<p>如果确实慢：</p>
+<pre><code>1. 看 TRITON_PRINT_AUTOTUNING → 选最优 config 了吗？
+2. 看 PTX → 对比 PyTorch 版本的 PTX（用 ncu 抓）
+3. 检查是否有不必要的 global memory 往返
+</code></pre>
+<h3 id="场景-3：memory-bound-kernel-带宽利用率低">场景 3：Memory-bound kernel 带宽利用率低</h3>
+<pre><code>ReLU 预期：~500 GB/s（接近峰值）
+实际：     ~200 GB/s        ← 问题
+
+排查清单：
+□ BLOCK_SIZE 是否够大？（至少 512，建议 1024-2048）
+□ 数据是否连续？（确保没有 stride 访问）
+□ 是否有隐式的 fp32→fp16 转换？（每次转换都多一次访存）
+□ Grid 是否足够大？（SM 没用满——56 个 SM 至少需要 56 个 block）
+</code></pre>
+<h3 id="场景-4：matmul-的-flops-利用率上不去">场景 4：Matmul 的 FLOPS 利用率上不去</h3>
+<pre><code>Matmul 4096×4096×4096:
+  理论 fp16 Tensor Core: ~178 TFLOPS
+  实际:                  ~60 TFLOPS  ← 只有 34%
+
+排查清单：
+□ BLOCK_K 是否太小？（建议 32 或 64，太小则循环次数多）
+□ BLOCK_M/BLOCK_N 是否够大？（让 Tensor Core 吃饱）
+□ K 是否能整除 BLOCK_K？（不能的话最后一个迭代浪费算力）
+□ num_stages 是否合适？（compute-bound kernel 只需 1-2 个 stage）
+</code></pre>
+<hr>
+<h2 id="四、profiling-的黄金法则">四、Profiling 的黄金法则</h2>
+<ol>
+<li><strong>先判断 bound 类型，再优化</strong> — memory-bound 和 compute-bound 的优化方向完全不同，别优化错了方向</li>
+<li><strong>不要过度相信理论峰值</strong> — 实际能达到 70-80% 理论峰值就很好了</li>
+<li><strong>Warmup 是必须的</strong> — 不加 warmup 的 benchmark 是废数据</li>
+<li><strong>一次只改一个变量</strong> — 同时改 BLOCK_SIZE 和 num_warps，你不知道哪个起了作用</li>
+<li><strong>记录每次 profiling</strong> — 维护一个 profiling log，不然过两天就忘了哪个 config 最快</li>
+</ol>
+<hr>
+<h2 id="五、profiling-log-模板">五、Profiling Log 模板</h2>
+<p>保持一个简单的记录习惯：</p>
+<pre><code>Kernel: gelu_fp16
+Date: 2026-06-07
+GPU: RTX 4070 SUPER
+
+| Config                          | Time (ms) | BW (GB/s) | n_regs | n_spills | Occupancy |
+|---------------------------------|-----------|-----------|--------|----------|-----------|
+| BLOCK=512,  num_warps=4         | 0.42      | 480       | 32     | 0        | 0.75      |
+| BLOCK=1024, num_warps=8         | 0.36      | 557       | 48     | 0        | 0.62      |
+| BLOCK=2048, num_warps=16        | 0.38      | 530       | 72     | 2        | 0.50      |
+
+结论: BLOCK=1024, num_warps=8 最优。更大 BLOCK 反而慢，因为 occupancy 下降。
+</code></pre>
+<hr>
+<p>本文是 Triton 系列的一部分。上一篇：<a href="/posts/2026-06-07/triton-performance-tuning-methodology.html">Triton 性能调优方法论</a></p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
