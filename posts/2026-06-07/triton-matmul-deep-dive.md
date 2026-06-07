@@ -104,7 +104,33 @@ a_ptrs = a_ptr + rm[:, None] * stride_am + rk[None, :] * stride_ak
 # 结果: shape [BLOCK_M, BLOCK_K] 的地址矩阵
 ```
 
-这是整个 kernel 中最精巧的一行。`rm[:, None]` 把 `[BLOCK_M]` 变成 `[BLOCK_M, 1]`，在列方向广播；`rk[None, :]` 把 `[BLOCK_K]` 变成 `[1, BLOCK_K]`，在行方向广播。两者相加，恰好生成 `[BLOCK_M, BLOCK_K]` 的地址矩阵。
+这是整个 kernel 中最精巧的一行。把它拆开来看，广播过程是这样的：
+
+`rm` 是形状 `(BLOCK_M,)` 的行索引向量，`rk` 是形状 `(BLOCK_K,)` 的列/内积轴索引向量。要得到每对 `(m, k)` 的地址，需要把它们分别扩展然后广播相加：
+
+```
+rm[:, None]    → shape (BLOCK_M, 1)     行方向：每行一个不同的行号
+rk[None, :]    → shape (1, BLOCK_K)     列方向：每列一个不同的列号
+
+相加广播后:
+rm[:, None] * stride_am + rk[None, :] * stride_ak
+→ shape (BLOCK_M, BLOCK_K)             每个元素是唯一的 (行,列) 地址偏移
+```
+
+具体来说，假设 `BLOCK_M=2, BLOCK_K=3`，`rm = [10, 11]`，`rk = [4, 5, 6]`，`stride_am=100, stride_ak=1`：
+
+```
+rm[:, None]  = [[10],       rk[None, :]  = [[4, 5, 6]]
+                [11]]
+
+rm[:, None] * 100 = [[1000],    rk[None, :] * 1 = [[4, 5, 6]]
+                     [1100]]
+
+相加 → [[1004, 1005, 1006],    即 A[10,4] A[10,5] A[10,6]
+        [1104, 1105, 1106]]        A[11,4] A[11,5] A[11,6]
+```
+
+一步广播得到了整个 tile 的地址矩阵，不需要任何显式循环。
 
 K 维度循环时，只需要在指针上向前移动 BLOCK_K 个元素：
 

@@ -121,7 +121,26 @@ A.stride(<span class="hljs-number">1</span>) = <span class="hljs-number">1</span
 a_ptrs = a_ptr + rm[:, <span class="hljs-literal">None</span>] * stride_am + rk[<span class="hljs-literal">None</span>, :] * stride_ak
 <span class="hljs-comment"># 结果: shape [BLOCK_M, BLOCK_K] 的地址矩阵</span>
 </code></pre>
-<p>这是整个 kernel 中最精巧的一行。<code>rm[:, None]</code> 把 <code>[BLOCK_M]</code> 变成 <code>[BLOCK_M, 1]</code>，在列方向广播；<code>rk[None, :]</code> 把 <code>[BLOCK_K]</code> 变成 <code>[1, BLOCK_K]</code>，在行方向广播。两者相加，恰好生成 <code>[BLOCK_M, BLOCK_K]</code> 的地址矩阵。</p>
+<p>这是整个 kernel 中最精巧的一行。把它拆开来看，广播过程是这样的：</p>
+<p><code>rm</code> 是形状 <code>(BLOCK_M,)</code> 的行索引向量，<code>rk</code> 是形状 <code>(BLOCK_K,)</code> 的列/内积轴索引向量。要得到每对 <code>(m, k)</code> 的地址，需要把它们分别扩展然后广播相加：</p>
+<pre><code>rm[:, None]    → shape (BLOCK_M, 1)     行方向：每行一个不同的行号
+rk[None, :]    → shape (1, BLOCK_K)     列方向：每列一个不同的列号
+
+相加广播后:
+rm[:, None] * stride_am + rk[None, :] * stride_ak
+→ shape (BLOCK_M, BLOCK_K)             每个元素是唯一的 (行,列) 地址偏移
+</code></pre>
+<p>具体来说，假设 <code>BLOCK_M=2, BLOCK_K=3</code>，<code>rm = [10, 11]</code>，<code>rk = [4, 5, 6]</code>，<code>stride_am=100, stride_ak=1</code>：</p>
+<pre><code>rm[:, None]  = [[10],       rk[None, :]  = [[4, 5, 6]]
+                [11]]
+
+rm[:, None] * 100 = [[1000],    rk[None, :] * 1 = [[4, 5, 6]]
+                     [1100]]
+
+相加 → [[1004, 1005, 1006],    即 A[10,4] A[10,5] A[10,6]
+        [1104, 1105, 1106]]        A[11,4] A[11,5] A[11,6]
+</code></pre>
+<p>一步广播得到了整个 tile 的地址矩阵，不需要任何显式循环。</p>
 <p>K 维度循环时，只需要在指针上向前移动 BLOCK_K 个元素：</p>
 <pre><code class="hljs language-python">a_ptrs += BLOCK_K * stride_ak  <span class="hljs-comment"># stride_ak = 1 (行主序)</span>
 b_ptrs += BLOCK_K * stride_bk  <span class="hljs-comment"># stride_bk = N</span>
