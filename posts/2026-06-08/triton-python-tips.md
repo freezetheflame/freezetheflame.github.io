@@ -79,3 +79,45 @@ def tanh_kernel(x_ptr, out_ptr, n, BLOCK_SIZE: tl.constexpr):
 ```
 
 ---
+
+## 4. tl.load 的 other 参数：mask 位的默认值陷阱
+
+`tl.load(ptr, mask=mask)` 在 mask=False 的位置默认填 **0**。这对 sum/dot 没问题（0 对累加无影响），但对 max/min/product 会引入假数据：
+
+```python
+# ❌ 陷阱：max 规约 + 默认 other=0
+x = tl.load(ptr + offs, mask=mask)          # mask 位填 0
+m = tl.max(x)                                # 如果真实数据全是负数，max = 0（错了！）
+
+# ✅ 修法：选对规约操作透明的 other 值
+x = tl.load(ptr + offs, mask=mask, other=-float('inf'))  # max 用 -inf
+m = tl.max(x)                                 # -inf 不会赢过任何真实值
+```
+
+| 规约操作 | 该填的 `other` | 默认 0 行不行 |
+|---------|---------------|:----------:|
+| sum / dot | 0 | ✅ |
+| max | -inf | ✗ |
+| min | +inf | ✗ |
+| product | 1 | ✗ |
+
+**典型场景**：softmax 的 max 规约需要 `other=-float('inf')`，matmul 的 dot 用默认 0 就行。
+
+---
+
+## 5. 对 1D 向量做规约：别忘了 axis=0
+
+Triton 的 1D 向量用 `axis=0` 规约才能压成标量：
+
+```python
+x = tl.load(...)                    # shape: [BLOCK_SIZE]
+
+# ✅ axis=0 → 标量
+block_max = tl.max(x, axis=0)       # → scalar
+block_sum = tl.sum(x, axis=0)       # → scalar
+
+# ❌ 省略 axis → 不确定行为（各 backend 可能不同）
+block_max = tl.max(x)               # 不建议
+```
+
+在 online softmax 里 `m` 和 `d` 必须始终保持标量，所以每个 block 的 max/sum 都要加 `axis=0` 显式归约。

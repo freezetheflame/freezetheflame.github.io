@@ -80,6 +80,59 @@ timer.measure(run)
     tl.store(out_ptr + offs, y, mask=mask)
 </code></pre>
 <hr>
+<h2 id="4-tlload-的-other-参数：mask-位的默认值陷阱">4. tl.load 的 other 参数：mask 位的默认值陷阱</h2>
+<p><code>tl.load(ptr, mask=mask)</code> 在 mask=False 的位置默认填 <strong>0</strong>。这对 sum/dot 没问题（0 对累加无影响），但对 max/min/product 会引入假数据：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># ❌ 陷阱：max 规约 + 默认 other=0</span>
+x = tl.load(ptr + offs, mask=mask)          <span class="hljs-comment"># mask 位填 0</span>
+m = tl.<span class="hljs-built_in">max</span>(x)                                <span class="hljs-comment"># 如果真实数据全是负数，max = 0（错了！）</span>
+
+<span class="hljs-comment"># ✅ 修法：选对规约操作透明的 other 值</span>
+x = tl.load(ptr + offs, mask=mask, other=-<span class="hljs-built_in">float</span>(<span class="hljs-string">&#x27;inf&#x27;</span>))  <span class="hljs-comment"># max 用 -inf</span>
+m = tl.<span class="hljs-built_in">max</span>(x)                                 <span class="hljs-comment"># -inf 不会赢过任何真实值</span>
+</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>规约操作</th>
+<th>该填的 <code>other</code></th>
+<th align="center">默认 0 行不行</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>sum / dot</td>
+<td>0</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>max</td>
+<td>-inf</td>
+<td align="center">✗</td>
+</tr>
+<tr>
+<td>min</td>
+<td>+inf</td>
+<td align="center">✗</td>
+</tr>
+<tr>
+<td>product</td>
+<td>1</td>
+<td align="center">✗</td>
+</tr>
+</tbody></table></div>
+<p><strong>典型场景</strong>：softmax 的 max 规约需要 <code>other=-float(&#39;inf&#39;)</code>，matmul 的 dot 用默认 0 就行。</p>
+<hr>
+<h2 id="5-对-1d-向量做规约：别忘了-axis0">5. 对 1D 向量做规约：别忘了 axis=0</h2>
+<p>Triton 的 1D 向量用 <code>axis=0</code> 规约才能压成标量：</p>
+<pre><code class="hljs language-python">x = tl.load(...)                    <span class="hljs-comment"># shape: [BLOCK_SIZE]</span>
+
+<span class="hljs-comment"># ✅ axis=0 → 标量</span>
+block_max = tl.<span class="hljs-built_in">max</span>(x, axis=<span class="hljs-number">0</span>)       <span class="hljs-comment"># → scalar</span>
+block_sum = tl.<span class="hljs-built_in">sum</span>(x, axis=<span class="hljs-number">0</span>)       <span class="hljs-comment"># → scalar</span>
+
+<span class="hljs-comment"># ❌ 省略 axis → 不确定行为（各 backend 可能不同）</span>
+block_max = tl.<span class="hljs-built_in">max</span>(x)               <span class="hljs-comment"># 不建议</span>
+</code></pre>
+<p>在 online softmax 里 <code>m</code> 和 <code>d</code> 必须始终保持标量，所以每个 block 的 max/sum 都要加 <code>axis=0</code> 显式归约。</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
