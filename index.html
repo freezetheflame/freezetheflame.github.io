@@ -478,18 +478,20 @@
           <button class="tag-pill" data-tag="python">python<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="算法与数据结构">算法与数据结构<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="软件工程理论">软件工程理论<span class="tag-count">4</span></button>
+          <button class="tag-pill" data-tag="性能优化">性能优化<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="framework">framework<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="PL理论">PL理论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="RUST">RUST<span class="tag-count">2</span></button>
+          <button class="tag-pill" data-tag="transformer">transformer<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="图论">图论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="基础语法">基础语法<span class="tag-count">2</span></button>
-          <button class="tag-pill" data-tag="性能优化">性能优化<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="算法">算法<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="随笔">随笔<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AI Agent">AI Agent<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="algorithm">algorithm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="CUDA">CUDA<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="gpu">gpu<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Hermes">Hermes<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="java垃圾回收">java垃圾回收<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
@@ -504,7 +506,7 @@
           <button class="tag-pill" data-tag="SQL">SQL<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TileLang">TileLang<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="tools">tools<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="transformer">transformer<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="triton">triton<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TTT">TTT<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TypeScript/JavaScript">TypeScript/JavaScript<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="vLLM">vLLM<span class="tag-count">1</span></button>
@@ -525,7 +527,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 131 篇文章
+      共 132 篇文章
     </div>
   </aside>
 
@@ -549,12 +551,23 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 131</span>
+        <span class="section-count" id="visibleCount">15 / 132</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="triton,gpu,transformer,性能优化">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-08/triton-advanced-roadmap.html">Triton 进阶路线图：LayerNorm、Fused MLP 与 Autotune</a></h3>
+              <p class="post-preview">Triton 基础算子写完之后，下一步往哪走？本文梳理三个进阶方向，构成从&quot;能写 kernel&quot;到&quot;能写生产级 kernel&quot;的桥梁</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-08</span>
+                <span class="post-card-tags"><span class="post-tag">triton</span><span class="post-tag">gpu</span><span class="post-tag">transformer</span><span class="post-tag">性能优化</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-08/triton-advanced-roadmap.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="Triton,Python,GPU 编程,技巧">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-06-08/triton-python-tips.html">Triton &amp; Python 技巧录</a></h3>
@@ -709,20 +722,9 @@
             </div>
             <a href="posts/2025-12-15/python中的一些特别性质文件.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="AI,深度学习,LLM,TTT">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2025-12-10/test-time-training.html">Test Time Training</a></h3>
-              <p class="post-preview">Most models in machine learning today are fixed during deployment</p>
-              <div class="post-card-meta">
-                <span class="post-date">2025-12-10</span>
-                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">深度学习</span><span class="post-tag">LLM</span><span class="post-tag">TTT</span></span>
-              </div>
-            </div>
-            <a href="posts/2025-12-10/test-time-training.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 131 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 132 篇文章 →</a>
     </section>
   </main>
 

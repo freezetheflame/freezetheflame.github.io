@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triton 进阶路线图：LayerNorm、Fused MLP 与 Autotune | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-08</p>
+        <h1>Triton 进阶路线图：LayerNorm、Fused MLP 与 Autotune</h1>
+        <div class="post-meta">
+          <span>2026-06-08</span>
+          <span class="tag">triton</span><span class="tag">gpu</span><span class="tag">transformer</span><span class="tag">性能优化</span>
+        </div>
+        <p>Triton 基础算子写完之后，下一步往哪走？本文梳理三个进阶方向，构成从&quot;能写 kernel&quot;到&quot;能写生产级 kernel&quot;的桥梁。</p>
+<h2 id="当前进度回顾">当前进度回顾</h2>
+<p>假设你已经完成了：</p>
+<ul>
+<li><strong>Element-wise</strong>（ReLU / GELU / SiLU）：理解 memory coalescing、memory-bound 的含义</li>
+<li><strong>Softmax</strong>：online stable 算法、跨线程 reduction</li>
+<li><strong>Matmul</strong>：tiling、<code>tl.dot</code>（Tensor Core）、grid 设计</li>
+<li><strong>FlashAttention</strong>：fused kernel、online softmax 在 attention 中的应用</li>
+<li><strong>Profiling</strong>：GPU event timing、roofline model、arithmetic intensity 分析</li>
+</ul>
+<p>这六个 exercise 已经覆盖了 Triton 的核心原语。接下来三个方向各有侧重：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>方向</th>
+<th>难度</th>
+<th>学到什么</th>
+<th>实际价值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LayerNorm / RMSNorm</td>
+<td>⭐⭐</td>
+<td>跨 block reduction、Welford 算法</td>
+<td>每个 Transformer block 至少两次</td>
+</tr>
+<tr>
+<td>Autotune</td>
+<td>⭐⭐</td>
+<td>Config 空间搜索、寄存器压力、occupancy</td>
+<td>所有 kernel 的最终优化手段</td>
+</tr>
+<tr>
+<td>Fused MLP</td>
+<td>⭐⭐⭐</td>
+<td>Kernel fusion、tile 间依赖管理</td>
+<td>端到端推理延迟的直接优化</td>
+</tr>
+</tbody></table></div>
+<h2 id="方向一：layernorm--rmsnorm">方向一：LayerNorm &amp; RMSNorm</h2>
+<h3 id="为什么重要">为什么重要</h3>
+<p>一个 7B 模型的 transformer block 里，LayerNorm 只占约 5-15% 的算力，但它无处不在——每个 attention 和 MLP 前后都有 normalization。在长序列推理中（如 128K context），norm kernel 的调用次数可能超过 attention 本身。</p>
+<h3 id="算法本质">算法本质</h3>
+<pre><code>LayerNorm(x) = (x - mean(x)) / sqrt(var(x) + ε) * γ + β
+RMSNorm(x)   = x / sqrt(mean(x²) + ε) * γ          # 无 β，无减均值
+</code></pre>
+<p>两者都是<strong>逐行独立</strong>的——每行（每个 token）独立计算统计量，天然适合 GPU 并行。</p>
+<h3 id="核心挑战：跨-block-的-reduction">核心挑战：跨 Block 的 Reduction</h3>
+<p>如果一行数据（hidden_dim，通常 768-8192）大于一个 BLOCK，就需要跨 block 合并统计量。Welford 算法可以在单次遍历中同时计算均值和方差，但跨 block 合并需要额外的 kernel launch：</p>
+<pre><code>Kernel 1: 每个 block 计算自己的 (count, mean, M2)，存到临时 buffer
+Kernel 2: 合并临时 buffer，计算全局统计量
+Kernel 3: 用全局统计量做 normalize + affine
+</code></pre>
+<p>不过大多数 LLM 的 hidden_dim ≤ 1024（如 LLaMA-7B 的 4096 通过 tensor parallelism 分片后），一行可以放进一个 block，单 kernel 搞定。</p>
+<h3 id="关键差异">关键差异</h3>
+<ul>
+<li><strong>Welford 并行合并公式</strong>：需要正确处理两组统计量的合并，和简单求和不同</li>
+<li><strong>RMSNorm vs LayerNorm</strong>：少一次 mean reduction，约快 10-15%</li>
+<li><strong>Affine 参数</strong>：γ 和 β 存在 global memory 里，每次都要 load——可以 fuse 进 kernel</li>
+</ul>
+<h2 id="方向二：autotune">方向二：Autotune</h2>
+<h3 id="为什么手选参数不够">为什么手选参数不够</h3>
+<p>写完 matmul 后，你手动选了 <code>BLOCK_M=64, BLOCK_N=64, BLOCK_K=32</code>。这组参数对特定形状可能不错，但换一个 M×N×K 组合就不一定了。</p>
+<p>Triton 的 <code>@triton.autotune</code> 可以自动搜索参数空间，找到每个输入形状的最优配置。</p>
+<h3 id="工作原理">工作原理</h3>
+<pre><code class="hljs language-python"><span class="hljs-meta">@triton.autotune(<span class="hljs-params">
+    configs=[
+        triton.Config(<span class="hljs-params">{<span class="hljs-string">&#x27;BLOCK_M&#x27;</span>: <span class="hljs-number">64</span>, <span class="hljs-string">&#x27;BLOCK_N&#x27;</span>: <span class="hljs-number">64</span>, <span class="hljs-string">&#x27;BLOCK_K&#x27;</span>: <span class="hljs-number">32</span>}, num_warps=<span class="hljs-number">4</span></span>),
+        triton.Config(<span class="hljs-params">{<span class="hljs-string">&#x27;BLOCK_M&#x27;</span>: <span class="hljs-number">128</span>, <span class="hljs-string">&#x27;BLOCK_N&#x27;</span>: <span class="hljs-number">64</span>, <span class="hljs-string">&#x27;BLOCK_K&#x27;</span>: <span class="hljs-number">32</span>}, num_warps=<span class="hljs-number">8</span></span>),
+        <span class="hljs-comment"># ... 更多 config</span>
+    ],
+    key=[<span class="hljs-string">&#x27;M&#x27;</span>, <span class="hljs-string">&#x27;N&#x27;</span>, <span class="hljs-string">&#x27;K&#x27;</span>],  <span class="hljs-comment"># 缓存的键</span>
+</span>)</span>
+<span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">matmul_kernel</span>(<span class="hljs-params">...</span>):
+    ...
+</code></pre>
+<p>首次运行时，Triton 编译所有 config，逐个 benchmark，缓存最优结果。后续调用直接使用缓存。</p>
+<h3 id="参数空间的设计直觉">参数空间的设计直觉</h3>
+<ul>
+<li><strong>BLOCK_M × BLOCK_N</strong>：越大 → 每次 load 做更多计算 → 更高 AI。但受限于寄存器（~256KB / SM for fp32 accumulators）</li>
+<li><strong>num_warps</strong>：4 warps × 4 CTAs = 16 warps/SM。8 warps × 2 CTAs = 也是 16 warps/SM。但 8 warps 的 block 更大 → 更多寄存器 per block → 可能降低 occupancy</li>
+<li><strong>num_stages</strong>：pipeline stages。2 → 更少 shared memory 占用。4 → 更好隐藏访存延迟，但占更多 shared memory</li>
+</ul>
+<h3 id="profiling-与-autotune-的关系">Profiling 与 Autotune 的关系</h3>
+<p>Profiling 告诉你&quot;哪里慢了&quot;（memory-bound vs compute-bound），Autotune 帮你&quot;自动修&quot;。两者配合使用才是完整的优化流程。</p>
+<h2 id="方向三：fused-mlp">方向三：Fused MLP</h2>
+<h3 id="为什么需要-fusion">为什么需要 fusion</h3>
+<p>标准的 Transformer MLP：</p>
+<pre><code>x = Linear_1(input)    # [N, D] → [N, 4D]    ← 写回 global memory（慢）
+x = GELU(x)            # [N, 4D]              ← 读 + 写
+x = Linear_2(x)        # [N, 4D] → [N, D]     ← 读 + 写
+</code></pre>
+<p>每一步的中间结果都写回 global memory（GDDR6X <del>504 GB/s），但 GPU 的 L1 cache 和 shared memory 速度是它的 10 倍（</del>5 TB/s）。</p>
+<p>Fusion 的思路：<strong>在寄存器 / shared memory 里完成全部计算，只写一次最终结果。</strong></p>
+<pre><code>Fused: load → matmul_1 → GELU → matmul_2 → store
+         ↑_____只走一次 global memory 来回_____↑
+</code></pre>
+<h3 id="数据流设计">数据流设计</h3>
+<p>关键的约束是<strong>寄存器容量</strong>。中间值 <code>acc1</code> 是 <code>[BLOCK_M, 4K]</code>，以 4K = 16384（LLaMA-7B 的 intermediate size）为例，64 行 × 16384 列 × 4 字节 = 4 MB，远超寄存器容量。</p>
+<p>解决方法是把中间维度也分 tile：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">for</span> k4_block <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">0</span>, <span class="hljs-number">4</span>*K, BLOCK_K4):
+    <span class="hljs-comment"># Step 1: acc1 = x_tile @ W1_chunk   → [BLOCK_M, BLOCK_K4]</span>
+    <span class="hljs-comment"># Step 2: acc1 = GELU(acc1)          → 就地修改，寄存器内</span>
+    <span class="hljs-comment"># Step 3: acc2 += acc1 @ W2_chunk    → 立即消费掉 acc1</span>
+</code></pre>
+<p>这是一个 <strong>tiled-gemm → elementwise → tiled-gemm</strong> 的流水线。W1 和 W2 的加载顺序需要对齐，确保每次只加载当前 chunk 需要的权重。</p>
+<h3 id="实际收益">实际收益</h3>
+<p>以 LLaMA-7B 为例，一次 MLP forward 需要读写：</p>
+<ul>
+<li>未 fusion：x(2MB) + x1(8MB write + 8MB read) + x2(2MB write) = <strong>20 MB</strong></li>
+<li>Fusion 后：x(2MB read) + x2(2MB write) = <strong>4 MB</strong></li>
+</ul>
+<p>节省 16 MB 的 memory traffic。在 batch inference 中，这直接降低延迟。</p>
+<h2 id="建议学习顺序">建议学习顺序</h2>
+<ol>
+<li><p><strong>Autotune 先做</strong>——这是工具技能，给现有的 matmul 加上 autotune。学会后，给 LayerNorm 和 Fused MLP 加 autotune 就是顺手的事。运行 <code>TRITON_PRINT_AUTOTUNING=1</code> 看所有 config 的 benchmark 结果，理解为什么某些 config 赢、某些输。</p>
+</li>
+<li><p><strong>LayerNorm / RMSNorm</strong>——相对简单，跨 block reduction 是唯一难点。先实现&quot;一行能放进一个 block&quot;的简单版本（<code>D ≤ 1024</code>），跑通后再扩展到更大的 <code>D</code>。</p>
+</li>
+<li><p><strong>Fused MLP 最后</strong>——最复杂，涉及 tile 间依赖和流水线管理。建议先用 PyTorch 写 reference（确保算法正确），再逐步翻译成 Triton。</p>
+</li>
+</ol>
+<h2 id="资源">资源</h2>
+<p>所有练习代码和理论笔记在 <a href="https://github.com/freezetheflame/triton-benchmark-prep">github.com/freezetheflame/triton-benchmark-prep</a>：</p>
+<pre><code>exercises/
+  06_autotune.py          # Autotune 骨架，待你填完
+notes/
+  layernorm-rmsnorm.md    # LayerNorm/RMSNorm 理论 + Welford 算法
+  fused-mlp.md            # Fused MLP 设计 + 伪代码
+</code></pre>
+<p>每个 note 都包含算法推导、伪代码、自测框架和常见陷阱——不提供完整实现，只给你搭好脚手架。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
