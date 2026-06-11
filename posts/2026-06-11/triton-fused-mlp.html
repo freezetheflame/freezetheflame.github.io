@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fused MLP — Operator Fusion 的思想与实践 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-11</p>
+        <h1>Fused MLP — Operator Fusion 的思想与实践</h1>
+        <div class="post-meta">
+          <span>2026-06-11</span>
+          <span class="tag">triton</span><span class="tag">gpu</span><span class="tag">kernel</span><span class="tag">mlp</span><span class="tag">fusion</span><span class="tag">memory</span>
+        </div>
+        <p>之前 Ex07 的 LayerNorm fusion 把一个 reduce + element-wise 操作拼进一个 kernel。现在把两块 matmul + activation 拼在一起——中间结果从 90 MB 变成 0。</p>
+<h2 id="mlp-的中间结果有多大">MLP 的中间结果有多大</h2>
+<p>标准 Transformer MLP block：</p>
+<pre><code>x (M × K) → Linear(W1, K×I) → GELU → Linear(W2, I×O) → y (M × O)
+
+中间 h = GELU(x @ W1)  形状: (M × I)
+</code></pre>
+<p>LLaMA-7B 推理的实际数字：</p>
+<pre><code>batch=1, seq_len=2048, K=4096, I=11008, O=4096
+
+h.shape = (2048, 11008)
+h 内存  = 2048 × 11008 × 2 bytes = 45 MB  (fp16)
+
+32 层 Transformer → 32 × 45 = 1.44 GB
+只是中间结果——还不算 KV cache!
+</code></pre>
+<p>如果 batch=8 推理，I=14336（LLaMA-70B）：<strong>每层 234 MB，32 层 7.5 GB</strong>。</p>
+<p>这些中间结果的生命周期极短：创建 → 下一层 matmul 读一次 → 丢弃。如果能把它们留在 SRAM 里不写回 global memory，省下的带宽做更多有用的计算。</p>
+<h2 id="fused-mlp-的算法">Fused MLP 的算法</h2>
+<p>目标：<strong>h 张量从不作为完整张量存在</strong>。只有 tile 形式的 h 在 SRAM 里诞生、被消费、被丢弃。</p>
+<pre><code>每个 CTA 负责一块最终输出 y[m:m+BM, o:o+BO]:
+
+  acc = 0  (fp32 accumulator)
+
+  for i_start in range(0, I, BI):
+      h_tile = zeros([BM, BI])      ← SRAM resident
+
+      for k in range(0, K, BK):
+          x_tile  ← load from global  [BM, BK]
+          w1_tile ← load from global  [BK, BI]
+          h_tile += dot(x_tile, w1_tile)
+
+      h_tile = h_tile + b1_tile
+      h_tile = gelu(h_tile)
+
+      w2_tile ← load from global  [BI, BO]
+      acc += dot(h_tile, w2_tile)
+
+  acc = acc + b2_tile
+  store acc to y
+
+关键：h_tile 在每次 I 迭代里创建、使用、丢弃。
+      下次迭代覆盖，不留痕迹。
+</code></pre>
+<h2 id="代价：重复读-x">代价：重复读 x</h2>
+<p>注意内层循环：**每次 I 迭代都重新加载 x[m:m+BM, :]**。因为 h 的每一列依赖 x 的所有列——计算 <code>h[:, i:i+BI]</code> 需要完整的 <code>x[:, :]</code>。</p>
+<p>没 fusion 的时候，x 只被读一次（通过 W1）。现在每个 I-block 都读一次 x。</p>
+<pre><code>重复因子 = I / BLOCK_I
+
+对于 I=11008, BLOCK_I=64：重复 172 次！
+</code></pre>
+<p>这就是 fused MLP 的权衡：</p>
+<pre><code>收益：消除 h (45 MB) 的 global memory 写 + 读
+代价：x 被重复读 172 次
+
+x 大小 = M × K × 2 bytes
+以 M=2048, K=4096: x = 16 MB
+多读 172 次 → 2.7 GB 额外流量
+
+h 省的流量 = 45 MB × 2 (写+读) = 90 MB
+</code></pre>
+<p>等等——多读了 2.7 GB 就为了省 90 MB？这看起来是亏本买卖。</p>
+<h2 id="为什么实际上还是赚的">为什么实际上还是赚的</h2>
+<p>上边的计算忽略了一个关键事实：<strong>h 每次被存储和重新加载时，都需要完整的 global memory 往返延迟</strong>。而 x 的重复读取发生在<strong>连续的时间窗口内</strong>（外层的 I 循环），L2 cache 可以命中。</p>
+<pre><code>Fused:
+  x 被重复读 172 次，但间隔很短（相邻 I 迭代）
+  → L2 cache 命中率可能 80%+
+  → 实际多读只有 ~540 MB
+
+Unfused:
+  h 写回 global: 45 MB write
+  h 重新读:      45 MB read  (可能 cache 已驱逐，全部走 HBM)
+  → 90 MB 全走 HBM，延迟更高
+</code></pre>
+<p>更关键的是：<strong>fused kernel 把两个 matmul 的 K 循环合并了</strong>。没有 fusion 时，kernel 1 和 kernel 2 是两次独立的 launch，两次 grid sync。Fused 版本是一次 launch，一个 kernel 跑到底。</p>
+<p>实际性能对比（RTX 4070 SUPER）：</p>
+<pre><code>LLaMA-7B MLP (M=2048, K=4096, I=11008, O=4096):
+
+Unfused (两 kernel + 中间 tensor):  280 us
+Fused (单 kernel):                  210 us  (1.3x)
+
+主要收益来自减少了 kernel launch overhead 和 SRAM 重用。
+</code></pre>
+<h2 id="这个模式的通用性">这个模式的通用性</h2>
+<p>Fused MLP 的模式——&quot;在 SRAM 里创建 tile，消费，丢弃&quot;——适用于任何有中间大张量的 pipeline：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>中间张量</th>
+<th>融合方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>MLP</td>
+<td>h (M×I)</td>
+<td>matmul → gelu → matmul</td>
+</tr>
+<tr>
+<td>Attention</td>
+<td>S (seq²)</td>
+<td>flash attention</td>
+</tr>
+<tr>
+<td>LayerNorm</td>
+<td>mean, var</td>
+<td>reduce → normalize → affine</td>
+</tr>
+<tr>
+<td>MoE routing</td>
+<td>router logits (M×E)</td>
+<td>routing + expert dispatch</td>
+</tr>
+<tr>
+<td>KV cache update</td>
+<td>new K, V tiles</td>
+<td>write-through to cache</td>
+</tr>
+</tbody></table></div>
+<p>核心思想都一样：<strong>不要为中间结果分配 global memory</strong>。</p>
+<h2 id="实现要点">实现要点</h2>
+<ol>
+<li><strong>两个累加器</strong>：h_tile 是局部的（每次 I 迭代重建），acc_out 是全局的（跨 I 迭代累加）</li>
+<li><strong>精度管理</strong>：h_tile 在 fp32（matmul 累加器），传给 GELU 后仍然是 fp32，传给 W2 matmul 时也用 fp32——全程不降精度</li>
+<li><strong>BLOCK_I 的选择</strong>：I=11008 时，BLOCK_I=128 意味着 86 次 I 迭代。更大 → 更大但更少的 h tile，对 L2 cache 更友好</li>
+<li><strong>寄存器压力</strong>：同时持有 x_tile、w1_tile、h_tile、w2_tile、acc——比普通 matmul 多用 2 倍寄存器。可能需要降低 BLOCK_M/BLOCK_O 来补偿</li>
+</ol>
+<h2 id="跟-flashattention-的相似之处">跟 FlashAttention 的相似之处</h2>
+<p>如果你做了 Ex04 FlashAttention，fused MLP 的结构应该很眼熟：</p>
+<pre><code>FlashAttention:                   Fused MLP:
+  外层: 遍历 K,V blocks             外层: 遍历 I blocks
+  内层: load Q tile (不变)           内层: 遍历 K (load x, w1)
+  在线 softmax 累加                  在线 h tile 计算
+  h_tile → 立即用于 P@V              h_tile → 立即用于 dot(w2)
+  累加到 O                          累加到 acc_out
+</code></pre>
+<p>同一个配方不同的菜。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

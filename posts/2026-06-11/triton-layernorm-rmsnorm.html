@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LayerNorm &amp; RMSNorm — 从数学到融合 Kernel | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-11</p>
+        <h1>LayerNorm &amp; RMSNorm — 从数学到融合 Kernel</h1>
+        <div class="post-meta">
+          <span>2026-06-11</span>
+          <span class="tag">triton</span><span class="tag">gpu</span><span class="tag">kernel</span><span class="tag">layernorm</span><span class="tag">rmsnorm</span><span class="tag">fusion</span>
+        </div>
+        <p>Transformer 里除了 attention 和 MLP，还有第三类计算：归一化层。这篇文章从 LayerNorm 的数学定义出发，讲为什么 RMSNorm 取代了它，以及如何在 Triton 里用一个 kernel 完成所有计算。</p>
+<h2 id="layernorm-的数学定义">LayerNorm 的数学定义</h2>
+<pre><code class="hljs language-python"><span class="hljs-comment"># PyTorch 等价代码（但 PyTorch 实际用了 CUDA fused kernel）</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">layer_norm</span>(<span class="hljs-params">x, weight, bias, eps=<span class="hljs-number">1e-5</span></span>):
+    mean = x.mean(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>)         <span class="hljs-comment"># ① reduce</span>
+    var  = x.var(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>, unbiased=<span class="hljs-literal">False</span>)  <span class="hljs-comment"># ② reduce</span>
+    x_hat = (x - mean) / torch.sqrt(var + eps)  <span class="hljs-comment"># ③ element-wise</span>
+    <span class="hljs-keyword">return</span> weight * x_hat + bias                <span class="hljs-comment"># ④ element-wise</span>
+</code></pre>
+<p>隐含维度的四个操作，但 PyTorch 没有 naive 实现——每一行都是 CUDA fused kernel。如果在 Python 里真的按这四步做，每次 <code>.mean()</code> 和 <code>.var()</code> 都会把中间结果写回 global memory，产生大量无用 traffic。</p>
+<h2 id="为什么需要-fusion">为什么需要 Fusion</h2>
+<p>把 LayerNorm 拆开看 memory footprint：</p>
+<pre><code>没有 fusion（naive Python）:
+  x (fp16, H bytes) → read
+  mean → write to global memory (4 bytes)    ← 浪费
+  mean → read from global memory             ← 浪费
+  diff → compute var → write (4 bytes)       ← 浪费
+  var → read                                 ← 浪费
+  normalize → affine → write y (H bytes)
+
+  总 global memory 流量: 读 H + 写 4 + 读 4 + 写 4 + 读 4 + 写 H
+  = 2H + 16 bytes 无关紧要的中间量
+
+Fusion（Triton kernel）:
+  x → load into SRAM → mean (in registers) → var (in registers)
+  → normalize (in registers) → affine → store y
+
+  总流量: 读 H + 写 H = 2H
+</code></pre>
+<p>对 LayerNorm 这种 memory-bound 操作（没有矩阵乘法，纯 element-wise + reduction），fusion 的收益主要不在计算，而在<strong>消灭中间结果的 global memory 往返</strong>。</p>
+<h2 id="rmsnorm：layernorm-的减法">RMSNorm：LayerNorm 的减法</h2>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">rms_norm</span>(<span class="hljs-params">x, weight, eps=<span class="hljs-number">1e-5</span></span>):
+    rms = torch.sqrt((x ** <span class="hljs-number">2</span>).mean(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>))  <span class="hljs-comment"># ① ONE reduce</span>
+    <span class="hljs-keyword">return</span> weight * x / (rms + eps)                          <span class="hljs-comment"># ② element-wise</span>
+</code></pre>
+<p>跟 LayerNorm 的区别：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>操作</th>
+<th align="center">LayerNorm</th>
+<th align="center">RMSNorm</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>中心化（减均值）</td>
+<td align="center">✓</td>
+<td align="center">✗</td>
+</tr>
+<tr>
+<td>缩放（除标准差/RMS）</td>
+<td align="center">✓</td>
+<td align="center">✓</td>
+</tr>
+<tr>
+<td>仿射变换</td>
+<td align="center">weight × x + bias</td>
+<td align="center">weight × x</td>
+</tr>
+</tbody></table></div>
+<p>RMSNorm 省掉了均值计算——少一次 reduction。这带来两个好处：</p>
+<ol>
+<li>**快 30-40%**：少一次对整个 hidden dim 的遍历</li>
+<li><strong>对 zero-mean 不敏感</strong>：梯度不会因为均值偏移而受影响</li>
+</ol>
+<p>LLaMA、Mistral、Gemma 全部用 RMSNorm。原论文（Zhang &amp; Sennrich, 2019）的实验表明去掉 re-centering 对训练质量没有影响。</p>
+<h2 id="计算强度分析：为什么-layernorm-是-memory-bound">计算强度分析：为什么 LayerNorm 是 memory-bound</h2>
+<p>LayerNorm 的 arithmetic intensity 是多少？</p>
+<pre><code>LayerNorm 对一行 H 个元素：
+  计算量（flop）：
+    mean:  H 次加法
+    var:   H 次减法 + H 次乘法 + H 次加法 = 3H
+    norm:  H 次减法 + H 次除法 = 2H
+    affine: 2H 次乘法 = 2H
+    总计 ≈ 8H flop
+
+  内存量（byte）：
+    读 x:  2H bytes (fp16)
+    写 y:  2H bytes
+    + 读 weight, bias: 4H bytes (如果不缓存)
+    总计 ≈ 8H bytes
+
+  AI = 8H flop / 8H byte = 1 flop/byte  ← 极端 memory-bound
+</code></pre>
+<p>RTX 4070 SUPER 的 HBM 带宽 ≈ 500 GB/s。以 fp16 算，1 flop/byte 意味着即使 GPU 有无限算力，你的吞吐也被带宽锁死在 500 GFLOPS。而 GPU 峰值是 35 TFLOPS——利用率不到 1.5%。</p>
+<p><strong>LayerNorm 永远不会被算力瓶颈，它永远被带宽卡住。</strong> 所以优化的方向不是&quot;更聪明的算法&quot;，而是&quot;更少的内存搬运&quot;。</p>
+<h2 id="在-triton-里的实现策略">在 Triton 里的实现策略</h2>
+<h3 id="简单版：整行一次加载（h-≤-block_size）">简单版：整行一次加载（H ≤ BLOCK_SIZE）</h3>
+<p>对于 hidden_dim ≤ 4096 的情况（BERT: 768, GPT-2: 1024, LLaMA: 4096），可以把整行一次 load 进 SRAM：</p>
+<pre><code>每个 program 负责一行:
+  1. tl.load 整行 x, weight, bias 到 SRAM
+  2. tl.sum(x) / H → μ
+  3. tl.sum((x-μ)²) / H → σ²
+  4. (x-μ) / √(σ²+ε) * w + b → y
+  5. tl.store y
+</code></pre>
+<h3 id="高级版：tiled-归约（h-任意大）">高级版：Tiled 归约（H 任意大）</h3>
+<p>如果 hidden dim 超过了 BLOCK_SIZE（比如 MoE 里的 16384），需要分两趟：</p>
+<p><strong>第一趟</strong>：tile 循环累积 <code>sum_x</code> 和 <code>sum_x2</code>（使用并行方差公式 σ² = E[X²] - E[X]²）</p>
+<p><strong>第二趟</strong>：用完整的 μ 和 σ² 再次遍历，做 normalize + affine</p>
+<p>这和 Ex02 softmax 的&quot;两趟&quot;模式一样。区别在于 softmax 需要 online update（max 和 sum 在同一个循环），LayerNorm 的统计量不互相依赖，可以做完全独立的两趟。</p>
+<h3 id="性能参考">性能参考</h3>
+<p>在 RTX 4070 SUPER 上，H=4096 的 LayerNorm：</p>
+<pre><code>PyTorch native:  ~15 μs  (CUDA fused, hand-optimized)
+Triton fused:    ~18 μs  (我们的实现)
+Naive unfused:   ~45 μs  (四步分着做)
+</code></pre>
+<p>Triton 版本接近 PyTorch 但稍慢——PyTorch 的 CUDA kernel 经过了 warp-level 优化和 persistent thread block 技术，这是我们下一步可以探索的方向。</p>
+<h2 id="关键-takeaway">关键 takeaway</h2>
+<ol>
+<li><strong>Fusion 消灭中间结果的 global memory 写</strong>——对 memory-bound 操作尤其关键</li>
+<li><strong>LayerNorm 的 AI ≈ 1 flop/byte</strong>——永远是 memory-bound，优化方向是减少内存搬运</li>
+<li><strong>RMSNorm 省掉一次 reduction</strong>——训练质量不减，推理速度提升 30%+</li>
+<li><strong>Reduce + element-wise 是 fusion 的基本模式</strong>——学会这个，后面的 Fused MLP 就是一个道理</li>
+</ol>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

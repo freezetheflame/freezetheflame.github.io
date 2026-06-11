@@ -475,13 +475,15 @@
           <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">8</span></button>
           <button class="tag-pill" data-tag="data science">data science<span class="tag-count">7</span></button>
           <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">7</span></button>
+          <button class="tag-pill" data-tag="gpu">gpu<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="python">python<span class="tag-count">6</span></button>
+          <button class="tag-pill" data-tag="triton">triton<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="算法与数据结构">算法与数据结构<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="软件工程理论">软件工程理论<span class="tag-count">4</span></button>
-          <button class="tag-pill" data-tag="gpu">gpu<span class="tag-count">3</span></button>
-          <button class="tag-pill" data-tag="triton">triton<span class="tag-count">3</span></button>
+          <button class="tag-pill" data-tag="kernel">kernel<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="性能优化">性能优化<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="framework">framework<span class="tag-count">2</span></button>
+          <button class="tag-pill" data-tag="fusion">fusion<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="PL理论">PL理论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="RUST">RUST<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="transformer">transformer<span class="tag-count">2</span></button>
@@ -492,21 +494,28 @@
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AI Agent">AI Agent<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="algorithm">algorithm<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="ascend">ascend<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="autotune">autotune<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="backend">backend<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="CUDA">CUDA<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="debugging">debugging<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="fundamentals">fundamentals<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Hermes">Hermes<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="internship">internship<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="java垃圾回收">java垃圾回收<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="kernel">kernel<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="layernorm">layernorm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="memory">memory<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MindSpeed">MindSpeed<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MLIR">MLIR<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="mlp">mlp<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MoE">MoE<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MySQL">MySQL<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="npu">npu<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="performance">performance<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Profiling">Profiling<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Python">Python<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="rmsnorm">rmsnorm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Skill">Skill<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="SkillOpt">SkillOpt<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="SQL">SQL<span class="tag-count">1</span></button>
@@ -532,7 +541,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 134 篇文章
+      共 137 篇文章
     </div>
   </aside>
 
@@ -556,7 +565,7 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 134</span>
+        <span class="section-count" id="visibleCount">15 / 137</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
@@ -573,6 +582,28 @@
             </div>
             <a href="posts/2026-06-11/triton-autotune-pitfalls.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
+          <li class="post-card" data-tags="triton,gpu,kernel,mlp,fusion,memory">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-11/triton-fused-mlp.html">Fused MLP — Operator Fusion 的思想与实践</a></h3>
+              <p class="post-preview">之前 Ex07 的 LayerNorm fusion 把一个 reduce + elementwise 操作拼进一个 kernel。现在把两块 matmul + activation 拼在一起——中间结果从 90 MB 变成 0</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-11</span>
+                <span class="post-card-tags"><span class="post-tag">triton</span><span class="post-tag">gpu</span><span class="post-tag">kernel</span><span class="post-tag">mlp</span><span class="post-tag">fusion</span><span class="post-tag">memory</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-11/triton-fused-mlp.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
+          <li class="post-card" data-tags="triton,gpu,kernel,layernorm,rmsnorm,fusion">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-11/triton-layernorm-rmsnorm.html">LayerNorm &amp; RMSNorm — 从数学到融合 Kernel</a></h3>
+              <p class="post-preview">Transformer 里除了 attention 和 MLP，还有第三类计算：归一化层。这篇文章从 LayerNorm 的数学定义出发，讲为什么 RMSNorm 取代了它，以及如何在 Triton 里用一个 kernel 完成所有计算</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-11</span>
+                <span class="post-card-tags"><span class="post-tag">triton</span><span class="post-tag">gpu</span><span class="post-tag">kernel</span><span class="post-tag">layernorm</span><span class="post-tag">rmsnorm</span><span class="post-tag">fusion</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-11/triton-layernorm-rmsnorm.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="triton,gpu,kernel,performance,fundamentals">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-06-11/triton-tile-grid-wave.html">GPU Kernel 的 Tile、Grid、Wave 与 Launch Overhead</a></h3>
@@ -583,6 +614,17 @@
               </div>
             </div>
             <a href="posts/2026-06-11/triton-tile-grid-wave.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
+          <li class="post-card" data-tags="triton,gpu,ascend,npu,backend,internship">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-11/triton-to-ascend-roadmap.html">从 Triton 到 Ascend NPU — 跨后端 Kernel 开发路线图</a></h3>
+              <p class="post-preview">学了 9 个 Triton exercise 之后，你写的 kernel 跑在 NVIDIA GPU 上。但 Triton 的定位不只是&quot;CUDA 的 Python 替代品&quot;——它是跨后端的 kernel 语言。这篇文章梳理 Trit...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-11</span>
+                <span class="post-card-tags"><span class="post-tag">triton</span><span class="post-tag">gpu</span><span class="post-tag">ascend</span><span class="post-tag">npu</span><span class="post-tag">backend</span><span class="post-tag">internship</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-11/triton-to-ascend-roadmap.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="triton,gpu,transformer,性能优化">
             <div class="post-card-body">
@@ -694,42 +736,9 @@
             </div>
             <a href="posts/2026-06-07/triton-softmax-online.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="AI Infra,Triton,GPU 编程">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-06/triton-intro-vector-add.html">Triton GPU 编程入门（一）：从 Vector Add 到 GPU 执行模型</a></h3>
-              <p class="post-preview">OpenAI Triton 是一个用 Python 写 GPU kernel 的 DSL。它的核心卖点是「CUDA 的性能、Python 的体验」——编译器自动处理 tiling、memory coalescing 和 shared ...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-06</span>
-                <span class="post-card-tags"><span class="post-tag">AI Infra</span><span class="post-tag">Triton</span><span class="post-tag">GPU 编程</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-06/triton-intro-vector-add.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
-          <li class="post-card" data-tags="AI Infra,Triton,GPU 编程">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-06/triton-worker-analogy.html">Triton GPU 编程入门（二）：用「工人分卡片」理解算子、Grid 与并行模型</a></h3>
-              <p class="post-preview">上一篇用 Vector Add 跑通了第一个 Triton kernel。本文换一个角度：不写代码，用类比建立 GPU 并行的心理模型。这个类比来自一次和 GPT 的讨论，非常直观</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-06</span>
-                <span class="post-card-tags"><span class="post-tag">AI Infra</span><span class="post-tag">Triton</span><span class="post-tag">GPU 编程</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-06/triton-worker-analogy.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
-          <li class="post-card" data-tags="AI Infra,vLLM,推理引擎">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-06/vllm-deep-dive-1-benchmark.html">vLLM 源码剖析（一）：从零搭建推理压测环境</a></h3>
-              <p class="post-preview">vLLM 是目前最主流的 LLM 推理引擎之一，以 PagedAttention 和 continuous batching 两大创新著称。本文是「vLLM 源码剖析」系列的第一篇，记录从零搭建环境、跑通首次推理、完成基准压测的全过程...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-06</span>
-                <span class="post-card-tags"><span class="post-tag">AI Infra</span><span class="post-tag">vLLM</span><span class="post-tag">推理引擎</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-06/vllm-deep-dive-1-benchmark.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 134 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 137 篇文章 →</a>
     </section>
   </main>
 
