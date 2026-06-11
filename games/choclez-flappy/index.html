@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>张雪峰飞飞乐 🍦 Flappy Choclez</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .game-wrapper {
+    position: relative;
+    max-width: 480px;
+    width: 100%;
+    aspect-ratio: 9/16;
+    max-height: 100vh;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    box-shadow: 0 0 40px rgba(100, 100, 255, 0.3);
+  }
+  .overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+  }
+  .overlay.active {
+    pointer-events: all;
+  }
+  .game-title {
+    color: #fff;
+    font-size: clamp(20px, 4vw, 28px);
+    font-weight: 900;
+    text-shadow: 2px 2px 0 #ff6b6b, 4px 4px 0 rgba(0,0,0,0.3);
+    text-align: center;
+    line-height: 1.4;
+  }
+  .game-title .emoji { font-size: 1.4em; }
+  .btn {
+    margin-top: 20px;
+    padding: 14px 40px;
+    font-size: 18px;
+    font-weight: 700;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+    pointer-events: all;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102,126,234,0.5); }
+  .btn:active { transform: translateY(1px); }
+  .score-display {
+    position: absolute;
+    top: 30px;
+    width: 100%;
+    text-align: center;
+    font-size: clamp(40px, 8vw, 60px);
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .hint {
+    position: absolute;
+    bottom: 60px;
+    width: 100%;
+    text-align: center;
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="game-wrapper" id="wrapper">
+  <canvas id="game"></canvas>
+  <div class="score-display" id="scoreDisplay"></div>
+  <div class="overlay active" id="overlay">
+    <div class="game-title">
+      <span class="emoji">🍦</span> 巧乐兹飞飞乐<br>
+      <span style="font-size:0.65em;font-weight:400;color:rgba(255,255,255,0.7)">张雪峰老师冲冲冲！</span>
+    </div>
+    <button class="btn" id="startBtn">🚀 开始游戏</button>
+    <div style="color:rgba(255,255,255,0.4);margin-top:14px;font-size:13px">空格 / 点击 / 触屏 起飞</div>
+  </div>
+  <div class="hint" id="hint"></div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const wrapper = document.getElementById('wrapper');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  const overlay = document.getElementById('overlay');
+  const startBtn = document.getElementById('startBtn');
+  const hint = document.getElementById('hint');
+
+  // --- Canvas sizing ---
+  const W = 400;
+  const H = 700;
+
+  function resize() {
+    const scale = Math.min(wrapper.clientWidth / W, wrapper.clientHeight / H);
+    canvas.width = W;
+    canvas.height = H;
+    canvas.style.width = (W * scale) + 'px';
+    canvas.style.height = (H * scale) + 'px';
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // --- Game state ---
+  const GRAVITY = 0.4;
+  const FLAP_FORCE = -7.0;
+  const PIPE_WIDTH = 54;
+  const PIPE_GAP = 160;
+  const PIPE_SPEED = 2.0;
+  const PIPE_INTERVAL = 100; // frames between pipes
+
+  let state = 'idle'; // idle | ready | playing | over
+  let bird = { x: 100, y: H/2, vy: 0, rot: 0 };
+  let pipes = [];
+  let score = 0;
+  let frameCount = 0;
+  let pipeTimer = 0;
+  let bgOffset = 0;
+  let particles = [];
+  let shakeAmount = 0;
+
+  // --- Background elements ---
+  let bgClouds = [];
+  let bgStars = [];
+  for (let i = 0; i < 6; i++) {
+    bgClouds.push({ x: Math.random() * W, y: 40 + Math.random() * 200, w: 40 + Math.random() * 60, speed: 0.3 + Math.random() * 0.5 });
+  }
+  for (let i = 0; i < 30; i++) {
+    bgStars.push({ x: Math.random() * W, y: Math.random() * H, r: 0.5 + Math.random() * 1.5, twinkle: Math.random() * Math.PI * 2 });
+  }
+
+  // --- Initialize ---
+  function resetGame() {
+    bird = { x: 100, y: H/2, vy: 0, rot: 0 };
+    pipes = [];
+    score = 0;
+    frameCount = 0;
+    pipeTimer = 0;
+    particles = [];
+    shakeAmount = 0;
+    scoreDisplay.textContent = '';
+    hint.textContent = '';
+    overlay.classList.add('active');
+    startBtn.style.display = '';
+    startBtn.textContent = '🚀 开始游戏';
+    state = 'idle';
+  }
+
+  // --- Drawing functions ---
+
+  function drawBackground() {
+    // Sky gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#1e3c72');
+    grad.addColorStop(0.5, '#2a5298');
+    grad.addColorStop(1, '#7ec8e3');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Stars (upper portion)
+    for (let s of bgStars) {
+      const alpha = 0.3 + 0.4 * Math.sin(frameCount * 0.02 + s.twinkle);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Clouds
+    for (let c of bgClouds) {
+      c.x -= c.speed;
+      if (c.x + c.w < -20) c.x = W + 20;
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(c.x, c.y, c.w/2, c.w/4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(c.x - c.w*0.25, c.y - 5, c.w/3, c.w/5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Ground
+    const groundY = H - 70;
+    ctx.fillStyle = '#5d8a3c';
+    ctx.fillRect(0, groundY, W, 70);
+    // Grass detail
+    ctx.fillStyle = '#4a7a2e';
+    for (let i = 0; i < 40; i++) {
+      const gx = (i * 15 + frameCount * 0.8) % (W + 30) - 15;
+      ctx.beginPath();
+      ctx.moveTo(gx, groundY);
+      ctx.lineTo(gx + 4, groundY - 8 - Math.random() * 6);
+      ctx.lineTo(gx + 8, groundY);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#3d6624';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(W, groundY);
+    ctx.stroke();
+  }
+
+  // Draw 张雪峰 character
+  function drawZhangXuefeng(bx, by, rot) {
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(rot);
+
+    const s = 1; // scale
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(0, 28, 16, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body - suit jacket (dark)
+    ctx.fillStyle = '#2c2c3a';
+    ctx.beginPath();
+    ctx.roundRect(-14, 4, 28, 30, 8);
+    ctx.fill();
+
+    // White shirt collar
+    ctx.fillStyle = '#f5f5f5';
+    ctx.beginPath();
+    ctx.moveTo(-10, 4);
+    ctx.lineTo(0, 14);
+    ctx.lineTo(10, 4);
+    ctx.lineTo(8, 0);
+    ctx.lineTo(0, 8);
+    ctx.lineTo(-8, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Red tie
+    ctx.fillStyle = '#cc3333';
+    ctx.beginPath();
+    ctx.moveTo(-3, 8);
+    ctx.lineTo(0, 22);
+    ctx.lineTo(3, 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tie knot
+    ctx.fillStyle = '#aa2222';
+    ctx.beginPath();
+    ctx.arc(0, 8, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Head
+    ctx.fillStyle = '#f4d5b8';
+    ctx.beginPath();
+    ctx.arc(0, -3, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(0, -8, 14.5, Math.PI, Math.PI * 2);
+    ctx.fill();
+    // Hair sides
+    ctx.fillRect(-15, -11, 4, 10);
+    ctx.fillRect(11, -11, 4, 10);
+
+    // Eyes
+    // Left eye
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(-5, -4, 4.5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(-5, -4, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(-5.8, -5, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Right eye
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(5, -4, 4.5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(5, -4, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(4.2, -5, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glasses frame
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2.2;
+    // Left lens
+    ctx.beginPath();
+    ctx.roundRect(-10.5, -9.5, 11, 11, 3);
+    ctx.stroke();
+    // Right lens
+    ctx.beginPath();
+    ctx.roundRect(-0.5, -9.5, 11, 11, 3);
+    ctx.stroke();
+    // Bridge
+    ctx.beginPath();
+    ctx.moveTo(-0.5, -5);
+    ctx.lineTo(0.5, -5);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Temple arms
+    ctx.beginPath();
+    ctx.moveTo(-10.5, -6);
+    ctx.lineTo(-16, -8);
+    ctx.moveTo(10.5, -6);
+    ctx.lineTo(16, -8);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Mouth (slight smile)
+    ctx.strokeStyle = '#c4956e';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 1, 4, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+
+    // Ears
+    ctx.fillStyle = '#f4d5b8';
+    ctx.beginPath();
+    ctx.ellipse(-14, -3, 3, 5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(14, -3, 3, 5, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wing/arm (flapping animation)
+    const wingPhase = Math.sin(frameCount * 0.35) * 0.7;
+    ctx.save();
+    ctx.translate(-15, 8);
+    ctx.rotate(-0.3 + wingPhase * 0.5);
+    ctx.fillStyle = '#2c2c3a';
+    ctx.beginPath();
+    ctx.ellipse(-4, 0, 14, 7, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // Hand
+    ctx.fillStyle = '#f4d5b8';
+    ctx.beginPath();
+    ctx.arc(-16, -1, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(15, 8);
+    ctx.rotate(0.3 - wingPhase * 0.5);
+    ctx.fillStyle = '#2c2c3a';
+    ctx.beginPath();
+    ctx.ellipse(4, 0, 14, 7, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f4d5b8';
+    ctx.beginPath();
+    ctx.arc(16, -1, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Legs (dangling when flying)
+    ctx.strokeStyle = '#2c2c3a';
+    ctx.lineWidth = 3;
+    const legSwing = Math.sin(frameCount * 0.3) * 4;
+    ctx.beginPath();
+    ctx.moveTo(-4, 32);
+    ctx.lineTo(-6 + legSwing, 42);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(4, 32);
+    ctx.lineTo(6 - legSwing, 42);
+    ctx.stroke();
+    // Shoes
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.ellipse(-6 + legSwing, 43, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(6 - legSwing, 43, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // Draw 巧乐兹 ice cream pillar
+  function drawChoclezPillar(x, y, height, isTop) {
+    // y is the inner edge (gap side)
+    // isTop: pillar extends upward from y; !isTop: extends downward
+
+    ctx.save();
+
+    const pw = PIPE_WIDTH;
+    const ph = Math.abs(height);
+    const topY = isTop ? y - ph : y;
+    const botY = isTop ? y : y + ph;
+
+    // Wrapper body - classic Choclez blue
+    const wrapperGrad = ctx.createLinearGradient(x, 0, x + pw, 0);
+    wrapperGrad.addColorStop(0, '#1a6bcc');
+    wrapperGrad.addColorStop(0.5, '#2980d9');
+    wrapperGrad.addColorStop(1, '#1a5ca8');
+    ctx.fillStyle = wrapperGrad;
+    ctx.fillRect(x, topY, pw, ph);
+
+    // White wave pattern on wrapper
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    const waveAmp = 4;
+    const waveFreq = 25;
+    for (let wy = topY + 10; wy < botY - 50; wy += waveFreq) {
+      ctx.beginPath();
+      ctx.moveTo(x + 8, wy);
+      for (let wx = x + 8; wx < x + pw - 8; wx += 3) {
+        ctx.lineTo(wx, wy + Math.sin((wx - x) * 0.3 + wy * 0.1) * waveAmp);
+      }
+      ctx.lineTo(x + pw - 8, wy);
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.stroke();
+    }
+
+    // "巧乐兹" text
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Vertical text
+    const midY = (topY + botY) / 2;
+    ctx.save();
+    ctx.translate(x + pw/2, midY);
+    ctx.fillText('巧', 0, -16);
+    ctx.fillText('乐', 0, 0);
+    ctx.fillText('兹', 0, 16);
+    ctx.restore();
+
+    // Chocolate top/bottom cap
+    const capHeight = 28;
+    const capY = isTop ? botY - capHeight : topY;
+
+    // Chocolate gradient
+    const chocGrad = ctx.createLinearGradient(x, capY, x, capY + capHeight);
+    chocGrad.addColorStop(0, '#5c3317');
+    chocGrad.addColorStop(0.3, '#8b5a2b');
+    chocGrad.addColorStop(0.7, '#6b3a1f');
+    chocGrad.addColorStop(1, '#4a2810');
+
+    ctx.fillStyle = chocGrad;
+    ctx.fillRect(x - 3, capY, pw + 6, capHeight);
+
+    // Crunchy wafer lines on chocolate
+    ctx.strokeStyle = '#3d1f0a';
+    ctx.lineWidth = 1;
+    for (let lx = x - 3; lx < x + pw + 3; lx += 10) {
+      ctx.beginPath();
+      ctx.moveTo(lx, capY + 3);
+      ctx.lineTo(lx + (Math.random() - 0.5) * 3, capY + capHeight - 3);
+      ctx.stroke();
+    }
+
+    // Almond pieces on top
+    ctx.fillStyle = '#d4a76a';
+    for (let i = 0; i < 5; i++) {
+      const ax = x + 6 + Math.random() * (pw - 2);
+      const ay = capY + 4 + Math.random() * (capHeight - 8);
+      ctx.beginPath();
+      ctx.ellipse(ax, ay, 3 + Math.random() * 2, 2 + Math.random() * 2, Math.random() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // White outline for definition
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x, topY, pw, ph);
+
+    // Edge highlight
+    const highlightGrad = ctx.createLinearGradient(x, 0, x + 8, 0);
+    highlightGrad.addColorStop(0, 'rgba(255,255,255,0.3)');
+    highlightGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = highlightGrad;
+    ctx.fillRect(x, topY, 8, ph);
+
+    ctx.restore();
+  }
+
+  // Draw particles
+  function spawnParticles(x, y, count, color) {
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 4,
+        vy: (Math.random() - 0.5) * 4 - 2,
+        life: 1,
+        decay: 0.02 + Math.random() * 0.04,
+        size: 2 + Math.random() * 4,
+        color
+      });
+    }
+  }
+
+  function updateParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life -= p.decay;
+      p.vy += 0.05;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function drawParticles() {
+    for (const p of particles) {
+      ctx.fillStyle = p.color.replace('1)', `${p.life})`);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // --- Collision ---
+  function getBirdBounds() {
+    return {
+      x: bird.x - 16, y: bird.y - 18,
+      w: 32, h: 36
+    };
+  }
+
+  function checkCollision() {
+    const bb = getBirdBounds();
+    const groundY = H - 70;
+
+    // Ground / ceiling
+    if (bb.y + bb.h >= groundY || bb.y <= -10) return true;
+
+    // Pipes
+    for (const p of pipes) {
+      const pipeLeft = p.x;
+      const pipeRight = p.x + PIPE_WIDTH;
+
+      if (bb.x + bb.w > pipeLeft && bb.x < pipeRight) {
+        if (bb.y < p.topHeight || bb.y + bb.h > p.topHeight + PIPE_GAP) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  // --- Spawn pipe ---
+  function spawnPipe() {
+    const minH = 60;
+    const maxH = H - 70 - PIPE_GAP - minH;
+    const topH = minH + Math.random() * (maxH - minH);
+
+    pipes.push({
+      x: W,
+      topHeight: topH,
+      scored: false
+    });
+  }
+
+  // --- Main loop ---
+  function update() {
+    if (state === 'idle' || state === 'over') return;
+
+    frameCount++;
+
+    if (state === 'ready') {
+      // Hover animation: gentle bobbing
+      bird.y = H/2 + Math.sin(frameCount * 0.05) * 12;
+      bird.rot = Math.sin(frameCount * 0.05) * 0.1;
+      // Update particles
+      updateParticles();
+      return;
+    }
+
+    // state === 'playing'
+    bird.vy += GRAVITY;
+    bird.y += bird.vy;
+    bird.rot = Math.min(Math.max(bird.vy * 0.08, -0.5), 0.8);
+
+    // Pipes
+    for (const p of pipes) {
+      p.x -= PIPE_SPEED;
+    }
+
+    // Remove off-screen pipes
+    pipes = pipes.filter(p => p.x > -PIPE_WIDTH - 20);
+
+    // Spawn pipes
+    pipeTimer--;
+    if (pipeTimer <= 0) {
+      spawnPipe();
+      pipeTimer = PIPE_INTERVAL + Math.floor(Math.random() * 30);
+    }
+
+    // Score
+    for (const p of pipes) {
+      if (!p.scored && p.x + PIPE_WIDTH < bird.x) {
+        p.scored = true;
+        score++;
+        scoreDisplay.textContent = score;
+        // Score particles
+        spawnParticles(bird.x, bird.y, 8, 'rgba(255,215,0,1)');
+      }
+    }
+
+    // Collision
+    if (checkCollision()) {
+      state = 'over';
+      shakeAmount = 12;
+      spawnParticles(bird.x, bird.y, 25, 'rgba(255,100,100,1)');
+      scoreDisplay.textContent = score;
+      hint.textContent = '点击重新开始';
+      overlay.classList.add('active');
+      startBtn.style.display = '';
+      startBtn.textContent = '🔄 再来一局';
+    }
+
+    // Shake decay
+    if (shakeAmount > 0) shakeAmount *= 0.85;
+
+    // Particles
+    updateParticles();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Camera shake (on death)
+    let sx = 0, sy = 0;
+    if (shakeAmount > 0.5) {
+      sx = (Math.random() - 0.5) * shakeAmount;
+      sy = (Math.random() - 0.5) * shakeAmount;
+    }
+
+    ctx.save();
+    ctx.translate(sx, sy);
+
+    drawBackground();
+
+    // Draw pipes
+    for (const p of pipes) {
+      // Top pillar
+      drawChoclezPillar(p.x, 0, p.topHeight, true);
+      // Bottom pillar
+      const botY = p.topHeight + PIPE_GAP;
+      const botH = H - 70 - botY;
+      drawChoclezPillar(p.x, botY, botH, false);
+    }
+
+    // Draw bird (if not dead with shake still going)
+    if (state !== 'over' || shakeAmount > 0.5) {
+      drawZhangXuefeng(bird.x, bird.y, bird.rot);
+    }
+
+    drawParticles();
+
+    ctx.restore();
+
+    // Game over text on top
+    if (state === 'over' && shakeAmount < 2) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 36px "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('💀 老师累了', W/2, H/2 - 10);
+      ctx.font = '18px "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.fillText(`吃到了 ${score} 根巧乐兹`, W/2, H/2 + 30);
+    }
+  }
+
+  function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+  }
+
+  // --- Controls ---
+  function flap() {
+    if (state === 'ready') {
+      // First flap: transition to playing
+      state = 'playing';
+      bird.vy = FLAP_FORCE;
+      hint.textContent = '';
+      // Spawn first pipe
+      spawnPipe();
+      pipeTimer = PIPE_INTERVAL;
+      spawnParticles(bird.x - 10, bird.y + 10, 8, 'rgba(255,255,255,0.8)');
+    } else if (state === 'playing') {
+      bird.vy = FLAP_FORCE;
+      // Small flap particles
+      spawnParticles(bird.x - 10, bird.y + 10, 3, 'rgba(255,255,255,0.8)');
+    }
+  }
+
+  function startGame() {
+    resetGame();
+    state = 'ready';
+    overlay.classList.remove('active');
+    scoreDisplay.textContent = '0';
+    hint.textContent = '👆 点击屏幕让张老师起飞';
+    // First pipe spawns after player flaps
+    pipeTimer = 999;
+  }
+
+  startBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    startGame();
+  });
+
+  canvas.addEventListener('click', () => {
+    if (state === 'playing' || state === 'ready') flap();
+    else if (state === 'over' && shakeAmount < 2) startGame();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+      e.preventDefault();
+      if (state === 'playing' || state === 'ready') flap();
+      else if (state === 'over' && shakeAmount < 2) startGame();
+      else if (state === 'idle') startGame();
+    }
+  });
+
+  // Prevent scrolling on mobile
+  document.addEventListener('touchstart', (e) => {
+    if (e.target === canvas || wrapper.contains(e.target)) {
+      e.preventDefault();
+      if (state === 'playing' || state === 'ready') flap();
+      else if (state === 'over' && shakeAmount < 2) startGame();
+      else if (state === 'idle') startGame();
+    }
+  }, { passive: false });
+
+  // --- Start ---
+  resetGame();
+  gameLoop();
+  scoreDisplay.textContent = '';
+
+})();
+</script>
+</body>
+</html>
