@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPU Kernel 的 Tile、Grid、Wave 与 Launch Overhead | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-11</p>
+        <h1>GPU Kernel 的 Tile、Grid、Wave 与 Launch Overhead</h1>
+        <div class="post-meta">
+          <span>2026-06-11</span>
+          <span class="tag">triton</span><span class="tag">gpu</span><span class="tag">kernel</span><span class="tag">performance</span><span class="tag">fundamentals</span>
+        </div>
+        <p>写 Triton kernel 的时候，<code>BLOCK_M</code>、<code>BLOCK_N</code>、<code>BLOCK_K</code> 这些参数到底怎么影响性能？为什么 autotune 给不同 shape 选不同的 tile 配置？</p>
+<p>这篇文章从 CTA、grid、wave、launch overhead 讲起，到三个 shape 的 autotune 决策规律。</p>
+<h2 id="从工人到-cta">从工人到 CTA</h2>
+<p>每个 <code>tl.program_id(0), tl.program_id(1)</code> 对应一个 <strong>CTA</strong>（Cooperative Thread Array）。可以把它理解为一个&quot;工人&quot;——一个人拿一块砖：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># grid 决定一共派多少个工人</span>
+grid = (cdiv(M, BLOCK_M), cdiv(N, BLOCK_N))
+
+<span class="hljs-comment"># BLOCK_M × BLOCK_N = 每个工人负责的输出子矩阵</span>
+</code></pre>
+<p>一个 matmul <code>C = A @ B</code>，把 C 切成 <code>BLOCK_M × BLOCK_N</code> 的小块，每个工人负责一块。工人总数是 <code>grid[0] × grid[1]</code>。</p>
+<h2 id="sm：gpu-的车间">SM：GPU 的车间</h2>
+<p>工人不是凭空干活的。他们在 <strong>SM</strong>（Streaming Multiprocessor）上跑。</p>
+<pre><code>RTX 4070 SUPER: 56 个 SM
+每个 SM 同时容纳的工人数量 = 受限于寄存器 + 共享内存
+</code></pre>
+<p>我们的 matmul kernel 每个工人约用 <strong>128 个寄存器</strong>。一个 SM 有 65536 个寄存器，但一个工人只能用 255 个（硬件上限）。</p>
+<p>实际上一个 SM 同时能跑的工人数由 <strong>寄存器压力</strong> 决定：</p>
+<pre><code>每个工人 128 regs × 每个工人 4 warps × 32 threads = 16384 regs per worker
+SM 有 65536 regs → 65536 / 16384 = 4 个工人/SM ✓
+
+如果每个工人 200 regs: 200 × 4 × 32 = 25600 → 65536 / 25600 = 2 个工人/SM
+</code></pre>
+<p>所以 <code>num_warps</code> 和 tile 尺寸直接影响 occupancy（每 SM 同时跑的工人数）。</p>
+<h2 id="wave：工人排队">Wave：工人排队</h2>
+<p>如果工人的总数超过 SM 能同时容纳的量，超出的就得排队。<strong>wave 就是排队的轮数。</strong></p>
+<pre><code>wave 数 = 工人总数 / (SM 数量 × 每 SM 同时工人数)
+</code></pre>
+<p>举个例子：</p>
+<pre><code>1024×1024 matmul, BLOCK_M=64, BLOCK_N=64
+  工人 = 16 × 16 = 256 个
+  每 SM 同时 4 个工人
+  256 / (56 × 4) = 256 / 224 ≈ 1.1 wave  ← 几乎不用排队
+
+2048×2048, BLOCK_M=64, BLOCK_N=64
+  工人 = 32 × 32 = 1024 个
+  1024 / 224 ≈ 4.6 wave  ← 排 5 轮
+
+4096×4096, BLOCK_M=64, BLOCK_N=64
+  工人 = 64 × 64 = 4096 个
+  4096 / 224 ≈ 18.3 wave  ← 排 18 轮！
+</code></pre>
+<h2 id="launch-overhead：每次排队的代价">Launch Overhead：每次排队的代价</h2>
+<p>每个 wave 结束到下一个 wave 开始之间，GPU 调度器要：</p>
+<ul>
+<li>释放上一批工人的寄存器</li>
+<li>分配新一批工人的寄存器和共享内存</li>
+<li>加载新工人的 kernel arguments</li>
+<li>启动新工人执行</li>
+</ul>
+<p>每次切换的时间是 <strong>固定的几十微秒</strong>。wave 越多，这部分开销累积越大。</p>
+<p>在 4096² 的 18 个 wave 场景下，调度开销可以达到毫秒级。而 matmul 本身才 2ms——调度占了一小半。</p>
+<h2 id="三种优化：不同-shape-不同策略">三种优化：不同 Shape 不同策略</h2>
+<p>回到 <code>BLOCK_M</code>、<code>BLOCK_N</code>、<code>BLOCK_K</code> 的选择。</p>
+<p><strong>BLOCK_M 和 BLOCK_N 越大 → 工人越少 → wave 越少 → launch overhead 越低。</strong></p>
+<p>但 tile 不能无限大——受寄存器限制了。而且 tile 太大也有问题（对小的 M/N 维度会浪费 mask 计算）。</p>
+<p><strong>BLOCK_K 越大 → K 循环次数越少 → 从 global memory 加载的次数越少。</strong></p>
+<p>但 BLOCK_K 大意味着每个工人用更多共享内存（存 A tile 和 B tile），会限制 occupancy。</p>
+<p>这些因素互相制约，最优配置取决于矩阵的 <strong>绝对大小</strong>（不只是形状）。</p>
+<h3 id="1024²--工人太少，需要-wide-tile">1024² — 工人太少，需要 wide tile</h3>
+<pre><code>BLOCK_N=64:  256 工人, 1.1 wave
+BLOCK_N=128: 128 工人, 0.6 wave ← 更少！但 wave 已经不是瓶颈
+
+为什么还选 N=128？因为 wide tile 的算存比更高：
+
+BLOCK_N=64:  (64+32) bytes load → 64×32×2 flops → 21 flops/byte
+BLOCK_N=128: (128+32) bytes load → 128×32×2 flops → 26 flops/byte
+</code></pre>
+<p>小矩阵没有足够多工人填满 SM，也谈不上 launch overhead。瓶颈是 <strong>memory bandwidth</strong>——每次从 global memory 搬的 byte 能做的计算越多越好。</p>
+<p><strong>小矩阵的策略：提算存比。</strong></p>
+<h3 id="2048²--工人适中，deep-k-减内存流量">2048² — 工人适中，deep K 减内存流量</h3>
+<pre><code>BLOCK_K=32: 1024 工人, 4.6 wave, K 循环 2048/32 = 64 次
+BLOCK_K=64: 1024 工人, 4.6 wave, K 循环 2048/64 = 32 次 ← 少跑 32 趟！
+</code></pre>
+<p>1024 个工人 × 每人 64 次 K 迭代 × 每次迭代加载 A tile + B tile × 2 bytes(fp16)：</p>
+<pre><code>K=32: 1024 × 64 × (64×32 + 32×64) × 2 bytes ≈ 16.8 GB global memory traffic
+K=64: 1024 × 32 × (64×64 + 64×64) × 2 bytes ≈ 16.8 GB  ← 一样！
+</code></pre>
+<p>等等，总 traffic 一样？对——问题不在总量，在<strong>每次 load 的效率和延迟</strong>。</p>
+<pre><code>K=32: 每 tile 只有 64×32 个元素 = 2KB → 每次 load 很小，512 次 load/L1 请求
+      加载延迟摊销在 2048 flops 上
+K=64: 每 tile 有 64×64 个元素 = 4KB → 每次 load 更大，256 次 load/L1 请求
+      加载延迟摊销在 4096 flops 上
+</code></pre>
+<p>更大的 tile 让每次 load 请求的延迟被更多计算覆盖。这是 latency hiding——GPU 的核心设计理念：用大量计算掩盖内存延迟。</p>
+<p><strong>中矩阵的策略：deep K 掩盖内存延迟。</strong></p>
+<h3 id="4096²--工人太多，必须降调度开销">4096² — 工人太多，必须降调度开销</h3>
+<pre><code>BLOCK_N=64:  4096 工人, 18.3 wave → 调度开销 ~1ms+
+BLOCK_N=128: 2048 工人, 9.1 wave  → 调度开销砍半
+</code></pre>
+<p>4096 个工人的调度开销已经超过 K 循环优化能带来的任何收益。工人&quot;够多了&quot;——多到成了一种负担。此时减少工人数量是第一优先级。</p>
+<p><strong>大矩阵的策略：减少工人，降调度开销。</strong></p>
+<h2 id="一张图总结">一张图总结</h2>
+<pre><code>矩阵规模   主导瓶颈         优化方向        autotune 选了什么
+────────  ───────────────  ─────────────  ──────────────────
+ 1024²    memory BW        wide tile       N=128 (算存比 ↑)
+ 2048²    memory latency   deep K          K=64  (load 次数 ↓)
+ 4096²    launch overhead  fewer CTAs      N=128 (wave 数 ↓)
+</code></pre>
+<p>三个规模对应三种瓶颈，没有一种 tile 配置能通吃。</p>
+<h2 id="跟-cpu-编程的类比">跟 CPU 编程的类比</h2>
+<p>如果你有 CPU 多线程背景：</p>
+<ul>
+<li><strong>CTA ≈ 一个线程</strong>（但有 128 个硬件线程在里面做 SIMT）</li>
+<li><strong>SM ≈ CPU 核心</strong>（SM 能&quot;超卖&quot;运行多个 CTA）</li>
+<li><strong>wave ≈ CPU 线程池的任务队列长度</strong>（队列短 → 核闲着；队列太长 → 调度开销大）</li>
+<li><strong>BLOCK_K ≈ 循环展开因子</strong>（展开多 → 循环次数少，但寄存器压力大）</li>
+<li><strong>BLOCK_M/ BLOCK_N ≈ 任务粒度</strong>（粗粒度 → 任务少；细粒度 → 任务多但管理成本高）</li>
+</ul>
+<p>GPU 和 CPU 都面临同一个根本问题：<strong>如何平衡任务数量、每任务工作量、资源占用</strong>。GPU 的 twist 是：它是一个大规模并行机器，队列管理成本在极端 worker 数量下不可忽略。</p>
+<h2 id="检验理解">检验理解</h2>
+<p>试着预测：给一个 <code>M=512, N=512, K=512</code> 的矩阵，最优配置大概是怎样的？然后再看 <code>M=8192, N=8192, K=8192</code>。</p>
+<p>答案在文章末尾。</p>
+<hr>
+<p><strong>512³</strong>：工人 = 512/64 × 512/64 = 64 个。太少了——物理 SM 都填不满（56 SM × 4 workers = 需要 224+ 工人才饱和）。此时瓶颈极端是 memory bandwidth，最优配置可能是 <strong>BLOCK_N=256</strong>（极 wide tile）。甚至 BLOCK_M 也可能需要拉大——因为 M 太小了，grid 只有 8 个 CTA 沿 M。</p>
+<p><strong>8192³</strong>：工人 = 128×128 = 16384 个。16384 / 224 ≈ 73 wave。调度开销已到荒谬级别。最优配置一定是 <strong>BLOCK_M=256, BLOCK_N=256</strong>，把工人压到 32×32=1024 个（≈ 4.6 wave）。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

@@ -478,13 +478,13 @@
           <button class="tag-pill" data-tag="python">python<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="算法与数据结构">算法与数据结构<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="软件工程理论">软件工程理论<span class="tag-count">4</span></button>
+          <button class="tag-pill" data-tag="gpu">gpu<span class="tag-count">3</span></button>
+          <button class="tag-pill" data-tag="triton">triton<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="性能优化">性能优化<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="framework">framework<span class="tag-count">2</span></button>
-          <button class="tag-pill" data-tag="gpu">gpu<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="PL理论">PL理论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="RUST">RUST<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="transformer">transformer<span class="tag-count">2</span></button>
-          <button class="tag-pill" data-tag="triton">triton<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="图论">图论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="基础语法">基础语法<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="算法">算法<span class="tag-count">2</span></button>
@@ -495,13 +495,16 @@
           <button class="tag-pill" data-tag="autotune">autotune<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="CUDA">CUDA<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="debugging">debugging<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="fundamentals">fundamentals<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Hermes">Hermes<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="java垃圾回收">java垃圾回收<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="kernel">kernel<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MindSpeed">MindSpeed<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MLIR">MLIR<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MoE">MoE<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MySQL">MySQL<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="performance">performance<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Profiling">Profiling<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Python">Python<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Skill">Skill<span class="tag-count">1</span></button>
@@ -529,7 +532,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 133 篇文章
+      共 134 篇文章
     </div>
   </aside>
 
@@ -553,7 +556,7 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 133</span>
+        <span class="section-count" id="visibleCount">15 / 134</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
@@ -569,6 +572,17 @@
               </div>
             </div>
             <a href="posts/2026-06-11/triton-autotune-pitfalls.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
+          <li class="post-card" data-tags="triton,gpu,kernel,performance,fundamentals">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-11/triton-tile-grid-wave.html">GPU Kernel 的 Tile、Grid、Wave 与 Launch Overhead</a></h3>
+              <p class="post-preview">写 Triton kernel 的时候，、、 这些参数到底怎么影响性能？为什么 autotune 给不同 shape 选不同的 tile 配置</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-11</span>
+                <span class="post-card-tags"><span class="post-tag">triton</span><span class="post-tag">gpu</span><span class="post-tag">kernel</span><span class="post-tag">performance</span><span class="post-tag">fundamentals</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-11/triton-tile-grid-wave.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="triton,gpu,transformer,性能优化">
             <div class="post-card-body">
@@ -713,20 +727,9 @@
             </div>
             <a href="posts/2026-06-06/vllm-deep-dive-1-benchmark.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="AI,工程">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-05-30/llm-understand-large-codebase-strategies.html">LLM 如何理解大型代码仓库：主流策略与技术选型指南</a></h3>
-              <p class="post-preview">随着 AI coding agent 的成熟（Codex CLI 86k⭐、Claude Code、Aider 等），一个核心工程问题浮出水面：大模型怎么&quot;看懂&quot;一个动辄几万行、几十万行的代码仓库</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-05-30</span>
-                <span class="post-card-tags"><span class="post-tag">AI</span><span class="post-tag">工程</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-05-30/llm-understand-large-codebase-strategies.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 133 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 134 篇文章 →</a>
     </section>
   </main>
 
