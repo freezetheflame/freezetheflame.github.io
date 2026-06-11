@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Triton Autotune 实战踩坑笔记 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-11</p>
+        <h1>Triton Autotune 实战踩坑笔记</h1>
+        <div class="post-meta">
+          <span>2026-06-11</span>
+          <span class="tag">triton</span><span class="tag">gpu</span><span class="tag">autotune</span><span class="tag">debugging</span>
+        </div>
+        <p><code>@triton.autotune</code> 看起来只是加个 decorator，实际踩了四个坑。</p>
+<h2 id="背景：ex06-autotune-matmul">背景：Ex06 Autotune Matmul</h2>
+<p>给之前的 tiled matmul kernel 加 autotune，扫描 BLOCK_M/N/K、num_warps、num_stages 的组合空间，让 Triton 自动给不同 shape 选最优配置。</p>
+<p>写完一跑，1024² 和 4096² 报 ✗，只有 2048² 通过。以为是 kernel 算错了，其实 kernel 没问题。</p>
+<hr>
+<h2 id="bug-1：fp16-误差阈值过严">Bug 1：fp16 误差阈值过严</h2>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 原始代码 — 对 fp16 太紧</span>
+status = <span class="hljs-string">&quot;✓&quot;</span> <span class="hljs-keyword">if</span> max_err &lt; <span class="hljs-number">0.02</span> <span class="hljs-keyword">else</span> <span class="hljs-string">&quot;✗&quot;</span>
+</code></pre>
+<p>1024×1024 fp16 matmul 的输出值域在 ~100-300，fp16 在这一段的 ULP 约 0.25。max_err = 0.125 意味着误差仅 <strong>0.5 ULP</strong>，已经是最优水平。0.02 的阈值适合 fp32，对 fp16 是误杀。</p>
+<p><strong>教训：fp16 始终用 <code>torch.allclose(rtol=1e-2, atol=1.0)</code>，别用绝对阈值。</strong></p>
+<pre><code>fp16 精度参考：
+  值 ≈ 1.0   → 1 ULP ≈ 0.001
+  值 ≈ 256   → 1 ULP ≈ 0.25
+  值 ≈ 1024  → 1 ULP ≈ 1.0
+  值 ≈ 65504 → 1 ULP ≈ 64  (fp16 最大值附近)
+</code></pre>
+<hr>
+<h2 id="bug-2：grid-硬编码（致命）">Bug 2：grid 硬编码（致命）</h2>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 错误：grid 在调用前算好，不知道 autotune 选了什么</span>
+grid = (triton.cdiv(M, <span class="hljs-number">64</span>), triton.cdiv(N, <span class="hljs-number">64</span>))
+matmul_autotuned_kernel[grid](a, b, c, M, N, K, ...)
+
+<span class="hljs-comment"># 正确：grid 是 lambda，接收 META 字典</span>
+grid = <span class="hljs-keyword">lambda</span> META: (
+    triton.cdiv(M, META[<span class="hljs-string">&#x27;BLOCK_M&#x27;</span>]),
+    triton.cdiv(N, META[<span class="hljs-string">&#x27;BLOCK_N&#x27;</span>]),
+)
+matmul_autotuned_kernel[grid](a, b, c, M, N, K, ...)
+</code></pre>
+<p><strong>原理：</strong> <code>@triton.autotune</code> 在运行时会选中 best config，把 BLOCK_M/N/K 等参数通过 <code>META</code> 字典注入。如果 grid 硬编码 64，而 autotune 选了 BLOCK_M=128，则只覆盖一半的行/列——mask 挡住溢出的部分，但会有大片输出区域完全没被计算。</p>
+<p>之前只有 <code>BLOCK_M=64</code> 一个 config 才碰巧对。</p>
+<p><strong>这是 autotune 跟普通 <code>@triton.jit</code> 最大的区别：约束参数不再由调用者传递，而是 autotune 注入。grid 必须跟着变。</strong></p>
+<hr>
+<h2 id="bug-3：prune-函数签名">Bug 3：prune 函数签名</h2>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 错误 — Triton 3.6 实际调用为 prune(configs, named_args, **kwargs)</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">prune_config</span>(<span class="hljs-params">configs</span>):
+    ...
+
+<span class="hljs-comment"># 正确</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">prune_config</span>(<span class="hljs-params">configs, named_args, **kwargs</span>):
+    M = named_args[<span class="hljs-string">&#x27;M&#x27;</span>]
+    N = named_args[<span class="hljs-string">&#x27;N&#x27;</span>]
+    K = named_args[<span class="hljs-string">&#x27;K&#x27;</span>]
+    ...
+</code></pre>
+<p>Triton 3.6 源码（<code>triton/runtime/autotuner.py:262</code>）：</p>
+<pre><code class="hljs language-python">pruned_configs = <span class="hljs-variable language_">self</span>.early_config_prune(<span class="hljs-variable language_">self</span>.configs, <span class="hljs-variable language_">self</span>.nargs, **kwargs)
+</code></pre>
+<p><code>self.nargs</code> 是包含 M/N/K 的 dict，<code>**kwargs</code> 含 grid 等运行时参数。</p>
+<p>不同 Triton 版本的 API 有差异，报错时直接去看 <code>triton/runtime/autotuner.py</code> 的调用处最稳。</p>
+<hr>
+<h2 id="bug-4：config-空间只有一个配置">Bug 4：config 空间只有一个配置</h2>
+<p>autotune = 扫描多个 config → 给每个 shape 选最佳。只有一个 config 等于没 autotune。</p>
+<p><strong>Config 空间应该覆盖：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>范围</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BLOCK_M</td>
+<td>64, 128, 256</td>
+<td>tile 高度 — 影响 CTA 数量</td>
+</tr>
+<tr>
+<td>BLOCK_N</td>
+<td>64, 128, 256</td>
+<td>tile 宽度 — 影响计算/访存比</td>
+</tr>
+<tr>
+<td>BLOCK_K</td>
+<td>32, 64</td>
+<td>K 维度步长 — 宽 K 减少循环次数</td>
+</tr>
+<tr>
+<td>num_warps</td>
+<td>4, 8</td>
+<td>线程数 — 影响寄存器压力和 occupancy</td>
+</tr>
+<tr>
+<td>num_stages</td>
+<td>2, 3, 4</td>
+<td>pipeline 深度 — 换 latency hiding</td>
+</tr>
+</tbody></table></div>
+<p>最终用了 10 个 config，组合以上维度。</p>
+<hr>
+<h2 id="不同-shape-为什么选不同-config">不同 Shape 为什么选不同 Config</h2>
+<pre><code>1024³ → BLOCK_M=64, BLOCK_N=128, BLOCK_K=32, num_warps=4, stages=3
+2048³ → BLOCK_M=64, BLOCK_N=64,  BLOCK_K=64, num_warps=4, stages=3
+4096³ → BLOCK_M=64, BLOCK_N=128, BLOCK_K=32, num_warps=4, stages=3
+</code></pre>
+<p><strong>1024³ 和 4096³ 选了同一配置（wide tile BLOCK_N=128），2048³ 选了 deep tile BLOCK_K=64。为什么？</strong></p>
+<p>直觉应该是&quot;形状越大 tile 越大&quot;，但数据显示：</p>
+<ul>
+<li><strong>小矩阵（1024³）</strong>：1024/64 = 16 个 CTA/维，共 256 个 CTA。56 个 SM 每个只跑 4-5 个 wave。用 N=128 <strong>减少 CTA 总数到 128</strong>，减少 launch overhead。</li>
+<li><strong>中矩阵（2048³）</strong>：2048/64 = 32 个 CTA/维，共 1024 个 CTA。每个 SM 跑 ~18 个 CTA，已经够密集。此时 <strong>增加 K 维度（64→减少循环次数）</strong> 收益更大——每次 K 迭代都要从 global memory 重新加载 tile，减少迭代次数比减少 CTA 开销更有效。</li>
+<li><strong>大矩阵（4096³）</strong>：4096/64 = 64 个 CTA/维，共 4096 个 CTA。每个 SM 跑 ~73 个 CTA，非常密集。回归 N=128 减少 half 的 CTA，此时 <strong>减少 grid launch 又变得重要</strong>。</li>
+</ul>
+<p><strong>规律：中等规模的矩阵 compute-bound 靠 K loop 优化，小/大矩阵偏向减少 grid launch overhead。</strong></p>
+<hr>
+<h2 id="最终性能">最终性能</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>形状</th>
+<th>选中 Config</th>
+<th align="center">Triton</th>
+<th align="center">cuBLAS</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1024³</td>
+<td>N=128 K=32</td>
+<td align="center">47.5 TFLOPS</td>
+<td align="center">43.1 TFLOPS</td>
+</tr>
+<tr>
+<td>2048³</td>
+<td>N=64 K=64</td>
+<td align="center">66.3 TFLOPS</td>
+<td align="center">66.3 TFLOPS</td>
+</tr>
+<tr>
+<td>4096³</td>
+<td>N=128 K=32</td>
+<td align="center">68.4 TFLOPS</td>
+<td align="center">71.2 TFLOPS</td>
+</tr>
+</tbody></table></div>
+<p>小矩阵甚至反超 cuBLAS（47.5 vs 43.1），中大矩阵持平。</p>
+<hr>
+<h2 id="要点总结">要点总结</h2>
+<ol>
+<li><strong>fp16 精度别用绝对误差阈值</strong> — <code>allclose</code> 是标准做法</li>
+<li><strong>autotune 的 grid 必须是 lambda</strong> — 读 <code>META</code> 获取注入的 BLOCK 尺寸</li>
+<li><strong>prune 签名查源码</strong> — Triton 版本间有差异，<code>triton/runtime/autotuner.py</code> 是权威</li>
+<li><strong>config 空间要有覆盖</strong> — tile size × warps × stages，至少 8-12 个</li>
+<li><strong>autotune 的价值在于 shape 选择不同 config</strong> — 没有万能配置，不同规模各有最优</li>
+</ol>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
