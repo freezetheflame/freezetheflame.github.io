@@ -504,6 +504,7 @@
           <button class="tag-pill" data-tag="internship">internship<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="java垃圾回收">java垃圾回收<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="layernorm">layernorm<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="Lean">Lean<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="memory">memory<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MindSpeed">MindSpeed<span class="tag-count">1</span></button>
@@ -527,21 +528,27 @@
           <button class="tag-pill" data-tag="入门">入门<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="最短路">最短路<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="博客">博客<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="定理证明">定理证明<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="小模型">小模型<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="工程">工程<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="形式化验证">形式化验证<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="微软">微软<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="技巧">技巧<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="推理引擎">推理引擎<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="教程">教程<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="数据增强">数据增强<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据库">数据库<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据结构">数据结构<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="自演进">自演进<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="计网">计网<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="论文解读">论文解读<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="课程学习">课程学习<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="高可用">高可用<span class="tag-count">1</span></button>
       </div>
     </div>
 
     <div class="sidebar-footer">
-      共 137 篇文章
+      共 138 篇文章
     </div>
   </aside>
 
@@ -565,12 +572,23 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 137</span>
+        <span class="section-count" id="visibleCount">15 / 138</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="论文解读,定理证明,形式化验证,Lean,小模型,数据增强,课程学习">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-14-pythagoras-prover/pythagoras-prover.html">Pythagoras-Prover 深度解读：4B 小模型如何在定理证明上击败 671B 巨兽</a></h3>
+              <p class="post-preview">一句话 用 4B 参数的小模型在形式化定理证明上击败了 DeepSeekProverV2671B（参数少 167 倍），核心武器不是更大的算力，而是更聪明的数据策略</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-14</span>
+                <span class="post-card-tags"><span class="post-tag">论文解读</span><span class="post-tag">定理证明</span><span class="post-tag">形式化验证</span><span class="post-tag">Lean</span><span class="post-tag">小模型</span><span class="post-tag">数据增强</span><span class="post-tag">课程学习</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-14-pythagoras-prover/pythagoras-prover.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="triton,gpu,autotune,debugging">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-06-11/triton-autotune-pitfalls.html">Triton Autotune 实战踩坑笔记</a></h3>
@@ -725,20 +743,9 @@
             </div>
             <a href="posts/2026-06-07/triton-profiling-practical-guide.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="AI Infra,Triton,GPU 编程,算法">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-07/triton-softmax-online.html">Triton GPU 编程入门（四）：Softmax 的两种写法与 Online 算法</a></h3>
-              <p class="post-preview">上一篇写了 ReLU/GELU/SiLU——它们都是 elementwise 的，一个线程处理一个元素，线程之间不需要通信。Softmax 不同：在归一化之前，你需要知道整行的最大值和整行的指数和。这就要求线程之间共享信息</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-07</span>
-                <span class="post-card-tags"><span class="post-tag">AI Infra</span><span class="post-tag">Triton</span><span class="post-tag">GPU 编程</span><span class="post-tag">算法</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-07/triton-softmax-online.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 137 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 138 篇文章 →</a>
     </section>
   </main>
 
