@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B端企业入驻订单聚合系统：从设计到优化的完整复盘 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-19</p>
+        <h1>B端企业入驻订单聚合系统：从设计到优化的完整复盘</h1>
+        <div class="post-meta">
+          <span>2026-06-19</span>
+          <span class="tag">fullstack</span><span class="tag">系统设计</span><span class="tag">FastAPI</span><span class="tag">PostgreSQL</span><span class="tag">React</span><span class="tag">性能优化</span>
+        </div>
+        <h2 id="项目背景">项目背景</h2>
+<p>这是一个 B 端企业入驻管理的 Demo 项目——核心场景是：<strong>企业方提交入驻申请表单（商户信息/房源/商品/报表），运营方根据地理位置批量聚合处理，并统计提交成功率</strong>。</p>
+<p>项目的诉求很清晰：不追求华丽的 UI/UX，而是<strong>保障数据准确性 + 处理效率</strong>，这是 B 端系统和 C 端产品最本质的差异。</p>
+<!--more-->
+
+<h2 id="一、设计出发点：先理解矛盾">一、设计出发点：先理解矛盾</h2>
+<p>拿到需求后，我花时间思考的不是「怎么做」，而是 <strong>「这个系统的本质矛盾是什么」</strong>。</p>
+<p>10w+ 表单数据的核心矛盾是：</p>
+<blockquote>
+<p><strong>数据量（10w+）和数据质量（准确性）之间的矛盾，必须用效率来填补。</strong></p>
+</blockquote>
+<p>如果只有 100 条表单，逐条查看也能应付。但 10w+ 意味着：</p>
+<ul>
+<li>运营人员不可能逐条浏览 → 必须批量聚合</li>
+<li>人工找地理位置分布不现实 → 必须自动聚类</li>
+<li>出错了难排查 → 必须埋点 + 统计</li>
+</ul>
+<p>所以所有的设计决策都围绕一个主线：<strong>「一个运营人员在 10w+ 数据面前最需要什么」</strong>。</p>
+<h2 id="二、关键设计决策">二、关键设计决策</h2>
+<h3 id="1-为什么选地理聚合作为核心能力？">1. 为什么选地理聚合作为核心能力？</h3>
+<p>企业入驻天然带地理属性——商户地址、房源位置、服务覆盖范围。<strong>地理是 B 端数据最有业务价值的聚合维度</strong>，远优于按时间或按分类聚合：</p>
+<ul>
+<li>同一商圈的商户可以统一处理、统一派单</li>
+<li>附近的房源可以批量审批</li>
+<li>甚至按区域分配给不同的审核团队</li>
+</ul>
+<p>因此我做了 <strong>两阶段聚合</strong>（Geohash 粗分桶 → 距离细聚类），这不是在炫技：</p>
+<pre><code>阶段1: Geohash 将平面空间切分为 32×32 的网格 → O(n) 分桶
+阶段2: 每个桶内做距离计算（&lt;500m 视为同一簇） → O(n/m) 细聚类
+</code></pre>
+<p>Geohash 把 O(n²) 的全表聚类问题先降维到 O(n) 的子问题，这是 10w+ 数据量下的必要优化，不只是锦上添花。</p>
+<h3 id="2-四类表单为什么不各自独立路由？">2. 四类表单为什么不各自独立路由？</h3>
+<p>题目给了「商户信息/房源/商品/报表」四类表单。如果做四个独立 CRUD 路由，代码会大量重复（每个都写一遍分页、排序、过滤），而且扩展性差——加一个新表单类型就要加整套路由。</p>
+<p>所以我用了 <strong>单路由多模型</strong> 的设计：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 同一个 /api/v1/forms/{form_type} 路径</span>
+MODEL_MAP = {
+    <span class="hljs-string">&quot;merchant&quot;</span>: MerchantForm,
+    <span class="hljs-string">&quot;listing&quot;</span>: ListingForm,
+    <span class="hljs-string">&quot;product&quot;</span>: ProductForm,
+    <span class="hljs-string">&quot;report&quot;</span>: ReportForm,
+}
+
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">def</span> <span class="hljs-title function_">query_forms</span>(<span class="hljs-params">form_type: <span class="hljs-built_in">str</span>, filters: FormFilter, db</span>):
+    model = MODEL_MAP.get(form_type)
+    query = select(model)
+    <span class="hljs-keyword">if</span> filters.status:
+        query = query.where(model.status == filters.status)
+    <span class="hljs-comment"># ... 统一的分页、排序、过滤逻辑</span>
+</code></pre>
+<p>这个设计在初期非常高效——四类表单共享一套查询逻辑。但这是有 trade-off 的：如果未来某个表单类型的查询逻辑差异极大（比如报表需要按 JSON 字段过滤），这个统一层就会崩，那时就该拆分了。</p>
+<h3 id="3-fastapi-而非-flask-的选择">3. FastAPI 而非 Flask 的选择</h3>
+<p>不是因为 FastAPI 更「潮」，而是有实际的理由：</p>
+<ul>
+<li><strong>WebSocket 原生支持</strong>：批处理需要实时推送进度，FastAPI（基于 Starlette）内置 WebSocket，Flask 需要额外搭 Flask-SocketIO</li>
+<li><strong>Async ORM</strong>：SQLAlchemy 2.0 async session 可以在同一个事件循环里处理 DB 查询和 WebSocket 推送，不需要开额外的线程池</li>
+<li><strong>Pydantic 集成</strong>：FastAPI + Pydantic v2 的验证层对表单数据的强校验场景特别契合——B 端每个字段都不能错</li>
+</ul>
+<h3 id="4-成功率统计：为什么单独建一张表？">4. 成功率统计：为什么单独建一张表？</h3>
+<p>这个问题看起来很简单，但值得多想一步：<strong>为什么不用表单自身的 status 字段来算成功率？</strong></p>
+<p>因为表单的 <code>status</code> 是「当前状态」（draft/submitted/approved/rejected），不代表「提交这个动作是否成功」。提交动作可能成功但后续审核驳回——这被算作「成功提交」但「审核未通过」，是完全不同的两个维度。</p>
+<p>所以我单独建了 <code>submission_logs</code> 表，记录的是 <strong>事件</strong> 而非 <strong>状态</strong>：</p>
+<pre><code class="hljs language-sql">submission_logs:
+  <span class="hljs-operator">-</span> form_type    # 哪类表单
+  <span class="hljs-operator">-</span> status       # <span class="hljs-keyword">start</span> <span class="hljs-operator">/</span> success <span class="hljs-operator">/</span> fail <span class="hljs-operator">/</span> timeout
+  <span class="hljs-operator">-</span> duration_ms  # 耗时
+  <span class="hljs-operator">-</span> error_code   # 错误码（用于聚合）
+  <span class="hljs-operator">-</span> error_msg    # 错误信息（用于 debug）
+  <span class="hljs-operator">-</span> batch_id     # 关联批处理批次
+</code></pre>
+<p>这样就能回答一个关键的运营问题：<strong>「高峰期提交成功率有没有下降？」</strong> 如果某个小时成功率骤降，那就是后端需要扩容的信号。</p>
+<h3 id="5-前端缓存策略：为什么手写-lru-而不是用-react-query？">5. 前端缓存策略：为什么手写 LRU 而不是用 React Query？</h3>
+<p>React Query 确实装了，但我在表单列表页选择了手写一个 <code>Map&lt;string, CacheEntry&gt;</code> 做 LRU 缓存，原因：</p>
+<ul>
+<li><strong>四维缓存 key</strong>：分页缓存需要 <code>{form_type} : {page} : {keyword} : {status}</code> 组合，React Query 的 queryKey 管理起来非常别扭</li>
+<li><strong>缓存上限透明</strong>：最多 50 个分页，超了就删最早的——运营人员翻页通常只有固定几个模式，50 个 cache entry 足够覆盖</li>
+<li><strong>HTTP Cache-Control 兜底</strong>：加上了 <code>max-age=30</code> 的 header，浏览器本身也会缓存响应</li>
+</ul>
+<pre><code class="hljs language-typescript"><span class="hljs-keyword">const</span> formCache = <span class="hljs-keyword">new</span> <span class="hljs-title class_">Map</span>&lt;<span class="hljs-built_in">string</span>, { <span class="hljs-attr">data</span>: <span class="hljs-title class_">FormRow</span>[]; <span class="hljs-attr">total</span>: <span class="hljs-built_in">number</span> }&gt;();
+
+<span class="hljs-comment">// set</span>
+formCache.<span class="hljs-title function_">set</span>(cacheKey, { data, total });
+<span class="hljs-keyword">if</span> (formCache.<span class="hljs-property">size</span> &gt; <span class="hljs-number">50</span>) {
+  <span class="hljs-keyword">const</span> firstKey = formCache.<span class="hljs-title function_">keys</span>().<span class="hljs-title function_">next</span>().<span class="hljs-property">value</span>;
+  <span class="hljs-keyword">if</span> (firstKey) formCache.<span class="hljs-title function_">delete</span>(firstKey);  <span class="hljs-comment">// LRU eviction</span>
+}
+</code></pre>
+<p>这不意味着 React Query 不好——统计页面（analytics）只用拉一次数据，确实更适合用 React Query。</p>
+<h2 id="三、遇到的真实-bug（按严重程度排序）">三、遇到的真实 Bug（按严重程度排序）</h2>
+<h3 id="bug-1-sqlalchemy-笛卡尔积（最严重）">Bug 1: SQLAlchemy 笛卡尔积（最严重）</h3>
+<p>这是调试时间最长的 bug。我最初写了一个看似合理的聚合查询：</p>
+<pre><code class="hljs language-python">base = select(SubmissionLog).where(
+    SubmissionLog.created_at.between(start, end),
+)
+count_q = select(
+    func.count(),
+    func.<span class="hljs-built_in">sum</span>(<span class="hljs-keyword">case</span>((SubmissionLog.status == <span class="hljs-string">&quot;success&quot;</span>, <span class="hljs-number">1</span>), else_=<span class="hljs-number">0</span>)),
+).select_from(base.subquery())
+
+row = (<span class="hljs-keyword">await</span> db.execute(count_q)).one()
+</code></pre>
+<p>SQLAlchemy 生成的 SQL 是：</p>
+<pre><code class="hljs language-sql"><span class="hljs-keyword">SELECT</span> <span class="hljs-built_in">count</span>(<span class="hljs-operator">*</span>), <span class="hljs-built_in">sum</span>(<span class="hljs-keyword">CASE</span> <span class="hljs-keyword">WHEN</span> ...)
+<span class="hljs-keyword">FROM</span> (
+    <span class="hljs-keyword">SELECT</span> ... <span class="hljs-keyword">FROM</span> submission_logs <span class="hljs-keyword">WHERE</span> created_at <span class="hljs-keyword">BETWEEN</span> ...
+) <span class="hljs-keyword">AS</span> anon_1,
+submission_logs     <span class="hljs-comment">-- ← 注意这里！</span>
+</code></pre>
+<p>注意最后的 <code>, submission_logs</code>——<strong>这是笛卡尔积</strong>。原因是 <code>count_q</code> 里的 <code>case((SubmissionLog.status == &quot;success&quot;, 1))</code> 引用了外层 <code>SubmissionLog</code> 表，SQLAlchemy 自动把它 join 了进来，但没加任何 join 条件。50k × 50k = 2.5B 中间行。</p>
+<p><strong>教训</strong>：不要在 <code>subquery()</code> 内外同时引用同一个 ORM 模型。解决方案是直接用 raw SQL 或改为不套子查询的写法。</p>
+<h3 id="bug-2-typescript-没拦住的-usestate-bug">Bug 2: TypeScript 没拦住的 useState bug</h3>
+<pre><code class="hljs language-tsx"><span class="hljs-keyword">const</span> [rows] = useState&lt;<span class="hljs-title class_">FormRow</span>[]&gt;([]);
+<span class="hljs-comment">//     ^ 缺少 setRows</span>
+</code></pre>
+<p>解构赋值只取了 state，没取 setter，所以 <code>fetchForms</code> 函数里写的是：</p>
+<pre><code class="hljs language-typescript"><span class="hljs-comment">// Update rows/total with data  ← 注释是真的，代码根本没写</span>
+</code></pre>
+<p>这种 bug TypeScript 的类型系统也拦不住——<code>useState</code> 返回的 tuple 两个元素都是合法的，类型检查不会报错。最后的修复是加上：</p>
+<pre><code class="hljs language-typescript"><span class="hljs-keyword">const</span> [rows, setRows] = useState&lt;<span class="hljs-title class_">FormRow</span>[]&gt;([]);
+</code></pre>
+<h3 id="bug-3-postgresql-raw-sql-参数类型推断">Bug 3: PostgreSQL raw SQL 参数类型推断</h3>
+<pre><code class="hljs language-sql"><span class="hljs-keyword">AND</span> (:ft <span class="hljs-keyword">IS</span> <span class="hljs-keyword">NULL</span> <span class="hljs-keyword">OR</span> form_type <span class="hljs-operator">=</span> :ft)
+</code></pre>
+<p>当 <code>form_type</code> 传 <code>None</code> 时，PostgreSQL 无法推断 <code>$3</code> 的类型——是 text 还是 varchar？加 <code>::VARCHAR</code> 显式转换解决：</p>
+<pre><code class="hljs language-sql"><span class="hljs-keyword">AND</span> (:ft::<span class="hljs-type">VARCHAR</span> <span class="hljs-keyword">IS</span> <span class="hljs-keyword">NULL</span> <span class="hljs-keyword">OR</span> form_type <span class="hljs-operator">=</span> :ft)
+</code></pre>
+<h3 id="bug-4---reload-残留进程管理">Bug 4: <code>--reload</code> 残留进程管理</h3>
+<p><code>uvicorn --reload</code> 在代码变更时自动重启，但如果 kill 了父 shell，子进程（pid 不同）可能还占着端口。用 <code>ss -tlnp | grep 8000</code> 找到实际的 pid 再 kill 才是可靠的清理方式。</p>
+<h2 id="四、性能优化总结">四、性能优化总结</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th align="left">优化项</th>
+<th align="left">Before</th>
+<th align="left">After</th>
+<th align="left">手法</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">表单列表查询</td>
+<td align="left">—</td>
+<td align="left">&lt; 50ms</td>
+<td align="left">分页 + 状态过滤</td>
+</tr>
+<tr>
+<td align="left">地理聚合</td>
+<td align="left">限 1000 条</td>
+<td align="left">10w+ 全量</td>
+<td align="left">解除 limit + Geohash 粗分桶</td>
+</tr>
+<tr>
+<td align="left">成功率统计</td>
+<td align="left">请求挂起（笛卡尔积）</td>
+<td align="left">&lt; 100ms</td>
+<td align="left">重写为 raw SQL</td>
+</tr>
+<tr>
+<td align="left">前端渲染</td>
+<td align="left">无数据（bug）</td>
+<td align="left">60fps 虚拟滚动</td>
+<td align="left">react-window</td>
+</tr>
+<tr>
+<td align="left">前端缓存</td>
+<td align="left">每次重新请求</td>
+<td align="left">LRU 50 entry</td>
+<td align="left">Map 缓存 + Cache-Control</td>
+</tr>
+</tbody></table></div>
+<h2 id="五、如果有更多时间会做的优化">五、如果有更多时间会做的优化</h2>
+<ol>
+<li><strong>Celery 异步批处理</strong> — 当前 <code>/batch</code> 是同步的，10w+ 会超时，应该切到 Celery worker</li>
+<li><strong>真正 DBSCAN 聚类</strong> — 当前只是按 geohash 前缀分组，不是基于欧几里得距离的真正聚类</li>
+<li><strong>认证鉴权</strong> — 哪怕只是简单的 JWT，也能体现「权限和数据准确性」的核心价值</li>
+<li><strong>Pydantic 校验层</strong> — 把表单字段校验从 ORM 层提到 API schema 层</li>
+<li><strong>Elasticsearch 全文检索</strong> — 替代目前的 <code>LIKE &#39;%keyword%&#39;</code>，10w+ 文档时性能差距很大</li>
+</ol>
+<h2 id="六、项目地址">六、项目地址</h2>
+<p>全部代码开源在 GitHub：**<a href="https://github.com/freezetheflame/B-demo">github.com/freezetheflame/B-demo</a>**</p>
+<p>技术栈：</p>
+<ul>
+<li><strong>Frontend</strong>: Next.js 16 (React 19) + TypeScript + TailwindCSS + Zustand</li>
+<li><strong>Backend</strong>: FastAPI + SQLAlchemy 2.0 + PostgreSQL/PostGIS + Redis</li>
+<li><strong>Infra</strong>: Docker Compose</li>
+<li><strong>GIS</strong>: Geohash + PostGIS GIST Index</li>
+</ul>
+<p>欢迎讨论任何细节。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
