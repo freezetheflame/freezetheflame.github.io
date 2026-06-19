@@ -42,14 +42,17 @@
 <h3 id="编码过程（以南京新街口为例）">编码过程（以南京新街口为例）</h3>
 <p>新街口的坐标大约是 <code>lat=32.04, lng=118.78</code>。</p>
 <p><strong>Step 1：经纬度交替二分</strong></p>
+<p>核心规则：<strong>偶数位（从 0 开始）放经度，奇数位放纬度。</strong></p>
+<p>第一次划分（5 bit 对应 1 个 base32 字符）时，前 3 位是经度（分 8 段），后 2 位是纬度（分 4 段），组合成 32 个矩形块。</p>
 <pre><code>经度范围 [-180, 180]，纬度范围 [-90, 90]
-
-第1位（经度）：118.78 在 [-180, 180] 的右半边 → 1
-第2位（纬度）：32.04  在 [-90, 90]  的右半边 → 1
-第3位（经度）：细化到 [0, 180]，118.78 在右半边 → 1
-第4位（纬度）：细化到 [0, 90]， 32.04  在右半边 → 1
-第5位（经度）：细化到 [90, 180]，118.78 在右半边 → 1
-...
+│
+├─ 第0位（偶数 → 经度）：118.78 在右半边 → 1
+├─ 第1位（奇数 → 纬度）：32.04  在右半边 → 1
+├─ 第2位（偶数 → 经度）：细化到 [0, 180]，118.78 在右半边 → 1
+├─ 第3位（奇数 → 纬度）：细化到 [0, 90]， 32.04  在右半边 → 1
+├─ 第4位（偶数 → 经度）：细化到 [90, 180]，118.78 在右半边 → 1
+│  ...
+└─ 不断二分下去，得到一个二进制序列
 </code></pre>
 <p>不断二分下去，得到一个二进制序列：<code>11100 11010 10110...</code></p>
 <p><strong>Step 2：5 位一组转 base32</strong></p>
@@ -232,7 +235,27 @@ wtsqj ≈ 新街口更精确的位置
 └──────────────┘└──────────────┘
 </code></pre>
 <p><strong>C 点和 A 点只隔 10 米，但 C 在 wtsq，A 在 wtsr——按照 Geohash 分组它们会被分到不同的桶。</strong></p>
-<p><strong>解决方案</strong>：在做分桶时，把相邻 8 个格子的点也考虑进来。即查询时多取 <code>geohash LIKE &#39;wtsq%&#39; OR geohash LIKE &#39;wtsr%&#39; OR ...</code>。这在项目中没有实现（demo 阶段），但如果上生产是必须的。</p>
+<p><strong>标准解法：8 邻域扩展</strong></p>
+<p>在查询附近点时，不只看当前格子，而是取<strong>当前格子 + 周围 8 个相邻格子</strong>的所有点，再做距离过滤：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">get_neighbors</span>(<span class="hljs-params">geohash: <span class="hljs-built_in">str</span></span>) -&gt; <span class="hljs-built_in">list</span>[<span class="hljs-built_in">str</span>]:
+    <span class="hljs-string">&quot;&quot;&quot;获取 geohash 的 8 个相邻格子&quot;&quot;&quot;</span>
+    lat, lng = geohash_decode(geohash)
+    precision = <span class="hljs-built_in">len</span>(geohash)
+    neighbors = []
+    <span class="hljs-keyword">for</span> dl <span class="hljs-keyword">in</span> [-<span class="hljs-number">1</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>]:
+        <span class="hljs-keyword">for</span> dg <span class="hljs-keyword">in</span> [-<span class="hljs-number">1</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>]:
+            <span class="hljs-keyword">if</span> dl == <span class="hljs-number">0</span> <span class="hljs-keyword">and</span> dg == <span class="hljs-number">0</span>:
+                <span class="hljs-keyword">continue</span>
+            neighbor = geohash_encode(lat + dl * step_lat,
+                                      lng + dg * step_lng,
+                                      precision)
+            neighbors.append(neighbor)
+    <span class="hljs-keyword">return</span> neighbors
+</code></pre>
+<p>计算出这 9 个 Geohash 字符串后，用 <code>geohash IN (...)</code> 一次性查询，然后对返回的结果做精确距离排序。这样既覆盖了边界附近的点，又比全表扫描快了几个数量级。</p>
+<blockquote>
+<p>这个 8 邻域解法是参考了<a href="https://zhuanlan.zhihu.com/p/35940647">知乎专栏</a>的思路，也是 Uber H3 六边形网格解决边界问题的灵感来源。</p>
+</blockquote>
 <h3 id="2-精度不均匀">2. 精度不均匀</h3>
 <p>Geohash 格子的大小随纬度变化——越靠近极地，格子越窄：</p>
 <ul>
@@ -250,6 +273,8 @@ wtsqj ≈ 新街口更精确的位置
 <li>预过滤后再调用 PostGIS 聚类，两者的结合才是最经济的</li>
 </ol>
 <p>所以最终方案是：<strong>Geohash 做 SQL 层 GROUP BY + 应用层逐桶处理 + PostGIS <code>ST_DWithin</code> 做桶内精确距离判断</strong>。</p>
+<h3 id="4-其他选择：redis-geo">4. 其他选择：Redis Geo</h3>
+<p>Redis 从 3.2 版本开始内置了 Geo 相关操作（<code>GEOADD</code>、<code>GEORADIUS</code>、<code>GEOHASH</code> 等），底层就是基于 Geohash 编码 + sorted set 实现的。如果数据量不太大（百万级以内），Redis Geo 是一个零额外依赖的轻量方案。但 Redis 不支持空间 join 和复杂的地理聚合（如 <code>ST_ClusterDBSCAN</code>），适合做&quot;附近的人&quot;这类查询，不适合做批量聚类。</p>
 <h2 id="五、其他空间编码对比">五、其他空间编码对比</h2>
 <div class="table-wrap"><table>
 <thead>
@@ -323,6 +348,14 @@ wtsqj ≈ 新街口更精确的位置
 </blockquote>
 <hr>
 <p>项目完整代码：<a href="https://github.com/freezetheflame/B-demo">github.com/freezetheflame/B-demo</a><br>相关阅读：<a href="https://freezetheflame.github.io">B端企业入驻订单聚合系统：从设计到优化的完整复盘</a></p>
+<h3 id="参考文献">参考文献</h3>
+<ol>
+<li><a href="https://zhuanlan.zhihu.com/p/35940647">GeoHash算法学习讲解、解析及原理分析 - 知乎/薯片要配干燥剂</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Geohash">Geohash - Wikipedia</a></li>
+<li><a href="https://postgis.net/docs/ST_ClusterDBSCAN.html">PostGIS ST_ClusterDBSCAN 文档</a></li>
+<li><a href="https://redis.io/commands/geohash/">Redis Geo 官方文档</a></li>
+<li><a href="https://github.com/uber/h3">Uber H3 六边形网格系统</a></li>
+</ol>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>

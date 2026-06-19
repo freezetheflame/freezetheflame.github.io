@@ -26,15 +26,20 @@ Geohash 是一种**将二维经纬度编码为一维字符串**的空间编码�
 
 **Step 1：经纬度交替二分**
 
+核心规则：**偶数位（从 0 开始）放经度，奇数位放纬度。**
+
+第一次划分（5 bit 对应 1 个 base32 字符）时，前 3 位是经度（分 8 段），后 2 位是纬度（分 4 段），组合成 32 个矩形块。
+
 ```
 经度范围 [-180, 180]，纬度范围 [-90, 90]
-
-第1位（经度）：118.78 在 [-180, 180] 的右半边 → 1
-第2位（纬度）：32.04  在 [-90, 90]  的右半边 → 1
-第3位（经度）：细化到 [0, 180]，118.78 在右半边 → 1
-第4位（纬度）：细化到 [0, 90]， 32.04  在右半边 → 1
-第5位（经度）：细化到 [90, 180]，118.78 在右半边 → 1
-...
+│
+├─ 第0位（偶数 → 经度）：118.78 在右半边 → 1
+├─ 第1位（奇数 → 纬度）：32.04  在右半边 → 1
+├─ 第2位（偶数 → 经度）：细化到 [0, 180]，118.78 在右半边 → 1
+├─ 第3位（奇数 → 纬度）：细化到 [0, 90]， 32.04  在右半边 → 1
+├─ 第4位（偶数 → 经度）：细化到 [90, 180]，118.78 在右半边 → 1
+│  ...
+└─ 不断二分下去，得到一个二进制序列
 ```
 
 不断二分下去，得到一个二进制序列：`11100 11010 10110...`
@@ -179,7 +184,30 @@ async def run_aggregation(distance_m: float = 500, precision: int = 6):
 
 **C 点和 A 点只隔 10 米，但 C 在 wtsq，A 在 wtsr——按照 Geohash 分组它们会被分到不同的桶。**
 
-**解决方案**：在做分桶时，把相邻 8 个格子的点也考虑进来。即查询时多取 `geohash LIKE 'wtsq%' OR geohash LIKE 'wtsr%' OR ...`。这在项目中没有实现（demo 阶段），但如果上生产是必须的。
+**标准解法：8 邻域扩展**
+
+在查询附近点时，不只看当前格子，而是取**当前格子 + 周围 8 个相邻格子**的所有点，再做距离过滤：
+
+```python
+def get_neighbors(geohash: str) -> list[str]:
+    """获取 geohash 的 8 个相邻格子"""
+    lat, lng = geohash_decode(geohash)
+    precision = len(geohash)
+    neighbors = []
+    for dl in [-1, 0, 1]:
+        for dg in [-1, 0, 1]:
+            if dl == 0 and dg == 0:
+                continue
+            neighbor = geohash_encode(lat + dl * step_lat,
+                                      lng + dg * step_lng,
+                                      precision)
+            neighbors.append(neighbor)
+    return neighbors
+```
+
+计算出这 9 个 Geohash 字符串后，用 `geohash IN (...)` 一次性查询，然后对返回的结果做精确距离排序。这样既覆盖了边界附近的点，又比全表扫描快了几个数量级。
+
+> 这个 8 邻域解法是参考了[知乎专栏](https://zhuanlan.zhihu.com/p/35940647)的思路，也是 Uber H3 六边形网格解决边界问题的灵感来源。
 
 ### 2. 精度不均匀
 
@@ -200,6 +228,10 @@ Geohash 格子的大小随纬度变化——越靠近极地，格子越窄：
 3. 预过滤后再调用 PostGIS 聚类，两者的结合才是最经济的
 
 所以最终方案是：**Geohash 做 SQL 层 GROUP BY + 应用层逐桶处理 + PostGIS `ST_DWithin` 做桶内精确距离判断**。
+
+### 4. 其他选择：Redis Geo
+
+Redis 从 3.2 版本开始内置了 Geo 相关操作（`GEOADD`、`GEORADIUS`、`GEOHASH` 等），底层就是基于 Geohash 编码 + sorted set 实现的。如果数据量不太大（百万级以内），Redis Geo 是一个零额外依赖的轻量方案。但 Redis 不支持空间 join 和复杂的地理聚合（如 `ST_ClusterDBSCAN`），适合做"附近的人"这类查询，不适合做批量聚类。
 
 ## 五、其他空间编码对比
 
@@ -231,3 +263,11 @@ Geohash 是一个「简单但够用」的编码方案。它没有 S2 或 H3 那�
 
 项目完整代码：[github.com/freezetheflame/B-demo](https://github.com/freezetheflame/B-demo)  
 相关阅读：[B端企业入驻订单聚合系统：从设计到优化的完整复盘](https://freezetheflame.github.io)
+
+### 参考文献
+
+1. [GeoHash算法学习讲解、解析及原理分析 - 知乎/薯片要配干燥剂](https://zhuanlan.zhihu.com/p/35940647)
+2. [Geohash - Wikipedia](https://en.wikipedia.org/wiki/Geohash)
+3. [PostGIS ST_ClusterDBSCAN 文档](https://postgis.net/docs/ST_ClusterDBSCAN.html)
+4. [Redis Geo 官方文档](https://redis.io/commands/geohash/)
+5. [Uber H3 六边形网格系统](https://github.com/uber/h3)
