@@ -233,4 +233,59 @@ v2 的 Breaking Change 不止是组件改名：
 - **Infra**: Docker Compose
 - **GIS**: Geohash + PostGIS GIST Index
 
+## 七、测试体系：41 个测试 / 3 层
+
+Demo 项目容易被质疑「能不能跑」，所以补了一套分层测试。核心思路：**纯函数优先、API 次之、前端工具函数兜底**。
+
+### 后端 — pytest（27 个）
+
+| 层 | 文件 | 测试数 | 覆盖 |
+|:---|:-----|:------|:-----|
+| 纯函数 | `test_aggregation_pure.py` | 17 | Geohash 编码(6) + Haversine(5) + 聚类(6) |
+| API 集成 | `test_api.py` | 10 | 全字段、分页、过滤、聚合、WS |
+
+纯函数测试的几个高价值 case：
+
+```python
+# 证明 geohash 幂等性——同坐标必同哈希
+def test_deterministic_same_coordinates_same_hash(self):
+    assert geohash_encode(31.5, 118.5, precision=6) == \
+           geohash_encode(31.5, 118.5, precision=6)
+
+# 证明距离指标的物理准确性——南京新街口到鼓楼约 2.1km
+def test_known_distance_reference(self):
+    dist = haversine_m(32.041, 118.784, 32.060, 118.781)
+    assert 1900 < dist < 2300  # 允许 ±5%
+
+# 证明连通分量聚类的链式合并——A-B通 + B-C通 → A-C同簇
+def test_three_points_chain_clusters_correctly(self):
+    pts = [(1, 32.000, 118.500),
+           (2, 32.003, 118.500),   # ~300m
+           (3, 32.006, 118.500)]   # ~300m, 但与 1 相距 600m
+    clusters = cluster_by_distance(pts, 500)
+    assert len(clusters) == 1  # 链式连通
+```
+
+纯函数测试的好处：不需要数据库、不需要网络，秒级跑完 17 个——反馈回路极短。
+
+### 前端 — vitest（14 个）
+
+| 测试组 | 测试数 | 验证 |
+|:-------|:------|:-----|
+| `formatCell` | 5 | ¥千分位、面积 1 位小数、库存格式、null→"-" |
+| `statusColors` | 3 | 5 种状态全、approved=绿 rejected=红 |
+| `createFormCache` | 6 | 存取、超限驱逐、clear、key 隔离 |
+
+前端测试的秘密：**把纯逻辑抽到 utils.ts**。`formatCell`、`statusColors`、LRU 缓存逻辑都是纯函数——不需要 DOM、不需要 mock fetch，直接 `vitest` 毫秒级验证。
+
+### 运行
+
+```bash
+# 后端
+cd backend && pytest tests/ -v
+
+# 前端
+cd frontend && npx vitest run
+```
+
 欢迎讨论任何细节。

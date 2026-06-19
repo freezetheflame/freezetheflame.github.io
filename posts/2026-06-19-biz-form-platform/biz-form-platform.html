@@ -238,6 +238,84 @@ submission_logs     <span class="hljs-comment">-- ← 注意这里！</span>
 <li><strong>Infra</strong>: Docker Compose</li>
 <li><strong>GIS</strong>: Geohash + PostGIS GIST Index</li>
 </ul>
+<h2 id="七、测试体系：41-个测试--3-层">七、测试体系：41 个测试 / 3 层</h2>
+<p>Demo 项目容易被质疑「能不能跑」，所以补了一套分层测试。核心思路：<strong>纯函数优先、API 次之、前端工具函数兜底</strong>。</p>
+<h3 id="后端--pytest（27-个）">后端 — pytest（27 个）</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th align="left">层</th>
+<th align="left">文件</th>
+<th align="left">测试数</th>
+<th align="left">覆盖</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">纯函数</td>
+<td align="left"><code>test_aggregation_pure.py</code></td>
+<td align="left">17</td>
+<td align="left">Geohash 编码(6) + Haversine(5) + 聚类(6)</td>
+</tr>
+<tr>
+<td align="left">API 集成</td>
+<td align="left"><code>test_api.py</code></td>
+<td align="left">10</td>
+<td align="left">全字段、分页、过滤、聚合、WS</td>
+</tr>
+</tbody></table></div>
+<p>纯函数测试的几个高价值 case：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 证明 geohash 幂等性——同坐标必同哈希</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">test_deterministic_same_coordinates_same_hash</span>(<span class="hljs-params">self</span>):
+    <span class="hljs-keyword">assert</span> geohash_encode(<span class="hljs-number">31.5</span>, <span class="hljs-number">118.5</span>, precision=<span class="hljs-number">6</span>) == \
+           geohash_encode(<span class="hljs-number">31.5</span>, <span class="hljs-number">118.5</span>, precision=<span class="hljs-number">6</span>)
+
+<span class="hljs-comment"># 证明距离指标的物理准确性——南京新街口到鼓楼约 2.1km</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">test_known_distance_reference</span>(<span class="hljs-params">self</span>):
+    dist = haversine_m(<span class="hljs-number">32.041</span>, <span class="hljs-number">118.784</span>, <span class="hljs-number">32.060</span>, <span class="hljs-number">118.781</span>)
+    <span class="hljs-keyword">assert</span> <span class="hljs-number">1900</span> &lt; dist &lt; <span class="hljs-number">2300</span>  <span class="hljs-comment"># 允许 ±5%</span>
+
+<span class="hljs-comment"># 证明连通分量聚类的链式合并——A-B通 + B-C通 → A-C同簇</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">test_three_points_chain_clusters_correctly</span>(<span class="hljs-params">self</span>):
+    pts = [(<span class="hljs-number">1</span>, <span class="hljs-number">32.000</span>, <span class="hljs-number">118.500</span>),
+           (<span class="hljs-number">2</span>, <span class="hljs-number">32.003</span>, <span class="hljs-number">118.500</span>),   <span class="hljs-comment"># ~300m</span>
+           (<span class="hljs-number">3</span>, <span class="hljs-number">32.006</span>, <span class="hljs-number">118.500</span>)]   <span class="hljs-comment"># ~300m, 但与 1 相距 600m</span>
+    clusters = cluster_by_distance(pts, <span class="hljs-number">500</span>)
+    <span class="hljs-keyword">assert</span> <span class="hljs-built_in">len</span>(clusters) == <span class="hljs-number">1</span>  <span class="hljs-comment"># 链式连通</span>
+</code></pre>
+<p>纯函数测试的好处：不需要数据库、不需要网络，秒级跑完 17 个——反馈回路极短。</p>
+<h3 id="前端--vitest（14-个）">前端 — vitest（14 个）</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th align="left">测试组</th>
+<th align="left">测试数</th>
+<th align="left">验证</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>formatCell</code></td>
+<td align="left">5</td>
+<td align="left">¥千分位、面积 1 位小数、库存格式、null→&quot;-&quot;</td>
+</tr>
+<tr>
+<td align="left"><code>statusColors</code></td>
+<td align="left">3</td>
+<td align="left">5 种状态全、approved=绿 rejected=红</td>
+</tr>
+<tr>
+<td align="left"><code>createFormCache</code></td>
+<td align="left">6</td>
+<td align="left">存取、超限驱逐、clear、key 隔离</td>
+</tr>
+</tbody></table></div>
+<p>前端测试的秘密：<strong>把纯逻辑抽到 utils.ts</strong>。<code>formatCell</code>、<code>statusColors</code>、LRU 缓存逻辑都是纯函数——不需要 DOM、不需要 mock fetch，直接 <code>vitest</code> 毫秒级验证。</p>
+<h3 id="运行">运行</h3>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 后端</span>
+<span class="hljs-built_in">cd</span> backend &amp;&amp; pytest tests/ -v
+
+<span class="hljs-comment"># 前端</span>
+<span class="hljs-built_in">cd</span> frontend &amp;&amp; npx vitest run
+</code></pre>
 <p>欢迎讨论任何细节。</p>
 
         <div class="button-row">
