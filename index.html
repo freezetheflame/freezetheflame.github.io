@@ -472,9 +472,9 @@
           <button class="tag-pill" data-tag="深度学习">深度学习<span class="tag-count">9</span></button>
           <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">8</span></button>
           <button class="tag-pill" data-tag="GPU 编程">GPU 编程<span class="tag-count">8</span></button>
+          <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">8</span></button>
           <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">8</span></button>
           <button class="tag-pill" data-tag="data science">data science<span class="tag-count">7</span></button>
-          <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">7</span></button>
           <button class="tag-pill" data-tag="gpu">gpu<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="python">python<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="triton">triton<span class="tag-count">6</span></button>
@@ -483,6 +483,7 @@
           <button class="tag-pill" data-tag="软件工程理论">软件工程理论<span class="tag-count">4</span></button>
           <button class="tag-pill" data-tag="kernel">kernel<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="算法">算法<span class="tag-count">3</span></button>
+          <button class="tag-pill" data-tag="系统设计">系统设计<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="framework">framework<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="fusion">fusion<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="PL理论">PL理论<span class="tag-count">2</span></button>
@@ -491,7 +492,6 @@
           <button class="tag-pill" data-tag="transformer">transformer<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="图论">图论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="基础语法">基础语法<span class="tag-count">2</span></button>
-          <button class="tag-pill" data-tag="系统设计">系统设计<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="随笔">随笔<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AI Agent">AI Agent<span class="tag-count">1</span></button>
@@ -501,6 +501,7 @@
           <button class="tag-pill" data-tag="backend">backend<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="CUDA">CUDA<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="debugging">debugging<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="eval">eval<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="FastAPI">FastAPI<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="fullstack">fullstack<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="fundamentals">fundamentals<span class="tag-count">1</span></button>
@@ -550,12 +551,14 @@
           <button class="tag-pill" data-tag="计网">计网<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="论文解读">论文解读<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="课程学习">课程学习<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="质量保障">质量保障<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="软件工程">软件工程<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="高可用">高可用<span class="tag-count">1</span></button>
       </div>
     </div>
 
     <div class="sidebar-footer">
-      共 140 篇文章
+      共 141 篇文章
     </div>
   </aside>
 
@@ -579,12 +582,23 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 140</span>
+        <span class="section-count" id="visibleCount">15 / 141</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="eval,LLM,软件工程,系统设计,质量保障">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-24-llm-eval-column/llm-eval-column-1.html">LLM 评估体系专栏 #1：从「凭感觉」到自动化 Eval 管道</a></h3>
+              <p class="post-preview">为什么需要一个评估专栏</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-24</span>
+                <span class="post-card-tags"><span class="post-tag">eval</span><span class="post-tag">LLM</span><span class="post-tag">软件工程</span><span class="post-tag">系统设计</span><span class="post-tag">质量保障</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-24-llm-eval-column/llm-eval-column-1.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="fullstack,系统设计,FastAPI,PostgreSQL,React,性能优化">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-06-19-biz-form-platform/biz-form-platform.html">B端企业入驻订单聚合系统：从设计到优化的完整复盘</a></h3>
@@ -739,20 +753,9 @@
             </div>
             <a href="posts/2026-06-07/triton-gpu-programming-landscape.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-07/triton-matmul-deep-dive.html">Triton 矩阵乘法深度拆解：从内存层次到分块策略</a></h3>
-              <p class="post-preview">矩阵乘法是现代深度学习最核心的算子。从 Transformer 的 Attention 到 MLP 的投影层，底层都是矩阵乘法。如果只学一个 Triton kernel，那一定是 matmul</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-07</span>
-                <span class="post-card-tags"></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-07/triton-matmul-deep-dive.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 140 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 141 篇文章 →</a>
     </section>
   </main>
 
