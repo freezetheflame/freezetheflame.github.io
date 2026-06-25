@@ -469,10 +469,10 @@
           <button class="tag-pill" data-tag="CG">CG<span class="tag-count">12</span></button>
           <button class="tag-pill" data-tag="服务器后端内容">服务器后端内容<span class="tag-count">12</span></button>
           <button class="tag-pill" data-tag="Java">Java<span class="tag-count">9</span></button>
+          <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">9</span></button>
           <button class="tag-pill" data-tag="深度学习">深度学习<span class="tag-count">9</span></button>
           <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">8</span></button>
           <button class="tag-pill" data-tag="GPU 编程">GPU 编程<span class="tag-count">8</span></button>
-          <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">8</span></button>
           <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">8</span></button>
           <button class="tag-pill" data-tag="data science">data science<span class="tag-count">7</span></button>
           <button class="tag-pill" data-tag="gpu">gpu<span class="tag-count">6</span></button>
@@ -492,8 +492,10 @@
           <button class="tag-pill" data-tag="transformer">transformer<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="图论">图论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="基础语法">基础语法<span class="tag-count">2</span></button>
+          <button class="tag-pill" data-tag="软件工程">软件工程<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="随笔">随笔<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="Agentless">Agentless<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AI Agent">AI Agent<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="algorithm">algorithm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="ascend">ascend<span class="tag-count">1</span></button>
@@ -547,18 +549,19 @@
           <button class="tag-pill" data-tag="数据增强">数据增强<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据库">数据库<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据结构">数据结构<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="测试生成">测试生成<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="研究综述">研究综述<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="自演进">自演进<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="计网">计网<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="论文解读">论文解读<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="课程学习">课程学习<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="质量保障">质量保障<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="软件工程">软件工程<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="高可用">高可用<span class="tag-count">1</span></button>
       </div>
     </div>
 
     <div class="sidebar-footer">
-      共 141 篇文章
+      共 142 篇文章
     </div>
   </aside>
 
@@ -582,12 +585,23 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 141</span>
+        <span class="section-count" id="visibleCount">15 / 142</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="测试生成,Agentless,LLM,软件工程,研究综述">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-25-agentless-test-gen/agentless-test-gen.html">LLM 自动化测试用例生成：Agentless 思路的背景调研</a></h3>
+              <p class="post-preview">缘起 我在思考一个问题：现在有很多用 LLM Agent 自动生成测试用例的研究，但大部分都是在调优 Agent 策略来提升质量。能不能反过来——用 Agentless（固定流程） 的思路，通过定义清晰的测试生成流水线，既保证效果、又...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-25</span>
+                <span class="post-card-tags"><span class="post-tag">测试生成</span><span class="post-tag">Agentless</span><span class="post-tag">LLM</span><span class="post-tag">软件工程</span><span class="post-tag">研究综述</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-25-agentless-test-gen/agentless-test-gen.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="eval,LLM,软件工程,系统设计,质量保障">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-06-24-llm-eval-column/llm-eval-column-1.html">LLM 评估体系专栏 #1：从「凭感觉」到自动化 Eval 管道</a></h3>
@@ -742,20 +756,9 @@
             </div>
             <a href="posts/2026-06-07/triton-flash-attention.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="AI Infra,Triton,GPU 编程,CUDA,MLIR,TileLang">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-07/triton-gpu-programming-landscape.html">GPU 编程模型全景图：从 CUDA 到 Triton，理解算子的编译与抽象层次</a></h3>
-              <p class="post-preview">要深入理解 Triton 为什么这样设计、它的 IR 栈在做什么、以及何时该用 Triton 何时不该，你需要先建立 GPU 编程模型的「全景认知」。这篇文章梳理从底层到上层的整个栈，帮你建立坐标系</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-07</span>
-                <span class="post-card-tags"><span class="post-tag">AI Infra</span><span class="post-tag">Triton</span><span class="post-tag">GPU 编程</span><span class="post-tag">CUDA</span><span class="post-tag">MLIR</span><span class="post-tag">TileLang</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-07/triton-gpu-programming-landscape.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 141 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 142 篇文章 →</a>
     </section>
   </main>
 
