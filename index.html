@@ -488,6 +488,7 @@
           <button class="tag-pill" data-tag="MoE">MoE<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="算法">算法<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="系统设计">系统设计<span class="tag-count">3</span></button>
+          <button class="tag-pill" data-tag="量化">量化<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="FlashAttention">FlashAttention<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="framework">framework<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="fusion">fusion<span class="tag-count">2</span></button>
@@ -501,11 +502,11 @@
           <button class="tag-pill" data-tag="基础语法">基础语法<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="编译器">编译器<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="软件工程">软件工程<span class="tag-count">2</span></button>
-          <button class="tag-pill" data-tag="量化">量化<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="随笔">随笔<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Agentless">Agentless<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AI Agent">AI Agent<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="AI编译">AI编译<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="algorithm">algorithm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="ascend">ascend<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Ascend">Ascend<span class="tag-count">1</span></button>
@@ -532,9 +533,11 @@
           <button class="tag-pill" data-tag="Intel">Intel<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="internship">internship<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="java垃圾回收">java垃圾回收<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="Kernel生成">Kernel生成<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="layernorm">layernorm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Lean">Lean<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="LLM4Code">LLM4Code<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="memory">memory<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MindSpeed">MindSpeed<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="mlp">mlp<span class="tag-count">1</span></button>
@@ -580,9 +583,12 @@
           <button class="tag-pill" data-tag="测试生成">测试生成<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="研究综述">研究综述<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="硬件适配">硬件适配<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="科研前沿">科研前沿<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="稀疏模型">稀疏模型<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="稀疏计算">稀疏计算<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="算子">算子<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="算子测试">算子测试<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="算子研究">算子研究<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="精度测试">精度测试<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="自演进">自演进<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="融合算子">融合算子<span class="tag-count">1</span></button>
@@ -597,7 +603,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 151 篇文章
+      共 152 篇文章
     </div>
   </aside>
 
@@ -621,7 +627,7 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 151</span>
+        <span class="section-count" id="visibleCount">15 / 152</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
@@ -704,6 +710,17 @@
             </div>
             <a href="posts/2026-06-29-moe-operator-deep-dive/moe-operator-deep-dive.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
+          <li class="post-card" data-tags="算子研究,Kernel生成,LLM4Code,稀疏计算,量化,AI编译,科研前沿">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-29-operator-research-frontier/operator-research-frontier.html">AI算子科研前沿：2025-2026年最热的6大研究方向</a></h3>
+              <p class="post-preview">本文面向 AI Infra 从业者，覆盖 2025–2026 年算子（Operator/Kernel）领域最前沿的 6 个研究方向。目标读者：有 CUDA/Triton 基础、想系统了解算子领域科研热点的工程师和研究者</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-29</span>
+                <span class="post-card-tags"><span class="post-tag">算子研究</span><span class="post-tag">Kernel生成</span><span class="post-tag">LLM4Code</span><span class="post-tag">稀疏计算</span><span class="post-tag">量化</span><span class="post-tag">AI编译</span><span class="post-tag">科研前沿</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-29-operator-research-frontier/operator-research-frontier.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="AI算子,算子测试,精度测试,差分测试,性能基准,CI,调试工具,CUDA">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-06-29-operator-testing-guide/operator-testing-guide.html">AI算子测试与验证完全指南</a></h3>
@@ -781,20 +798,9 @@
             </div>
             <a href="posts/2026-06-14-pythagoras-prover/pythagoras-prover.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="triton,gpu,autotune,debugging">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-11/triton-autotune-pitfalls.html">Triton Autotune 实战踩坑笔记</a></h3>
-              <p class="post-preview">看起来只是加个 decorator，实际踩了四个坑</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-11</span>
-                <span class="post-card-tags"><span class="post-tag">triton</span><span class="post-tag">gpu</span><span class="post-tag">autotune</span><span class="post-tag">debugging</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-11/triton-autotune-pitfalls.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 151 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 152 篇文章 →</a>
     </section>
   </main>
 
