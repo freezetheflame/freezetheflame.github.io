@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>量化算子从入门到实践：INT8/INT4/FP8 全面指南 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-29</p>
+        <h1>量化算子从入门到实践：INT8/INT4/FP8 全面指南</h1>
+        <div class="post-meta">
+          <span>2026-06-29</span>
+          <span class="tag">量化</span><span class="tag">INT8</span><span class="tag">INT4</span><span class="tag">FP8</span><span class="tag">GPTQ</span><span class="tag">AWQ</span><span class="tag">推理优化</span>
+        </div>
+        <p>当你的 LLM 跑在 8×A100 上依然 OOM，当推理延迟死活压不进 100ms，当你想把 70B 模型塞进单张消费级显卡——<strong>量化（Quantization）</strong> 是解决这些问题最成熟的武器。从 INT8 的 Tensor Core 加速到 INT4 的内存减半，再到 FP8 的硬件原生支持，量化技术栈在过去三年里飞速成熟。这篇指南将带你深入每种量化技术的底层原理、算法实现和工程实践，从量化公式到 CUDA 伪代码，从 GPTQ 的 Hessian 矩阵到 FP8 的 scale 管理，一站讲透。</p>
+<!--more-->
+
+<hr>
+<h2 id="1-🎯-量化的直觉：为什么需要量化？">1. 🎯 量化的直觉：为什么需要量化？</h2>
+<h3 id="11-精度-vs-速度的终极-tradeoff">1.1 精度 vs 速度的终极 tradeoff</h3>
+<p>大模型推理的核心瓶颈有两个：<strong>内存带宽</strong>（权重加载速度）和<strong>计算吞吐</strong>（GEMM 计算速度）。量化同时优化两者：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>精度格式</th>
+<th>每参数比特</th>
+<th>相比 FP16 内存节省</th>
+<th>Tensor Core 相对吞吐</th>
+<th>典型 perplexity 损失</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FP16</td>
+<td>16 bit</td>
+<td>1× (baseline)</td>
+<td>1×</td>
+<td>0%</td>
+</tr>
+<tr>
+<td>INT8</td>
+<td>8 bit</td>
+<td>2×</td>
+<td>~2×</td>
+<td>&lt; 0.5%</td>
+</tr>
+<tr>
+<td>FP8 E4M3</td>
+<td>8 bit</td>
+<td>2×</td>
+<td>~2×</td>
+<td>&lt; 0.3%</td>
+</tr>
+<tr>
+<td>INT4 (GPTQ/AWQ)</td>
+<td>4 bit</td>
+<td>4×</td>
+<td>~1× (decode 受带宽限制)</td>
+<td>&lt; 1% MMLU</td>
+</tr>
+<tr>
+<td>NF4</td>
+<td>4 bit</td>
+<td>4×</td>
+<td>~1×</td>
+<td>&lt; 1% (QLoRA 训练)</td>
+</tr>
+<tr>
+<td>INT2</td>
+<td>2 bit</td>
+<td>8×</td>
+<td>~</td>
+<td>&gt; 3% (实验性)</td>
+</tr>
+</tbody></table></div>
+<p>量化的直觉很简单：<strong>权重/激活值中携带的信息远多于 16 位浮点所能表达的精度需求</strong>。一个 FP16 权重的高 5 位指数和低 11 位尾数中，真正对模型输出有影响的往往是高位部分。量化就是找到一种&quot;足够好&quot;的低位映射，在尽可能保留信息的同时砍掉冗余比特。</p>
+<p>量化误差的来源可以分解为两个部分：</p>
+<ol>
+<li><strong>Clipping error（截断误差）</strong>：超出量化范围的极值被截断（clamp）</li>
+<li><strong>Rounding error（舍入误差）</strong>：量化区间内的值被四舍五入到最近的量化等级</li>
+</ol>
+<p>$$
+\text{Total Error} = \underbrace{\sum_{i: x_i &gt; x_{max}} (x_i - x_{max})^2}<em>{\text{clipping}} + \underbrace{\sum</em>{i: x_i \leq x_{max}} (x_i - \hat{x}<em>i)^2}</em>{\text{rounding}}
+$$</p>
+<p>不同的量化方法本质上就是在优化这两个误差的平衡——减小 clipping 就会增大 rounding（因为量化步长变大），反之亦然。</p>
+<h3 id="12-量化操作的全景图">1.2 量化操作的全景图</h3>
+<p>从算子层面看，一个量化过程包含三个核心操作：</p>
+<pre><code>FP16 权重/激活 → [Quantize] → INT8/INT4/FP8 → [Compute] → INT32/FP16 → [Dequantize] → FP16 输出
+</code></pre>
+<ul>
+<li><strong>Quantize</strong>：高精度 → 低位宽的映射（包含 scale 计算 + rounding + clamping）</li>
+<li><strong>Compute</strong>：在低位宽下做矩阵乘法（GEMM 或 GEMV）</li>
+<li><strong>Dequantize</strong>：将低位宽结果还原回高精度（包含 scale 恢复）</li>
+</ul>
+<p>这些操作可以<strong>融合</strong>进 GEMM kernel 中，避免额外的 HBM 读写。下面我们从最经典的 INT8 量化开始。</p>
+<hr>
+<h2 id="2-🔢-int8-量化：最成熟的量化方案">2. 🔢 INT8 量化：最成熟的量化方案</h2>
+<h3 id="21-对称-vs-非对称量化">2.1 对称 vs 非对称量化</h3>
+<p>INT8 量化有两种基本的映射方式，它们的区别在于是否使用 zero_point。</p>
+<h4 id="对称量化（symmetric-quantization）">对称量化（Symmetric Quantization）</h4>
+<pre><code>q = clamp(round(x / scale), -127, 127)
+scale = max(|x|) / 127
+</code></pre>
+<p>对称量化将 FP16 范围映射到 <code>[-127, 127]</code>（有符号 INT8），zero_point 恒为 0。优点是 GEMM kernel 实现简单——不需要做 zero_point 的 offset 补偿。缺点是如果数据分布不对称（比如 ReLU 后的激活值都是正的），会浪费一半的表示范围。</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">quantize_symmetric</span>(<span class="hljs-params">x: torch.Tensor</span>) -&gt; <span class="hljs-built_in">tuple</span>:
+    <span class="hljs-string">&quot;&quot;&quot;对称量化：将 FP16 张量映射到 INT8 [-127, 127]&quot;&quot;&quot;</span>
+    scale = x.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>() / <span class="hljs-number">127.0</span>
+    q = torch.clamp(torch.<span class="hljs-built_in">round</span>(x / scale), -<span class="hljs-number">127</span>, <span class="hljs-number">127</span>).to(torch.int8)
+    <span class="hljs-keyword">return</span> q, scale
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">dequantize_symmetric</span>(<span class="hljs-params">q: torch.Tensor, scale: <span class="hljs-built_in">float</span></span>) -&gt; torch.Tensor:
+    <span class="hljs-string">&quot;&quot;&quot;对称反量化：将 INT8 恢复为 FP16&quot;&quot;&quot;</span>
+    <span class="hljs-keyword">return</span> q.to(torch.float16) * scale
+</code></pre>
+<h4 id="非对称量化（asymmetric--affine-quantization）">非对称量化（Asymmetric / Affine Quantization）</h4>
+<pre><code>q = clamp(round(x / scale) + zero_point, 0, 255)
+scale = (x_max - x_min) / 255
+zero_point = round(-x_min / scale)
+</code></pre>
+<p>非对称量化使用 zero_point 偏移，将 FP16 范围映射到 <code>[0, 255]</code>（无符号 UINT8），完整利用了全部 256 个量化等级。缺点是 GEMM 计算需要额外处理 zero_point：</p>
+<p>$$
+Y = s_X \cdot s_W \cdot (q_X - z_X) \cdot (q_W - z_W) = s_X \cdot s_W \cdot (q_X q_W - q_X z_W - z_X q_W + z_X z_W)
+$$</p>
+<p>多出来的 <code>q_X * Z_W</code> 和 <code>Z_X * q_W</code> 项需要额外的计算和内存开销。</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">quantize_asymmetric</span>(<span class="hljs-params">x: torch.Tensor</span>) -&gt; <span class="hljs-built_in">tuple</span>:
+    <span class="hljs-string">&quot;&quot;&quot;非对称量化：将 FP16 张量映射到 UINT8 [0, 255]&quot;&quot;&quot;</span>
+    x_min, x_max = x.<span class="hljs-built_in">min</span>(), x.<span class="hljs-built_in">max</span>()
+    scale = (x_max - x_min) / <span class="hljs-number">255.0</span>
+    zero_point = torch.<span class="hljs-built_in">round</span>(-x_min / scale)
+    q = torch.clamp(torch.<span class="hljs-built_in">round</span>(x / scale) + zero_point, <span class="hljs-number">0</span>, <span class="hljs-number">255</span>).to(torch.uint8)
+    <span class="hljs-keyword">return</span> q, scale, zero_point
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">dequantize_asymmetric</span>(<span class="hljs-params">q: torch.Tensor, scale: <span class="hljs-built_in">float</span>, zero_point: <span class="hljs-built_in">int</span></span>) -&gt; torch.Tensor:
+    <span class="hljs-string">&quot;&quot;&quot;非对称反量化&quot;&quot;&quot;</span>
+    <span class="hljs-keyword">return</span> (q.to(torch.float16) - zero_point) * scale
+</code></pre>
+<p><strong>实战选择：</strong> 对于经过 LayerNorm 的权重（分布近似对称，均值接近 0）使用对称量化；对于 ReLU/SiLU 后的激活值（全为正）使用非对称量化。实际推理引擎中，对称量化更常见，因为 kernel 实现更简洁。</p>
+<h3 id="22-per-tensor-vs-per-channel-vs-per-group-粒度">2.2 Per-Tensor vs Per-Channel vs Per-Group 粒度</h3>
+<p>量化粒度决定了<strong>每多少个元素共享一个 scale/zero_point</strong>。粒度越细，量化误差越小，但 scale 的存储和计算开销越大。</p>
+<pre><code>Per-Tensor:    1 scale 对整个张量  → 存储成本 O(1)，量化误差最大
+Per-Channel:   1 scale 每输出通道 → 存储成本 O(C_out)，LLM 主流选择
+Per-Group:     1 scale 每 G 个元素 → 存储成本 O(N/G)，精度最好
+</code></pre>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Per-tensor: 整个权重矩阵一个 scale</span>
+w_scale = w.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>() / <span class="hljs-number">127.0</span>
+w_q = (w / w_scale).<span class="hljs-built_in">round</span>().clamp(-<span class="hljs-number">127</span>, <span class="hljs-number">127</span>).to(torch.int8)
+
+<span class="hljs-comment"># Per-channel: 每输出通道一个 scale</span>
+<span class="hljs-comment"># w.shape = [C_out, C_in]</span>
+w_scales = w.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>(dim=<span class="hljs-number">1</span>).values / <span class="hljs-number">127.0</span>  <span class="hljs-comment"># [C_out]</span>
+w_q = (w / w_scales.view(-<span class="hljs-number">1</span>, <span class="hljs-number">1</span>)).<span class="hljs-built_in">round</span>().clamp(-<span class="hljs-number">127</span>, <span class="hljs-number">127</span>).to(torch.int8)
+
+<span class="hljs-comment"># Per-group: 每 group_size 个元素一个 scale</span>
+<span class="hljs-comment"># w.shape = [C_out, C_in], group_size = 128</span>
+w_reshaped = w.view(C_out, -<span class="hljs-number">1</span>, group_size)  <span class="hljs-comment"># [C_out, num_groups, group_size]</span>
+w_scales = w_reshaped.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>(dim=-<span class="hljs-number">1</span>).values / <span class="hljs-number">127.0</span>  <span class="hljs-comment"># [C_out, num_groups]</span>
+</code></pre>
+<p><strong>对 GEMM 的影响：</strong> Per-tensor 最简单，但精度最低（一个 outlier 会压缩所有其他值）。Per-channel 是 LLM INT8 量化的主流选择，scale 可以在 kernel 内预加载到寄存器。Per-group 精度最高但 scale 数量多，通常需要放在 shared memory 中做 prefetch，避免寄存器压力过大。</p>
+<h3 id="23-量化反量化算子的-cuda-实现">2.3 量化/反量化算子的 CUDA 实现</h3>
+<p>下面是一个 per-tensor 对称量化的 CUDA kernel 伪代码。重点是<strong>融合</strong>思想——将量化操作嵌入到 GEMM 的 epilogue 中，避免显式的反量化 kernel。</p>
+<h4 id="量化-kernel">量化 Kernel</h4>
+<pre><code class="hljs language-cuda">// INT8 对称量化 kernel: FP16 → INT8
+// 每个线程处理 4 个元素，使用 half2 向量化加载
+__global__ void quantize_int8_symmetric_kernel(
+    const half* __restrict__ x,   // FP16 输入 [N]
+    int8_t* __restrict__ q,       // INT8 输出 [N]
+    float* __restrict__ scale,    // 输出 scale
+    int N
+) {
+    // 第一步：在 block 内计算 max(abs(x))
+    extern __shared__ float s_max[];
+    float local_max = 0.0f;
+    
+    for (int i = threadIdx.x; i &lt; N; i += blockDim.x) {
+        float val = __half2float(x[i]);
+        local_max = fmaxf(local_max, fabsf(val));
+    }
+    s_max[threadIdx.x] = local_max;
+    __syncthreads();
+    
+    // 并行归约：blockDim.x 个值归约为 1 个
+    for (int s = blockDim.x / 2; s &gt; 0; s &gt;&gt;= 1) {
+        if (threadIdx.x &lt; s) {
+            s_max[threadIdx.x] = fmaxf(s_max[threadIdx.x], s_max[threadIdx.x + s]);
+        }
+        __syncthreads();
+    }
+    
+    if (threadIdx.x == 0) {
+        float absmax = s_max[0];
+        *scale = absmax / 127.0f;
+    }
+    __syncthreads();
+    
+    // 第二步：量化（每个线程处理 4 个 half = 2 个 half2）
+    float s = (*scale);
+    float inv_scale = 1.0f / s;
+    
+    for (int i = threadIdx.x; i &lt; N; i += blockDim.x) {
+        float val = __half2float(x[i]);
+        int q_val = __float2int_rn(val * inv_scale);  // round to nearest
+        q_val = max(-127, min(127, q_val));           // clamp to [-127, 127]
+        q[i] = (int8_t)q_val;
+    }
+}
+</code></pre>
+<h4 id="融合反量化的-gemm-伪代码">融合反量化的 GEMM 伪代码</h4>
+<p>真正的 INT8 GEMM 不会单独做反量化——它融合在 <code>cublasLtMatmul</code> 或自定义 CUTLASS kernel 中：</p>
+<pre><code class="hljs language-cuda">// 伪代码：INT8 GEMM + 反量化融合
+// C = alpha * (A_q - zp_A) * scale_A * (B_q - zp_B) * scale_B + beta * C_fp16
+
+// 在 CUTLASS 中，这通过 epilogue 的 DequantizeOp 实现：
+struct DequantizeOp {
+    float scale_a, scale_b;
+    int32_t zp_a, zp_b;
+    
+    __device__ float operator()(int32_t acc, int, int) const {
+        // acc = A_q * B_q (INT32 点积结果)
+        // 反量化 + zero_point 补偿
+        float result = (float)acc * scale_a * scale_b;
+        // 简化：假设对称量化，zp_a = zp_b = 0
+        return result;
+    }
+};
+</code></pre>
+<p>整个流程：</p>
+<pre><code>输入: A_fp16 [M, K], B_fp16 [K, N]
+  ↓ 量化后
+A_int8 [M, K], scale_A, B_int8 [K, N], scale_B
+  ↓ Tensor Core INT8 GEMM (DP4A 指令)
+C_int32 [M, N]   ← 每个 INT32 元素 = sum(A_int8 * B_int8)
+  ↓ epilogue 中反量化
+C_fp16 [M, N] = C_int32 * scale_A * scale_B
+</code></pre>
+<h3 id="24-qat-vs-ptq：训练时量化-vs-训练后量化">2.4 QAT vs PTQ：训练时量化 vs 训练后量化</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>PTQ (Post-Training Quantization)</th>
+<th>QAT (Quantization-Aware Training)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>流程</td>
+<td>训练完模型 → 少量 calibration 数据 → 直接量化</td>
+<td>训练/微调中模拟量化噪声 → Fine-tune 权重适应量化</td>
+</tr>
+<tr>
+<td>数据需求</td>
+<td>128-1024 条无标签校准样本</td>
+<td>完整训练集或有标签数据</td>
+</tr>
+<tr>
+<td>时间</td>
+<td>几分钟到几小时</td>
+<td>数天到数周（需要重新训练）</td>
+</tr>
+<tr>
+<td>精度</td>
+<td>INT8 通常 &lt; 0.5% 损失；INT4 需要 GPTQ/AWQ 辅助</td>
+<td>接近 FP16 baseline</td>
+</tr>
+<tr>
+<td>适用</td>
+<td>推理部署，快速上线</td>
+<td>对精度极度敏感的场景</td>
+</tr>
+</tbody></table></div>
+<p><strong>PTQ 的核心挑战</strong>：离线收集激活值的 min/max 统计量，但校准数据的选择会影响量化参数。</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># PTQ 流程：收集统计量</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">ptq_calibrate</span>(<span class="hljs-params">model, calib_loader, quant_granularity=<span class="hljs-string">&#x27;per_channel&#x27;</span></span>):
+    model.<span class="hljs-built_in">eval</span>()
+    
+    <span class="hljs-comment"># 注册 hook 收集每层激活值的统计量</span>
+    activations = {}
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">hook_fn</span>(<span class="hljs-params">name</span>):
+        <span class="hljs-keyword">def</span> <span class="hljs-title function_">hook</span>(<span class="hljs-params">module, <span class="hljs-built_in">input</span>, output</span>):
+            <span class="hljs-comment"># 收集激活值 min/max 用于校准 scale</span>
+            act = <span class="hljs-built_in">input</span>[<span class="hljs-number">0</span>].detach()
+            activations[name] = {
+                <span class="hljs-string">&#x27;min&#x27;</span>: act.<span class="hljs-built_in">min</span>(dim=<span class="hljs-number">0</span>).values,
+                <span class="hljs-string">&#x27;max&#x27;</span>: act.<span class="hljs-built_in">max</span>(dim=<span class="hljs-number">0</span>).values
+            }
+        <span class="hljs-keyword">return</span> hook
+    
+    <span class="hljs-comment"># 注册 hooks...</span>
+    <span class="hljs-keyword">with</span> torch.no_grad():
+        <span class="hljs-keyword">for</span> batch <span class="hljs-keyword">in</span> calib_loader:
+            model(batch)  <span class="hljs-comment"># 前向传播收集激活统计</span>
+    
+    <span class="hljs-comment"># 计算量化参数</span>
+    <span class="hljs-keyword">for</span> name, stats <span class="hljs-keyword">in</span> activations.items():
+        x_min, x_max = stats[<span class="hljs-string">&#x27;min&#x27;</span>], stats[<span class="hljs-string">&#x27;max&#x27;</span>]
+        scale = (x_max - x_min) / <span class="hljs-number">255.0</span>
+        zero_point = torch.<span class="hljs-built_in">round</span>(-x_min / scale)
+        <span class="hljs-comment"># 存储量化参数...</span>
+</code></pre>
+<p><strong>QAT 的核心挑战</strong>：量化操作的不可导性（round 函数的梯度几乎处处为 0）。解决方案是 **Straight-Through Estimator (STE)**——前向用真实的量化，反向用 fake gradient（将 round 的梯度近似为 1）：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># QAT 中的 STE 伪代码</span>
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">FakeQuantize</span>(torch.autograd.Function):
+<span class="hljs-meta">    @staticmethod</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">ctx, x, scale, zero_point, qmin, qmax</span>):
+        <span class="hljs-comment"># 前向：真实量化 + 反量化（模拟量化噪声）</span>
+        q = torch.clamp(torch.<span class="hljs-built_in">round</span>(x / scale) + zero_point, qmin, qmax)
+        dq = (q - zero_point) * scale
+        <span class="hljs-keyword">return</span> dq
+    
+<span class="hljs-meta">    @staticmethod</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">backward</span>(<span class="hljs-params">ctx, grad_output</span>):
+        <span class="hljs-comment"># 反向：STE——梯度直接通过（跳过 round 的不可导）</span>
+        <span class="hljs-keyword">return</span> grad_output, <span class="hljs-literal">None</span>, <span class="hljs-literal">None</span>, <span class="hljs-literal">None</span>, <span class="hljs-literal">None</span>
+</code></pre>
+<p>PyTorch 2.x 中的 <code>torch.ao.quantization</code> 和 <code>torch.ao.quantization.qconfig</code> 已对 PTQ 和 QAT 提供完整支持，推荐直接使用。</p>
+<hr>
+<h2 id="3-🧊-int4-量化：省显存的利器">3. 🧊 INT4 量化：省显存的利器</h2>
+<p>INT4 量化将每个权重压缩到 4 bit（半字节），相比 FP16 节省 <strong>4 倍</strong> 内存。对于 70B 模型，FP16 权重需要 ~140GB，INT4 只需要 ~35GB——这意味着单张 A100-80G 就能运行。</p>
+<p>但 INT4 的量化误差远大于 INT8，需要更复杂的<strong>误差补偿</strong>策略。目前两大主流方案是 GPTQ 和 AWQ。</p>
+<h3 id="31-gptq：hessian-aware-量化">3.1 GPTQ：Hessian-Aware 量化</h3>
+<p>GPTQ（GPT Post-Training Quantization）基于<strong>最优脑手术框架（Optimal Brain Surgeon, OBS）</strong>，核心思想是：量化的误差不应该被忽略，而应该<strong>传播到后续未量化的列</strong>来补偿。</p>
+<p><strong>原理推导：</strong></p>
+<p>假设 $W \in \mathbb{R}^{d_{out} \times d_{in}}$，量化第 $i$ 列 $W_{:,i}$ 产生量化误差 $\delta_i = \hat{W}<em>{:,i} - W</em>{:,i}$。标准 OBS 框架告诉我们，对于一个已经训练好的模型，参数扰动 $\delta$ 导致的输出二阶损失近似为：</p>
+<p>$$
+L(\delta) = \delta^T H \delta
+$$</p>
+<p>其中 $H = 2 \cdot X^T X$ 是 Hessian 矩阵（$X$ 是输入激活值）。GPTQ 逐列量化权重，并将误差按 Hessian 逆分布到剩余未量化列：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># GPTQ 伪代码：逐列量化 + Hessian 误差补偿</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">gptq_quantize</span>(<span class="hljs-params">W: torch.Tensor, H: torch.Tensor, group_size: <span class="hljs-built_in">int</span> = <span class="hljs-number">128</span></span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    W: 权重矩阵 [d_out, d_in]
+    H: Hessian 矩阵 = 2 * X^T X + lambda * I  [d_in, d_in]
+    &quot;&quot;&quot;</span>
+    <span class="hljs-comment"># Cholesky 分解 H 的逆</span>
+    H_inv = torch.linalg.cholesky(H)
+    H_inv = torch.cholesky_inverse(H_inv)
+    
+    W_hat = W.clone().<span class="hljs-built_in">float</span>()
+    
+    <span class="hljs-comment"># 按 group 逐块量化</span>
+    <span class="hljs-keyword">for</span> group_start <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">0</span>, W.shape[<span class="hljs-number">1</span>], group_size):
+        group_end = <span class="hljs-built_in">min</span>(group_start + group_size, W.shape[<span class="hljs-number">1</span>])
+        
+        <span class="hljs-keyword">for</span> col <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(group_start, group_end):
+            <span class="hljs-comment"># 量化当前列</span>
+            w_col = W_hat[:, col]
+            scale = w_col.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>() / <span class="hljs-number">7.0</span>  <span class="hljs-comment"># INT4 对称量化 [-7, 7]</span>
+            q_col = torch.clamp(torch.<span class="hljs-built_in">round</span>(w_col / scale), -<span class="hljs-number">7</span>, <span class="hljs-number">7</span>).to(torch.int8)
+            
+            <span class="hljs-comment"># 量化误差</span>
+            err = w_col - q_col.<span class="hljs-built_in">float</span>() * scale  <span class="hljs-comment"># [d_out]</span>
+            
+            <span class="hljs-comment"># Hessian 逆矩阵对当前列的影响</span>
+            h_inv_col = H_inv[col, col]  <span class="hljs-comment"># 标量</span>
+            
+            <span class="hljs-keyword">if</span> h_inv_col &gt; <span class="hljs-number">1e-8</span>:
+                <span class="hljs-comment"># 将误差分配到剩余列：err * H_inv[col, col:] / H_inv[col, col]</span>
+                delta = err.unsqueeze(<span class="hljs-number">1</span>) * H_inv[col, col:group_end].unsqueeze(<span class="hljs-number">0</span>) / h_inv_col
+                W_hat[:, col:group_end] -= delta
+    
+    <span class="hljs-keyword">return</span> W_hat  <span class="hljs-comment"># 剩余的未量化列已被误差补偿调整</span>
+</code></pre>
+<p><strong>关键实现细节：</strong></p>
+<ol>
+<li><p><strong>Hessian 计算</strong>：$H = 2X^TX + \lambda I$，其中 $X$ 是从 calibration dataset 收集的激活值（shape <code>[num_samples * seq_len, d_in]</code>），$\lambda$ 是 damping 系数（通常 $\lambda = 0.01 \cdot \text{trace}(X^TX)/d_{in}$）。</p>
+</li>
+<li><p><strong>逐列量化 vs 逐块量化</strong>：上面代码对每列独立计算 scale（finest granularity），但实际中常用 <strong>group-wise</strong>（每 128 列共享一个 scale）以减少 scale 存储开销。</p>
+</li>
+<li><p><strong>Latency 瓶颈</strong>：Hessian 逆矩阵的计算是 $O(d_{in}^3)$，对于 d_in=4096 的 LLaMA 层，单层就需要数分钟。实际实现使用 Cholesky 分解 + 反向替换来数值稳定地求解。</p>
+</li>
+</ol>
+<p><strong>Marlin Kernel：</strong> GPTQ 的推理 backend 由 Marlin kernel 实现，它将 INT4 权重以 <code>group_size × 16</code> 的 tile 格式重排，支持在寄存器内解包并利用 Tensor Core：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Marlin kernel 的核心思想（伪代码）</span>
+<span class="hljs-comment"># 对每个 16x16 的 FP16 block:</span>
+<span class="hljs-comment">#   1. 从 INT4 权重加载 4 个 INT4 值 → 打包为 1 个 INT32</span>
+<span class="hljs-comment">#   2. 根据 scale 反量化为 FP16</span>
+<span class="hljs-comment">#   3. 使用 mma.sync.aligned.m16n8k16 指令做 FP16 GEMM</span>
+<span class="hljs-comment"># scale 预取到 shared memory，减少 HBM 访问</span>
+</code></pre>
+<h3 id="32-awq：activation-aware-量化">3.2 AWQ：Activation-Aware 量化</h3>
+<p>AWQ（Activation-Aware Weight Quantization）的出发点是一个关键观察：<strong>权重中约 1% 的通道（salient channels）对模型精度至关重要</strong>。这些通道的特点是：对应的激活值有非常大的幅度。</p>
+<p>AWQ 的解决方案不是保留这些通道为 FP16（这会破坏统一的 INT4 GEMM），而是通过<strong>按通道缩放（per-channel scaling）</strong>来保护它们：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># AWQ 核心：寻找最优缩放因子 s</span>
+<span class="hljs-comment"># 对每个输出通道:</span>
+<span class="hljs-comment">#   W&#x27;&#x27; = W * s,  x&#x27;&#x27; = x / s</span>
+<span class="hljs-comment"># 量化 W&#x27;&#x27; 时，salient channel 的值会相对缩小，量化误差也减小</span>
+<span class="hljs-comment"># 同时 x&#x27;&#x27; 的值被放大，但 x (FP16) 本身不会溢出</span>
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">awq_optimal_scaling</span>(<span class="hljs-params">W: torch.Tensor, X: torch.Tensor, alpha: <span class="hljs-built_in">float</span> = <span class="hljs-number">0.5</span></span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    AWQ 寻找最优 per-channel 缩放因子
+    W: [d_out, d_in] 权重
+    X: [n_samples, d_in] 校准集激活值
+    alpha: 迁移强度
+    &quot;&quot;&quot;</span>
+    <span class="hljs-comment"># 分两步：</span>
+    <span class="hljs-comment"># 1. 计算 per-channel 激活幅度</span>
+    act_scale = X.<span class="hljs-built_in">abs</span>().mean(dim=<span class="hljs-number">0</span>)  <span class="hljs-comment"># [d_in]</span>
+    
+    <span class="hljs-comment"># 2. 对每个候选缩放因子 s，评估量化后的精度损失</span>
+    best_s = torch.ones(d_in)
+    
+    <span class="hljs-comment"># 搜索空间：s ∈ [0.5, 1.0], step=0.01</span>
+    <span class="hljs-keyword">for</span> s_candidate <span class="hljs-keyword">in</span> torch.arange(<span class="hljs-number">0.5</span>, <span class="hljs-number">1.01</span>, <span class="hljs-number">0.01</span>):
+        <span class="hljs-comment"># 按通道缩放</span>
+        W_scaled = W * s_candidate  <span class="hljs-comment"># [d_out, d_in]</span>
+        X_scaled = X / s_candidate  <span class="hljs-comment"># [n_samples, d_in]</span>
+        
+        <span class="hljs-comment"># 量化 W_scaled</span>
+        scale = W_scaled.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>() / <span class="hljs-number">7.0</span>
+        W_q = torch.clamp(torch.<span class="hljs-built_in">round</span>(W_scaled / scale), -<span class="hljs-number">7</span>, <span class="hljs-number">7</span>)
+        W_deq = W_q * scale
+        
+        <span class="hljs-comment"># 评估损失：||X * W - X_scaled * W_deq||</span>
+        out_original = X @ W.T
+        out_quantized = X_scaled @ W_deq.T
+        loss = (out_original - out_quantized).<span class="hljs-built_in">pow</span>(<span class="hljs-number">2</span>).mean()
+        
+        <span class="hljs-comment"># 选择使 loss 最小的 s</span>
+        <span class="hljs-comment"># ...</span>
+    
+    <span class="hljs-keyword">return</span> best_s
+</code></pre>
+<p><strong>AWQ vs GPTQ 对比：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>GPTQ</th>
+<th>AWQ</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>核心原理</td>
+<td>Hessian 逆矩阵误差补偿</td>
+<td>Activation-aware 通道保护</td>
+</tr>
+<tr>
+<td>校准时间</td>
+<td>小时级（需计算 Hessian 逆）</td>
+<td>分钟级（只需搜索缩放因子）</td>
+</tr>
+<tr>
+<td>精度 (INT4)</td>
+<td>MMLU 损失 ~0.8%</td>
+<td>MMLU 损失 ~0.5%</td>
+</tr>
+<tr>
+<td>共享推理 kernel</td>
+<td>Marlin</td>
+<td>Marlin（格式兼容）</td>
+</tr>
+<tr>
+<td>额外开销</td>
+<td>Hessian 矩阵存储 $O(d_{in}^2)$</td>
+<td>缩放因子 $O(d_{in})$</td>
+</tr>
+</tbody></table></div>
+<p>两者的关系不是互斥的——实践中可以<strong>组合使用</strong>：先用 AWQ 做缩放保护，再用 GPTQ 做误差补偿。</p>
+<h3 id="33-group-wise-量化的-block-大小选择">3.3 Group-Wise 量化的 Block 大小选择</h3>
+<p>Group-wise 量化将权重矩阵划分为 <code>[d_out, d_in / group_size]</code> 个组，每组共享一个 scale。group_size 的选择是精度 vs 存储开销的 tradeoff：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>group_size</th>
+<th>Scale 存储开销 (bits/param)</th>
+<th>精度</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>32</td>
+<td>2 bit (FP16 scale)</td>
+<td>最高（接近 FP16）</td>
+<td>小模型、精度敏感层</td>
+</tr>
+<tr>
+<td>64</td>
+<td>1 bit</td>
+<td>高</td>
+<td>中等规模</td>
+</tr>
+<tr>
+<td>128</td>
+<td>0.5 bit</td>
+<td>良好</td>
+<td><strong>默认推荐</strong></td>
+</tr>
+<tr>
+<td>256</td>
+<td>0.25 bit</td>
+<td>可接受</td>
+<td>大模型、内存极度受限</td>
+</tr>
+<tr>
+<td>512</td>
+<td>0.125 bit</td>
+<td>较差</td>
+<td>实验性</td>
+</tr>
+</tbody></table></div>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Group size 对 scale 存储开销的计算</span>
+<span class="hljs-comment"># 假设 FP16 scale (2 bytes), INT4 权重 (0.5 byte)</span>
+<span class="hljs-comment"># group_size = 128 时:</span>
+<span class="hljs-comment">#   每 128 个权重 (64 bytes) + 1 个 scale (2 bytes) = 66 bytes</span>
+<span class="hljs-comment">#   有效比特率 = 66 * 8 / 128 = 4.125 bits/param (比纯 4 bit 多 3%)</span>
+<span class="hljs-comment">#</span>
+<span class="hljs-comment"># group_size = 32 时:</span>
+<span class="hljs-comment">#   每 32 个权重 (16 bytes) + 1 个 scale (2 bytes) = 18 bytes</span>
+<span class="hljs-comment">#   有效比特率 = 18 * 8 / 32 = 4.5 bits/param (多 12.5%)</span>
+</code></pre>
+<p><strong>layer-wise 自适应 group size：</strong> 更高级的策略是对不同 layer 使用不同的 group size。Attention 的 QKV 投影层对精度更敏感，可以用更小的 group_size（如 64）；FFN 的下投影层容错更强，可以用更大的 group_size（如 256）。这种异构分配在同等精度下可以额外减少 5-10% 的内存占用。</p>
+<h3 id="34-nf4-normalfloat4-在-qlora-中的应用">3.4 NF4 (NormalFloat4) 在 QLoRA 中的应用</h3>
+<p>NF4（NormalFloat4）是 QLoRA 中提出的非均匀 4-bit 量化格式，专门为<strong>正态分布的权重</strong>设计。与均匀量化的 INT4 不同，NF4 的量化等级在值域上<strong>非均匀分布</strong>——在 0 附近密集，在两端稀疏：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># NF4 的非均匀量化等级（共 16 个等级）</span>
+<span class="hljs-comment"># 假设权重 z ~ N(0, 1)，NF4 将 N(0,1) 分成 16 个等概率区间</span>
+<span class="hljs-comment"># 然后取每个区间的中位数作为量化值</span>
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">create_nf4_levels</span>():
+    <span class="hljs-string">&quot;&quot;&quot;创建 NF4 的 16 个量化等级&quot;&quot;&quot;</span>
+    <span class="hljs-comment"># 标准正态分布的 16 等分分位数</span>
+    <span class="hljs-keyword">import</span> scipy.stats <span class="hljs-keyword">as</span> stats
+    num_levels = <span class="hljs-number">16</span>
+    quantiles = torch.linspace(<span class="hljs-number">0</span>, <span class="hljs-number">1</span>, num_levels + <span class="hljs-number">1</span>)
+    <span class="hljs-comment"># 取量化区间的中位点</span>
+    levels = torch.tensor([
+        stats.norm.ppf((quantiles[i] + quantiles[i+<span class="hljs-number">1</span>]) / <span class="hljs-number">2</span>)
+        <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(num_levels)
+    ])
+    <span class="hljs-comment"># 归一化到 [-1, 1]</span>
+    levels = levels / levels.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>()
+    <span class="hljs-keyword">return</span> levels.to(torch.float16)
+</code></pre>
+<p><strong>NF4 的量化过程（双重重定标）：</strong></p>
+<pre><code>原始权重 W (FP16)
+  ↓ 1. 绝对最大值重定标到 [-1, 1]
+W_norm = W / max(|W|)
+  ↓ 2. NF4 分档量化（寻找最近的非均匀等级）
+W_q = argmin_{l in levels} |W_norm - l|
+  ↓ 3. 存储：4 bit 索引 + FP32 全局 scale
+存储: index (4-bit) + scale (FP32, 每 64 个权重共享)
+</code></pre>
+<p><strong>QLoRA 中的 NF4 应用：</strong></p>
+<p>QLoRA（Quantized Low-Rank Adaptation）将预训练模型权重以 NF4 格式存储（冻结），只训练额外的低秩适配器（LoRA adapter，FP16）：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">class</span> <span class="hljs-title class_">QLoRALinear</span>(nn.Module):
+    <span class="hljs-string">&quot;&quot;&quot;
+    QLoRA 层：NF4 量化权重 + FP16 LoRA adapter
+    &quot;&quot;&quot;</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, in_features, out_features, rank=<span class="hljs-number">16</span></span>):
+        <span class="hljs-built_in">super</span>().__init__()
+        <span class="hljs-comment"># NF4 量化权重（冻结）</span>
+        <span class="hljs-variable language_">self</span>.weight_nf4 = nn.Parameter(...)  <span class="hljs-comment"># [out, in] INT4 存储</span>
+        <span class="hljs-variable language_">self</span>.weight_scale = nn.Parameter(...)  <span class="hljs-comment"># FP32 scale</span>
+        
+        <span class="hljs-comment"># LoRA adapter（可训练）</span>
+        <span class="hljs-variable language_">self</span>.lora_A = nn.Parameter(torch.zeros(rank, in_features))
+        <span class="hljs-variable language_">self</span>.lora_B = nn.Parameter(torch.zeros(out_features, rank))
+        
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">self, x</span>):
+        <span class="hljs-comment"># 1. 反量化 NF4 权重（给到 FP16）</span>
+        w_deq = <span class="hljs-variable language_">self</span>.dequantize_nf4(<span class="hljs-variable language_">self</span>.weight_nf4, <span class="hljs-variable language_">self</span>.weight_scale)
+        
+        <span class="hljs-comment"># 2. 原始权重的输出（冻结）</span>
+        out_base = x @ w_deq.T
+        
+        <span class="hljs-comment"># 3. LoRA 适配器输出（可训练）</span>
+        out_lora = (x @ <span class="hljs-variable language_">self</span>.lora_A.T) @ <span class="hljs-variable language_">self</span>.lora_B.T
+        
+        <span class="hljs-keyword">return</span> out_base + out_lora
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">dequantize_nf4</span>(<span class="hljs-params">self, q, scale</span>):
+        <span class="hljs-string">&quot;&quot;&quot;NF4 反量化：4-bit index → FP16&quot;&quot;&quot;</span>
+        levels = <span class="hljs-variable language_">self</span>.get_nf4_levels()  <span class="hljs-comment"># [16]</span>
+        <span class="hljs-comment"># q: [out, in] 中每个元素是 4-bit index (0-15)</span>
+        w_deq = levels[q.long()] * scale.unsqueeze(<span class="hljs-number">1</span>)
+        <span class="hljs-keyword">return</span> w_deq
+</code></pre>
+<p>NF4 相比均匀 INT4 的核心优势：在正态分布数据上，NF4 的量化均方误差（MSE）比均匀 INT4 降低约 <strong>3-4×</strong>。对于 LLM 权重的近似正态分布特性，NF4 是理论上最优的 4-bit 量化格式。</p>
+<hr>
+<h2 id="4-⚡-fp8-量化：硬件原生的低精度浮点">4. ⚡ FP8 量化：硬件原生的低精度浮点</h2>
+<p>FP8 不是整数量化，而是<strong>低精度浮点数</strong>——它保留了浮点的指数动态范围。H100（Hopper）的 Tensor Core 原生支持 FP8 GEMM，吞吐是 FP16 的 2 倍。</p>
+<h3 id="41-e4m3-vs-e5m2-格式对比">4.1 E4M3 vs E5M2 格式对比</h3>
+<p>FP8 有两种格式，在范围和精度之间做不同取舍：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>格式</th>
+<th>符号位</th>
+<th>指数位</th>
+<th>尾数位</th>
+<th>最大值</th>
+<th>最小值 (normal)</th>
+<th>精度 (ULP)</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>E4M3</td>
+<td>1</td>
+<td>4</td>
+<td>3</td>
+<td>±240</td>
+<td>2⁻⁶ ≈ 0.0156</td>
+<td>1/8 = 0.125</td>
+<td>权重/激活（范围有限）</td>
+</tr>
+<tr>
+<td>E5M2</td>
+<td>1</td>
+<td>5</td>
+<td>2</td>
+<td>±57344</td>
+<td>2⁻¹⁴ ≈ 6.1×10⁻⁵</td>
+<td>1/4 = 0.25</td>
+<td>梯度（范围大，需要 Inf/NaN）</td>
+</tr>
+</tbody></table></div>
+<pre><code>E4M3 比特布局: S EEEE MMM
+  最大正数: 0 1111 111 = 1.875 * 2^7 = 240
+  最小正数: 0 0001 000 = 1.0 * 2^-6 = 0.015625
+
+E5M2 比特布局: S EEEEE MM
+  最大正数: 0 11111 11 = 1.75 * 2^15 = 57344
+  最小正数: 0 00001 00 = 1.0 * 2^-14 = 0.000061035
+</code></pre>
+<p><strong>E4M3 vs E5M2 的选择策略：</strong></p>
+<ul>
+<li><strong>权重和激活 → E4M3</strong>：权重/激活值的范围通常很小（经过 LayerNorm 后多在 [-10, 10] 内），E4M3 的最大值 240 足够覆盖，且多 1 bit 尾数提供更高精度。</li>
+<li><strong>梯度 → E5M2</strong>：梯度的动态范围非常大（可以从 10⁻⁸ 到 10⁸），E5M2 的 57344 最大范围和更强的 underflow 抵抗能力更适合。</li>
+<li><strong>KV Cache → E4M3</strong>：注意力分数范围有限（除以 sqrt(d) 后在较小范围内），E4M3 更优。</li>
+</ul>
+<pre><code class="hljs language-python"><span class="hljs-comment"># FP8 量化的 PyTorch 实现（模拟 FP8 行为）</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">quantize_to_e4m3</span>(<span class="hljs-params">x: torch.Tensor</span>) -&gt; torch.Tensor:
+    <span class="hljs-string">&quot;&quot;&quot;
+    模拟 E4M3 量化：将 FP16 量化为 FP8 E4M3（模拟，无硬件支持时用）
+    &quot;&quot;&quot;</span>
+    <span class="hljs-comment"># E4M3 参数</span>
+    max_val = <span class="hljs-number">240.0</span>
+    min_norm = <span class="hljs-number">2</span>**(-<span class="hljs-number">6</span>)  <span class="hljs-comment"># 0.015625</span>
+    
+    <span class="hljs-comment"># Clamp</span>
+    x = torch.clamp(x, -max_val, max_val)
+    
+    <span class="hljs-comment"># E4M3 精度约 1/8 = 0.125（在 1.0 附近）</span>
+    <span class="hljs-comment"># 量化步长 = max_val / 2^(3-1) = 240 / 4 = 60?... 不对</span>
+    <span class="hljs-comment"># 实际上 E4M3 的精度随指数变化：</span>
+    <span class="hljs-comment"># 在 [0.5, 1.0) 区间，步长 = 2^(-3) * 2^0 = 0.125</span>
+    <span class="hljs-comment"># 在 [8.0, 16.0) 区间，步长 = 2^(-3) * 2^3 = 1.0</span>
+    
+    <span class="hljs-comment"># 简化：用 fake quantize 模拟精度损失</span>
+    <span class="hljs-comment"># 对每个值计算最近的 E4M3 表示</span>
+    <span class="hljs-comment"># 这里用一个近似的量化模拟</span>
+    <span class="hljs-keyword">if</span> x.is_cuda <span class="hljs-keyword">and</span> torch.cuda.is_available():
+        <span class="hljs-comment"># 真正的 H100 路径：转换到硬件 FP8</span>
+        <span class="hljs-keyword">return</span> x.to(torch.float8_e4m3fn).to(torch.float16)
+    <span class="hljs-keyword">else</span>:
+        <span class="hljs-comment"># 软件模拟（不精确，仅供演示）</span>
+        scale = x.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>() / max_val
+        <span class="hljs-keyword">if</span> scale &gt; <span class="hljs-number">0</span>:
+            x_norm = x / scale
+            step = <span class="hljs-number">1.0</span> / <span class="hljs-number">8.0</span>  <span class="hljs-comment"># 近似</span>
+            x_q = torch.<span class="hljs-built_in">round</span>(x_norm / step) * step
+            <span class="hljs-keyword">return</span> x_q * scale
+        <span class="hljs-keyword">return</span> x
+</code></pre>
+<h3 id="42-fp8-gemm-的-scale-管理">4.2 FP8 GEMM 的 Scale 管理</h3>
+<p>FP8 GEMM 面临一个独特问题：由于 E4M3 的范围有限（最大 240），如果直接做 <code>A @ B</code>，中间累加结果很容易溢出。解决方案是<strong>缩放（scaling）</strong>：</p>
+<pre><code>标准的 FP8 GEMM（带 scale）：
+  C_fp16 = (A_fp8 * scale_A) @ (B_fp8 * scale_B)
+         = scale_A * scale_B * (A_fp8 @ B_fp8)
+</code></pre>
+<h4 id="per-tensor-scaling（最简单）">Per-Tensor Scaling（最简单）</h4>
+<p>每 tensor 一个 scale，在整个 GEMM 之前预先缩放：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Per-tensor scaling 的 FP8 GEMM</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">fp8_gemm_per_tensor</span>(<span class="hljs-params">A_fp16, B_fp16</span>):
+    <span class="hljs-comment"># 1. 计算 scale</span>
+    scale_A = A_fp16.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>() / <span class="hljs-number">240.0</span>
+    scale_B = B_fp16.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>() / <span class="hljs-number">240.0</span>
+    
+    <span class="hljs-comment"># 2. 量化到 FP8</span>
+    A_fp8 = (A_fp16 / scale_A).to(torch.float8_e4m3fn)
+    B_fp8 = (B_fp16 / scale_B).to(torch.float8_e4m3fn)
+    
+    <span class="hljs-comment"># 3. H100 FP8 Tensor Core GEMM</span>
+    <span class="hljs-comment"># 注意：H100 的 mma 指令自动处理 FP8 输入，输出累加到 FP32</span>
+    C_fp32 = torch._scaled_mm(
+        A_fp8, B_fp8,
+        scale_a=scale_A,
+        scale_b=scale_B,
+        out_dtype=torch.float16
+    )
+    
+    <span class="hljs-keyword">return</span> C_fp32
+</code></pre>
+<h4 id="block-fp8（fa3-引入的更精细-scale）">Block FP8（FA3 引入的更精细 scale）</h4>
+<p>Block FP8 将矩阵划分为 tile，每个 tile 有自己的 scale，大幅降低 outlier 的影响：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Block FP8: 每个 tile 独立 scale</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">block_fp8_gemm</span>(<span class="hljs-params">A_fp16, B_fp16, block_size=<span class="hljs-number">128</span></span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    A_fp16: [M, K]
+    B_fp16: [K, N]
+    将 A 和 B 划分为 block_size × block_size 的 tile
+    每个 tile 有独立的 FP8 scale
+    &quot;&quot;&quot;</span>
+    M, K = A_fp16.shape
+    K, N = B_fp16.shape
+    
+    <span class="hljs-comment"># 计算每个 tile 的 scale</span>
+    A_tiles = A_fp16.view(M // block_size, block_size, K // block_size, block_size)
+    A_tiles = A_tiles.permute(<span class="hljs-number">0</span>, <span class="hljs-number">2</span>, <span class="hljs-number">1</span>, <span class="hljs-number">3</span>)  <span class="hljs-comment"># [M_blocks, K_blocks, block, block]</span>
+    A_scales = A_tiles.<span class="hljs-built_in">abs</span>().amax(dim=(-<span class="hljs-number">2</span>, -<span class="hljs-number">1</span>)) / <span class="hljs-number">240.0</span>  <span class="hljs-comment"># [M_blocks, K_blocks]</span>
+    
+    B_tiles = B_fp16.view(K // block_size, block_size, N // block_size, block_size)
+    B_tiles = B_tiles.permute(<span class="hljs-number">0</span>, <span class="hljs-number">2</span>, <span class="hljs-number">1</span>, <span class="hljs-number">3</span>)  <span class="hljs-comment"># [K_blocks, N_blocks, block, block]</span>
+    B_scales = B_tiles.<span class="hljs-built_in">abs</span>().amax(dim=(-<span class="hljs-number">2</span>, -<span class="hljs-number">1</span>)) / <span class="hljs-number">240.0</span>  <span class="hljs-comment"># [K_blocks, N_blocks]</span>
+    
+    <span class="hljs-comment"># 量化每个 tile</span>
+    A_fp8_blocks = (A_tiles / A_scales.unsqueeze(-<span class="hljs-number">1</span>).unsqueeze(-<span class="hljs-number">1</span>)).to(torch.float8_e4m3fn)
+    B_fp8_blocks = (B_tiles / B_scales.unsqueeze(-<span class="hljs-number">1</span>).unsqueeze(-<span class="hljs-number">1</span>)).to(torch.float8_e4m3fn)
+    
+    <span class="hljs-comment"># Block FP8 GEMM: 每个输出 tile = sum over K_blocks</span>
+    <span class="hljs-comment"># 对每个 (i, j) 输出 tile:</span>
+    <span class="hljs-comment">#   C[i,j] = sum_k (A_block[i,k] @ B_block[k,j]) * A_scales[i,k] * B_scales[k,j]</span>
+    
+    <span class="hljs-comment"># 实际实现中，Block FP8 融合进 FlashAttention v3 的 kernel</span>
+    <span class="hljs-comment"># 在 shared memory 中完成 tile 级别的量化</span>
+    <span class="hljs-keyword">pass</span>
+</code></pre>
+<p><strong>Per-tensor vs Block FP8 的效果对比</strong>（FA3 论文数据）：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Scale 策略</th>
+<th>Perplexity (Wiki-2)</th>
+<th>vs Baseline</th>
+<th>额外存储</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FP16 baseline</td>
+<td>5.83</td>
+<td>-</td>
+<td>0</td>
+</tr>
+<tr>
+<td>FP8 Per-tensor</td>
+<td>5.91</td>
+<td>+0.08</td>
+<td>2 FP32 scales</td>
+</tr>
+<tr>
+<td>FP8 Block (128)</td>
+<td>5.85</td>
+<td>+0.02</td>
+<td>~2KB per tile</td>
+</tr>
+<tr>
+<td>FP8 Block + Incoherent</td>
+<td>5.83</td>
+<td>+0.00</td>
+<td>随机旋转矩阵</td>
+</tr>
+</tbody></table></div>
+<p>Block FP8 将 perplexity 损失从 per-tensor 的 0.08 降低到 0.02，几乎无损。</p>
+<h3 id="43-blackwell-b200-的-fp4-新趋势">4.3 Blackwell B200 的 FP4 新趋势</h3>
+<p>NVIDIA Blackwell (B200) 架构引入了 <strong>FP4 (E2M1)</strong> 和 <strong>FP6 (E3M2/E2M3)</strong> 原生支持，进一步将量化推向低位宽：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>格式</th>
+<th>指数位</th>
+<th>尾数位</th>
+<th>最大值</th>
+<th>最小值</th>
+<th>精度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FP4 (E2M1)</td>
+<td>2</td>
+<td>1</td>
+<td>±6</td>
+<td>±0.5</td>
+<td>0.5 (在 1.0 附近)</td>
+</tr>
+<tr>
+<td>FP6 (E2M3)</td>
+<td>2</td>
+<td>3</td>
+<td>±7.5</td>
+<td>±0.25</td>
+<td>0.125</td>
+</tr>
+<tr>
+<td>FP6 (E3M2)</td>
+<td>3</td>
+<td>2</td>
+<td>±28</td>
+<td>±0.0625</td>
+<td>0.25</td>
+</tr>
+</tbody></table></div>
+<p>FP4 的核心优势是 <strong>2× 相对于 FP8 的吞吐提升</strong>（B200 Tensor Core 原生支持 FP4 GEMM），以及 4× 相对于 FP16 的内存节省。但 FP4 的精度非常有限，需要：</p>
+<ol>
+<li><strong>Fine-grained scaling</strong>：更小的 block size（如 32）来补偿动态范围不足</li>
+<li>**Micro-scaling (MXFP4)**：每个 32 元素 block 共享一个 E8M0 格式的 scale</li>
+<li><strong>Weight-only 场景</strong>：FP4 更适合权重量化，激活维持 FP8/FP16</li>
+</ol>
+<pre><code class="hljs language-cpp"><span class="hljs-comment">// Blackwell B200 FP4 GEMM 的伪代码思路</span>
+<span class="hljs-comment">// 4 bit 权重存储在 packed 格式（每字节 2 个 FP4 值）</span>
+<span class="hljs-comment">// 使用新的 mma 指令: mma.fp4.fp8 -&gt; fp16</span>
+<span class="hljs-comment">//</span>
+<span class="hljs-comment">// 每个 thread 加载 2 个 FP4 值（来自同一字节的高 4 位和低 4 位）</span>
+<span class="hljs-comment">// 在寄存器内解包为 FP8，再做 FP8 GEMM</span>
+<span class="hljs-comment">// scale 以 32 元素 block 为单位，使用 E8M0 格式</span>
+</code></pre>
+<hr>
+<h2 id="5-🔄-smoothquant：迁移量化难度">5. 🔄 SmoothQuant：迁移量化难度</h2>
+<p>SmoothQuant 解决了 INT8 激活量化的核心难题：<strong>激活值中的 outlier 导致量化困难</strong>。outlier 通常集中在特定通道（约 1% 的通道占据 90% 以上的总幅度），直接 INT8 量化会引入巨大误差。</p>
+<h3 id="51-数学原理：迁移策略">5.1 数学原理：迁移策略</h3>
+<p>SmoothQuant 的核心洞察是：激活值难量化是因为有小部分通道的幅度特别大。如果把这部分难度<strong>迁移</strong>到权重上，整体量化就变得容易了：</p>
+<p>$$
+Y = X \cdot W = (X \cdot \text{diag}(s)^{-1}) \cdot (\text{diag}(s) \cdot W) = \hat{X} \cdot \hat{W}
+$$</p>
+<p>其中 $s$ 是 per-channel 的平滑因子，计算方式为：</p>
+<p>$$
+s_j = \frac{\max(|X_{:,j}|)^\alpha}{\max(|W_{j,:}|)^{(1-\alpha)}}
+$$</p>
+<ul>
+<li>$\alpha = 0$：不迁移，$\hat{X} = X$（激活难量化）</li>
+<li>$\alpha = 1$：完全迁移，$\hat{W} = W$（权重可能溢出）</li>
+<li>$\alpha = 0.5$：推荐值，均衡策略</li>
+</ul>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">smoothquant_calibrate</span>(<span class="hljs-params">W, X, alpha=<span class="hljs-number">0.5</span></span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    SmoothQuant 迁移因子 s 的计算
+    W: [d_out, d_in] 权重矩阵
+    X: [n_samples, d_in] 校准集激活值
+    alpha: 迁移强度（默认 0.5）
+    &quot;&quot;&quot;</span>
+    <span class="hljs-comment"># 计算 per-channel 的统计量</span>
+    max_act = X.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>(dim=<span class="hljs-number">0</span>).values  <span class="hljs-comment"># [d_in]，每输入通道的激活最大值</span>
+    max_wgt = W.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>(dim=<span class="hljs-number">0</span>).values  <span class="hljs-comment"># [d_in]，每输入通道的权重最大值</span>
+    
+    <span class="hljs-comment"># 迁移因子</span>
+    s = torch.<span class="hljs-built_in">pow</span>(max_act, alpha) / torch.<span class="hljs-built_in">pow</span>(max_wgt.clamp(<span class="hljs-built_in">min</span>=<span class="hljs-number">1e-10</span>), <span class="hljs-number">1</span> - alpha)
+    <span class="hljs-keyword">return</span> s  <span class="hljs-comment"># [d_in]</span>
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">smoothquant_transform</span>(<span class="hljs-params">W, X, s</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    应用 SmoothQuant 迁移
+    - X_hat = X / s (激活值被缩小，容易量化)
+    - W_hat = W * s (权重值被放大，略难量化但仍可接受)
+    &quot;&quot;&quot;</span>
+    X_hat = X / s  <span class="hljs-comment"># 激活范围被压缩</span>
+    W_hat = W * s  <span class="hljs-comment"># 权重范围扩大</span>
+    <span class="hljs-keyword">return</span> X_hat, W_hat
+</code></pre>
+<h3 id="52-量化算子的实现">5.2 量化算子的实现</h3>
+<p>SmoothQuant 后的 W8A8 GEMM 有两条路径：</p>
+<p><strong>路径 A：传统 INT8 GEMM（推荐）</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">smoothquant_gemm</span>(<span class="hljs-params">X_int8, W_int8, s, scale_X, scale_W</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    SmoothQuant 的 INT8 GEMM
+    X_int8: [B, d_in] INT8
+    W_int8: [d_out, d_in] INT8
+    s: [d_in] 迁移因子
+    &quot;&quot;&quot;</span>
+    <span class="hljs-comment"># 注意：W_hat = W * s，因此 W_hat 的 scale 需要调整</span>
+    <span class="hljs-comment"># scale_W_hat = scale_W * s (per-channel)</span>
+    
+    <span class="hljs-comment"># INT8 GEMM 输出</span>
+    C_int32 = X_int8 @ W_int8.T  <span class="hljs-comment"># [B, d_out]</span>
+    
+    <span class="hljs-comment"># 反量化（融合 scale 和迁移因子）</span>
+    <span class="hljs-comment"># 原始的 Y = X @ W</span>
+    <span class="hljs-comment"># SmoothQuant 后: Y = X_hat @ W_hat = (X - zX) * sX @ (W - zW) * sW * s</span>
+    <span class="hljs-comment"># 简化（对称量化）：Y = X_int8 * scale_X * s^{-1} @ W_int8 * scale_W * s</span>
+    <span class="hljs-comment">#               = scale_X * scale_W * (X_int8 @ W_int8)  ... s 被抵消了！</span>
+    
+    <span class="hljs-comment"># 实际上 W_hat 的 scale 会吸收 s，所以 GEMM 的 scale 计算：</span>
+    C_fp16 = C_int32.<span class="hljs-built_in">float</span>() * scale_X * scale_W
+    <span class="hljs-keyword">return</span> C_fp16
+</code></pre>
+<p><strong>路径 B：融合进 Triton kernel</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> triton
+<span class="hljs-keyword">import</span> triton.language <span class="hljs-keyword">as</span> tl
+
+<span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">smoothquant_gemm_kernel</span>(<span class="hljs-params">
+    X_ptr, W_ptr, out_ptr,
+    s_ptr,
+    scale_X, scale_W,
+    M, N, K,
+    stride_xk, stride_wn, stride_wk,
+    BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_K: tl.constexpr,
+</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    SmoothQuant 融合 kernel：INT8 GEMM + SmoothQuant 反量化
+    将 s 融合进 W 的 scale 中，减少额外 kernel launch
+    &quot;&quot;&quot;</span>
+    pid_m = tl.program_id(<span class="hljs-number">0</span>)
+    pid_n = tl.program_id(<span class="hljs-number">1</span>)
+    
+    offs_m = pid_m * BLOCK_M + tl.arange(<span class="hljs-number">0</span>, BLOCK_M)
+    offs_n = pid_n * BLOCK_N + tl.arange(<span class="hljs-number">0</span>, BLOCK_N)
+    offs_k = tl.arange(<span class="hljs-number">0</span>, BLOCK_K)
+    
+    X_block = tl.load(X_ptr + offs_m[:, <span class="hljs-literal">None</span>] * stride_xk + offs_k[<span class="hljs-literal">None</span>, :])
+    W_block = tl.load(W_ptr + offs_n[:, <span class="hljs-literal">None</span>] * stride_wn + offs_k[<span class="hljs-literal">None</span>, :])
+    s_block = tl.load(s_ptr + offs_k)  <span class="hljs-comment"># [BLOCK_K]</span>
+    
+    <span class="hljs-comment"># INT8 GEMM (DP4A 模拟)</span>
+    acc = tl.dot(X_block.to(tl.float16), W_block.to(tl.float16))
+    
+    <span class="hljs-comment"># SmoothQuant 的 scale 反量化</span>
+    <span class="hljs-comment"># scale_combined = scale_X * scale_W (s 被迁移过程吸收)</span>
+    scale = scale_X * scale_W
+    acc = acc * scale
+    
+    tl.store(out_ptr + offs_m[:, <span class="hljs-literal">None</span>] * N + offs_n[<span class="hljs-literal">None</span>, :], acc)
+</code></pre>
+<h3 id="53-部署中的融合技巧">5.3 部署中的融合技巧</h3>
+<p>在实际推理引擎中，SmoothQuant 的迁移因子 $s$ 可以在部署前<strong>离线融合</strong>到权重中：</p>
+<pre><code>部署前：
+  W_deploy = W_hat = W * s    (离线合并到权重)
+  推理时：
+  X_deploy = X / s             (在线，融合进前一个 LayerNorm 的 epilogue)
+  Y = X_deploy @ W_deploy      (标准 INT8 GEMM，无需感知 s 的存在)
+</code></pre>
+<p>这意味着 SmoothQuant 在推理时<strong>零额外开销</strong>——权重在离线时已经被修改，激活的除以 s 可以融合到 LayerNorm kernel 中：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 融合到 LayerNorm 后的激活量化</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">fused_layernorm_quant_smooth</span>(<span class="hljs-params">x, weight, bias, s, eps=<span class="hljs-number">1e-5</span></span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    融合：LayerNorm → SmoothQuant 除以 s → INT8 量化
+    &quot;&quot;&quot;</span>
+    mean = x.mean(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>)
+    var = x.var(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>)
+    x_norm = (x - mean) / torch.sqrt(var + eps)
+    x_norm = x_norm * weight + bias
+    
+    <span class="hljs-comment"># SmoothQuant 除以 s（融合进 epilogue）</span>
+    x_scaled = x_norm / s
+    
+    <span class="hljs-comment"># INT8 量化</span>
+    scale = x_scaled.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>() / <span class="hljs-number">127.0</span>
+    x_q = torch.clamp(torch.<span class="hljs-built_in">round</span>(x_scaled / scale), -<span class="hljs-number">127</span>, <span class="hljs-number">127</span>).to(torch.int8)
+    <span class="hljs-keyword">return</span> x_q, scale
+</code></pre>
+<hr>
+<h2 id="6-🗄️-kv-cache-量化：kivi-原理">6. 🗄️ KV Cache 量化：KIVI 原理</h2>
+<h3 id="61-为什么需要-kv-cache-量化">6.1 为什么需要 KV Cache 量化</h3>
+<p>随着序列长度和并发数的增长，KV Cache 是推理 OOM 的首要瓶颈：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>FP16 KV (单条, 32K)</th>
+<th>8 并发的 KV</th>
+<th>量化到 INT4</th>
+<th>量化到 FP8</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LLaMA-7B</td>
+<td>~1.5 GB</td>
+<td>~12 GB</td>
+<td>~3 GB</td>
+<td>~6 GB</td>
+</tr>
+<tr>
+<td>LLaMA-70B</td>
+<td>~10.7 GB</td>
+<td>~86 GB</td>
+<td>~22 GB</td>
+<td>~43 GB</td>
+</tr>
+<tr>
+<td>LLaMA-405B</td>
+<td>~61 GB</td>
+<td>~488 GB</td>
+<td>~122 GB</td>
+<td>~244 GB</td>
+</tr>
+</tbody></table></div>
+<p>KV Cache 量化的难点在于：Key 和 Value 的统计特性不同，需要不同的量化策略。</p>
+<h3 id="62-kivi：per-channel-key，per-token-value">6.2 KIVI：Per-Channel Key，Per-Token Value</h3>
+<p>KIVI（来自论文 <em>KIVI: A Tuning-Free Asymmetric 2-bit Quantization for KV Cache</em>）的核心发现：</p>
+<ul>
+<li><strong>Key 矩阵</strong>有明显的<strong>通道维度（channel-wise）outlier</strong>：某些 head_dim 维度上的值显著大于其他维度 → 适合 per-channel 量化</li>
+<li><strong>Value 矩阵</strong>的分布近似均匀，但随 token 变化 → 适合 per-token 量化</li>
+</ul>
+<pre><code>KIVI 量化策略：
+  Key:   per-channel 量化（每 head_dim 维一个 scale）
+  Value: per-token 量化（每 token 一个 scale）
+</code></pre>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">kivi_quantize_key</span>(<span class="hljs-params">K: torch.Tensor, group_size: <span class="hljs-built_in">int</span> = <span class="hljs-number">128</span></span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    KIVI Key 量化：per-channel + per-group
+    K: [batch, num_heads, seq_len, head_dim]
+    &quot;&quot;&quot;</span>
+    B, H, T, D = K.shape
+    
+    <span class="hljs-comment"># Reshape 以支持 group-wise</span>
+    K_reshaped = K.reshape(B, H, T, -<span class="hljs-number">1</span>, group_size)
+    <span class="hljs-comment"># [B, H, T, num_groups, group_size]</span>
+    
+    <span class="hljs-comment"># Per-channel = 对 group 维度量化</span>
+    <span class="hljs-comment"># 对每个 group 计算 scale</span>
+    scales = K_reshaped.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>).values / <span class="hljs-number">127.0</span>
+    
+    <span class="hljs-comment"># 量化</span>
+    K_q = torch.clamp(torch.<span class="hljs-built_in">round</span>(K_reshaped / scales), -<span class="hljs-number">127</span>, <span class="hljs-number">127</span>).to(torch.int8)
+    
+    <span class="hljs-comment"># 反量化（在注意力计算中融合）</span>
+    K_deq = (K_q.<span class="hljs-built_in">float</span>() * scales).reshape(B, H, T, D)
+    <span class="hljs-keyword">return</span> K_q, scales  <span class="hljs-comment"># 存储量化版本</span>
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">kivi_quantize_value</span>(<span class="hljs-params">V: torch.Tensor</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    KIVI Value 量化：per-token
+    V: [batch, num_heads, seq_len, head_dim]
+    每个 token 独立计算 scale
+    &quot;&quot;&quot;</span>
+    B, H, T, D = V.shape
+    
+    <span class="hljs-comment"># Per-token scale: 每个 token 一个 scale</span>
+    <span class="hljs-comment"># V: [B*H, T, D]</span>
+    V_2d = V.reshape(B * H, T, D)
+    
+    <span class="hljs-comment"># 对每个 token 计算 scale</span>
+    scales = V_2d.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>).values / <span class="hljs-number">127.0</span>  <span class="hljs-comment"># [B*H, T, 1]</span>
+    
+    <span class="hljs-comment"># 量化</span>
+    V_q = torch.clamp(torch.<span class="hljs-built_in">round</span>(V_2d / scales), -<span class="hljs-number">127</span>, <span class="hljs-number">127</span>).to(torch.int8)
+    
+    <span class="hljs-keyword">return</span> V_q.reshape(B, H, T, D), scales.reshape(B, H, T, <span class="hljs-number">1</span>)
+</code></pre>
+<h3 id="63-融合进-flashattention-的-kv-cache-量化">6.3 融合进 FlashAttention 的 KV Cache 量化</h3>
+<p>KV Cache 的反量化<strong>必须融合</strong>进 Attention kernel 中，否则单独的反量化 kernel 会抵消所有带宽收益：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 融合 KIVI 反量化的 FlashAttention 伪代码</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">flashattention_with_kivi</span>(<span class="hljs-params">
+    Q,             <span class="hljs-comment"># [B, H, T_q, D] FP16</span>
+    K_cache_q,     <span class="hljs-comment"># [B, H, T_k, D/g] INT8 (quantized key cache)</span>
+    V_cache_q,     <span class="hljs-comment"># [B, H, T_k, D] INT8 (quantized value cache)</span>
+    K_scales,      <span class="hljs-comment"># per-channel/key scales</span>
+    V_scales,      <span class="hljs-comment"># per-token/value scales</span>
+</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    在 FlashAttention 的 tile 循环中，对每个 K/V tile
+    动态反量化后做注意力计算
+    &quot;&quot;&quot;</span>
+    <span class="hljs-keyword">for</span> k_tile_idx <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(num_k_tiles):
+        <span class="hljs-comment"># 从 cache 加载量化的 K/V tile</span>
+        k_q = load_kv_tile(K_cache_q, k_tile_idx)  <span class="hljs-comment"># [Br, D] INT8</span>
+        v_q = load_kv_tile(V_cache_q, k_tile_idx)  <span class="hljs-comment"># [Br, D] INT8</span>
+        k_s = load_scale_tile(K_scales, k_tile_idx)  <span class="hljs-comment"># [1, D] or [Br, 1]</span>
+        v_s = load_scale_tile(V_scales, k_tile_idx)  <span class="hljs-comment"># [Br, 1]</span>
+        
+        <span class="hljs-comment"># 在 SRAM 上反量化（融合进 tile）</span>
+        k_fp16 = (k_q.<span class="hljs-built_in">float</span>() * k_s)  <span class="hljs-comment"># [Br, D]</span>
+        v_fp16 = (v_q.<span class="hljs-built_in">float</span>() * v_s)  <span class="hljs-comment"># [Br, D]</span>
+        
+        <span class="hljs-comment"># 标准 attention 计算（online softmax）</span>
+        s = Q_tile @ k_fp16.T / sqrt(D)  <span class="hljs-comment"># [Br, Br]</span>
+        <span class="hljs-comment"># ... online softmax ...</span>
+        o = o * l_new + softmax(s) @ v_fp16
+</code></pre>
+<h3 id="64-kivi-与其他-kv-cache-量化方法的对比">6.4 KIVI 与其他 KV Cache 量化方法的对比</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>格式</th>
+<th>Key 策略</th>
+<th>Value 策略</th>
+<th>Perplexity 损失 (32K)</th>
+<th>额外存储</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FP8</td>
+<td>E4M3</td>
+<td>Per-tensor</td>
+<td>Per-tensor</td>
+<td>&lt; 0.3</td>
+<td>2 scales/tensor</td>
+</tr>
+<tr>
+<td>FP8 per-token</td>
+<td>E4M3</td>
+<td>Per-token</td>
+<td>Per-token</td>
+<td>&lt; 0.2</td>
+<td>2T scales</td>
+</tr>
+<tr>
+<td>KIVI INT8</td>
+<td>INT8</td>
+<td>Per-channel</td>
+<td>Per-token</td>
+<td>&lt; 0.3</td>
+<td>T scales (V)</td>
+</tr>
+<tr>
+<td>KIVI INT4</td>
+<td>INT4</td>
+<td>Per-channel</td>
+<td>Per-token</td>
+<td>&lt; 0.8</td>
+<td>0.5 bit/param scales</td>
+</tr>
+<tr>
+<td>KVQuant</td>
+<td>INT4</td>
+<td>Per-channel + outlier</td>
+<td>Per-token</td>
+<td>&lt; 0.5</td>
+<td>outlier 索引</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="7-🧪-量化算子测试：如何验证精度损失？">7. 🧪 量化算子测试：如何验证精度损失？</h2>
+<p>量化后的验证测试比普通算子测试更复杂，因为量化引入的是<strong>系统性误差</strong>，而非随机数值误差。</p>
+<h3 id="71-测试金字塔">7.1 测试金字塔</h3>
+<pre><code>                ┌────────────────────────┐
+                │   End-to-End 评估      │  ← MMLU/CEval 等基准
+                │  (perplexity + 下游)   │      小时级
+                └──────────┬─────────────┘
+                           │
+                ┌──────────▼─────────────┐
+                │   Layer-wise 精度测试   │  ← 每层的 cosine sim
+                │  (逐层对比 FP16 output) │      分钟级
+                └──────────┬─────────────┘
+                           │
+                ┌──────────▼─────────────┐
+                │   单算子精度测试         │  ← random inputs
+                │  (量化误差分布分析)      │      秒级
+                └──────────┬─────────────┘
+                           │
+                ┌──────────▼─────────────┐
+                │  统计量一致性检查         │  ← min/max/mean/std
+                │  (scale, zero_point)    │      秒级
+                └────────────────────────┘
+</code></pre>
+<h3 id="72-单算子精度测试">7.2 单算子精度测试</h3>
+<p>最直接的测试：对随机输入对比 FP16 和量化版本的前向结果。</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">test_quantization_accuracy</span>(<span class="hljs-params">
+    op_name: <span class="hljs-built_in">str</span>,
+    fp16_fn,           <span class="hljs-comment"># FP16 参考函数</span>
+    quantized_fn,      <span class="hljs-comment"># 量化版本函数</span>
+    input_shapes: <span class="hljs-built_in">list</span>,
+    dtype=torch.float16,
+    rtol=<span class="hljs-number">1e-2</span>,         <span class="hljs-comment"># 量化场景下放宽到 1%</span>
+    atol=<span class="hljs-number">1e-2</span>,
+    random_seed=<span class="hljs-number">42</span>,
+</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    量化精度测试：对比 FP16 参考和量化版本
+    &quot;&quot;&quot;</span>
+    results = []
+    torch.manual_seed(random_seed)
+    
+    <span class="hljs-keyword">for</span> shape <span class="hljs-keyword">in</span> input_shapes:
+        <span class="hljs-comment"># 生成随机输入（模拟实际分布）</span>
+        x = torch.randn(shape, dtype=dtype, device=<span class="hljs-string">&#x27;cuda&#x27;</span>) * <span class="hljs-number">0.5</span>
+        
+        <span class="hljs-comment"># FP16 参考</span>
+        <span class="hljs-keyword">with</span> torch.no_grad():
+            ref_out = fp16_fn(x)
+        
+        <span class="hljs-comment"># 量化版本</span>
+        <span class="hljs-keyword">with</span> torch.no_grad():
+            q_out = quantized_fn(x)
+        
+        <span class="hljs-comment"># 精度指标</span>
+        cos_sim = torch.nn.functional.cosine_similarity(
+            ref_out.flatten(), q_out.flatten(), dim=<span class="hljs-number">0</span>
+        ).item()
+        
+        mse = ((ref_out - q_out) ** <span class="hljs-number">2</span>).mean().item()
+        
+        max_rel_err = ((ref_out - q_out).<span class="hljs-built_in">abs</span>() / (ref_out.<span class="hljs-built_in">abs</span>() + <span class="hljs-number">1e-8</span>)).<span class="hljs-built_in">max</span>().item()
+        
+        all_close = torch.allclose(ref_out, q_out, rtol=rtol, atol=atol)
+        
+        results.append({
+            <span class="hljs-string">&#x27;shape&#x27;</span>: shape,
+            <span class="hljs-string">&#x27;cosine_sim&#x27;</span>: cos_sim,
+            <span class="hljs-string">&#x27;mse&#x27;</span>: mse,
+            <span class="hljs-string">&#x27;max_rel_err&#x27;</span>: max_rel_err,
+            <span class="hljs-string">&#x27;allclose&#x27;</span>: all_close,
+        })
+        
+        <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  <span class="hljs-subst">{shape}</span>: cos=<span class="hljs-subst">{cos_sim:<span class="hljs-number">.6</span>f}</span>, mse=<span class="hljs-subst">{mse:<span class="hljs-number">.2</span>e}</span>, &quot;</span>
+              <span class="hljs-string">f&quot;max_rel_err=<span class="hljs-subst">{max_rel_err:<span class="hljs-number">.4</span>f}</span>, allclose=<span class="hljs-subst">{all_close}</span>&quot;</span>)
+    
+    <span class="hljs-keyword">return</span> results
+</code></pre>
+<h3 id="73-layer-wise-精度测试">7.3 Layer-Wise 精度测试</h3>
+<p>单算子测试无法捕捉<strong>误差累积</strong>——量化误差在逐层传递中可能被放大。Layer-wise 测试对比每一层的输出：</p>
+<pre><code class="hljs language-python"><span class="hljs-meta">@torch.no_grad()</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">layerwise_quantization_test</span>(<span class="hljs-params">model_fp16, model_quantized, calib_loader</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    逐层对比量化模型的输出误差
+    通过 hook 捕获每层的中间激活
+    &quot;&quot;&quot;</span>
+    fp16_activations = {}
+    quantized_activations = {}
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">hook_factory</span>(<span class="hljs-params">store_dict, name</span>):
+        <span class="hljs-keyword">def</span> <span class="hljs-title function_">hook</span>(<span class="hljs-params">module, <span class="hljs-built_in">input</span>, output</span>):
+            store_dict[name] = output.detach()
+        <span class="hljs-keyword">return</span> hook
+    
+    <span class="hljs-comment"># 注册 hook</span>
+    hooks = []
+    <span class="hljs-keyword">for</span> name, module <span class="hljs-keyword">in</span> model_fp16.named_modules():
+        h = module.register_forward_hook(hook_factory(fp16_activations, name))
+        hooks.append(h)
+    
+    <span class="hljs-comment"># 对校准集前向一次</span>
+    <span class="hljs-keyword">for</span> batch <span class="hljs-keyword">in</span> calib_loader:
+        model_fp16(batch)
+        <span class="hljs-keyword">break</span>  <span class="hljs-comment"># 仅用第一个 batch</span>
+    
+    <span class="hljs-comment"># 移除 hooks 并给量化模型注册</span>
+    <span class="hljs-keyword">for</span> h <span class="hljs-keyword">in</span> hooks:
+        h.remove()
+    
+    hooks = []
+    <span class="hljs-keyword">for</span> name, module <span class="hljs-keyword">in</span> model_quantized.named_modules():
+        h = module.register_forward_hook(hook_factory(quantized_activations, name))
+        hooks.append(h)
+    
+    <span class="hljs-keyword">for</span> batch <span class="hljs-keyword">in</span> calib_loader:
+        model_quantized(batch)
+        <span class="hljs-keyword">break</span>
+    
+    <span class="hljs-keyword">for</span> h <span class="hljs-keyword">in</span> hooks:
+        h.remove()
+    
+    <span class="hljs-comment"># 逐层分析</span>
+    layer_metrics = []
+    <span class="hljs-keyword">for</span> name <span class="hljs-keyword">in</span> fp16_activations:
+        ref = fp16_activations[name]
+        q = quantized_activations[name]
+        
+        cos = torch.nn.functional.cosine_similarity(
+            ref.flatten(), q.flatten(), dim=<span class="hljs-number">0</span>
+        ).item()
+        
+        snr = <span class="hljs-number">10</span> * torch.log10(
+            (ref ** <span class="hljs-number">2</span>).<span class="hljs-built_in">sum</span>() / ((ref - q) ** <span class="hljs-number">2</span>).<span class="hljs-built_in">sum</span>()
+        ).item()
+        
+        layer_metrics.append({
+            <span class="hljs-string">&#x27;name&#x27;</span>: name,
+            <span class="hljs-string">&#x27;cosine_sim&#x27;</span>: cos,
+            <span class="hljs-string">&#x27;snr_db&#x27;</span>: snr,
+            <span class="hljs-string">&#x27;error_growth&#x27;</span>: snr <span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(layer_metrics) == <span class="hljs-number">0</span>
+                <span class="hljs-keyword">else</span> (snr - layer_metrics[-<span class="hljs-number">1</span>][<span class="hljs-string">&#x27;snr_db&#x27;</span>])
+        })
+    
+    <span class="hljs-comment"># 误差可视化</span>
+    <span class="hljs-comment"># 理想曲线：每层的 cos 接近 1.0，SNR 缓慢下降</span>
+    <span class="hljs-comment"># 危险信号：某层 cos &lt; 0.99 或 SNR 骤降 &gt; 10dB</span>
+    <span class="hljs-keyword">return</span> layer_metrics
+</code></pre>
+<h3 id="74-end-to-end-模型级测试">7.4 End-to-End 模型级测试</h3>
+<p>最终验证必须回到模型级别的指标：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">end_to_end_quantization_eval</span>(<span class="hljs-params">model, tokenizer, eval_tasks</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    End-to-end 评估量化后的模型
+    测量: perplexity, MMLU, 以及量化特有的边界测试
+    &quot;&quot;&quot;</span>
+    results = {}
+    
+    <span class="hljs-comment"># 1. Perplexity（基础语言建模能力）</span>
+    ppl = evaluate_perplexity(model, tokenizer, dataset=<span class="hljs-string">&#x27;wikitext2&#x27;</span>)
+    results[<span class="hljs-string">&#x27;perplexity&#x27;</span>] = ppl
+    
+    <span class="hljs-comment"># 2. 下游任务（量化对下游任务的影响可能不同）</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-string">&#x27;mmlu&#x27;</span> <span class="hljs-keyword">in</span> eval_tasks:
+        mmlu_score = evaluate_mmlu(model, tokenizer)
+        results[<span class="hljs-string">&#x27;mmlu&#x27;</span>] = mmlu_score
+    
+    <span class="hljs-comment"># 3. 量化特有测试：重复生成一致性</span>
+    <span class="hljs-comment"># 量化后的模型在相同 prompt 下是否生成相同输出？</span>
+    prompts = [
+        <span class="hljs-string">&quot;The capital of France is&quot;</span>,
+        <span class="hljs-string">&quot;The theory of relativity was proposed by&quot;</span>,
+    ]
+    <span class="hljs-keyword">for</span> prompt <span class="hljs-keyword">in</span> prompts:
+        inputs = tokenizer(prompt, return_tensors=<span class="hljs-string">&#x27;pt&#x27;</span>)
+        out1 = model.generate(**inputs, max_new_tokens=<span class="hljs-number">50</span>, do_sample=<span class="hljs-literal">False</span>)
+        out2 = model.generate(**inputs, max_new_tokens=<span class="hljs-number">50</span>, do_sample=<span class="hljs-literal">False</span>)
+        <span class="hljs-keyword">assert</span> torch.equal(out1, out2), <span class="hljs-string">f&quot;量化模型在 <span class="hljs-subst">{prompt}</span> 上生成不一致！&quot;</span>
+    results[<span class="hljs-string">&#x27;greedy_consistency&#x27;</span>] = <span class="hljs-literal">True</span>
+    
+    <span class="hljs-keyword">return</span> results
+</code></pre>
+<h3 id="75-可视化量化误差分布">7.5 可视化量化误差分布</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">visualize_quantization_error</span>(<span class="hljs-params">W_original, W_quantized, layer_name=<span class="hljs-string">&quot;Layer&quot;</span></span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    分析量化误差的分布
+    &quot;&quot;&quot;</span>
+    <span class="hljs-keyword">import</span> matplotlib.pyplot <span class="hljs-keyword">as</span> plt
+    
+    err = (W_original - W_quantized).flatten().cpu().numpy()
+    orig = W_original.flatten().cpu().numpy()
+    
+    fig, axes = plt.subplots(<span class="hljs-number">2</span>, <span class="hljs-number">2</span>, figsize=(<span class="hljs-number">12</span>, <span class="hljs-number">8</span>))
+    
+    <span class="hljs-comment"># 1. 量化误差直方图</span>
+    axes[<span class="hljs-number">0</span>, <span class="hljs-number">0</span>].hist(err, bins=<span class="hljs-number">100</span>, alpha=<span class="hljs-number">0.7</span>)
+    axes[<span class="hljs-number">0</span>, <span class="hljs-number">0</span>].set_title(<span class="hljs-string">f&#x27;<span class="hljs-subst">{layer_name}</span> - Quantization Error Distribution&#x27;</span>)
+    axes[<span class="hljs-number">0</span>, <span class="hljs-number">0</span>].set_xlabel(<span class="hljs-string">&#x27;Error&#x27;</span>)
+    
+    <span class="hljs-comment"># 2. 原始值 vs 误差散点图</span>
+    axes[<span class="hljs-number">0</span>, <span class="hljs-number">1</span>].scatter(orig[:<span class="hljs-number">5000</span>], err[:<span class="hljs-number">5000</span>], s=<span class="hljs-number">0.5</span>, alpha=<span class="hljs-number">0.3</span>)
+    axes[<span class="hljs-number">0</span>, <span class="hljs-number">1</span>].set_title(<span class="hljs-string">&#x27;Original Value vs Quantization Error&#x27;</span>)
+    axes[<span class="hljs-number">0</span>, <span class="hljs-number">1</span>].set_xlabel(<span class="hljs-string">&#x27;Original Value&#x27;</span>)
+    axes[<span class="hljs-number">0</span>, <span class="hljs-number">1</span>].set_ylabel(<span class="hljs-string">&#x27;Error&#x27;</span>)
+    
+    <span class="hljs-comment"># 3. 误差的通道分布（检测 outlier channel）</span>
+    ch_err = (W_original - W_quantized).<span class="hljs-built_in">abs</span>().mean(dim=<span class="hljs-number">1</span>).cpu().numpy()
+    axes[<span class="hljs-number">1</span>, <span class="hljs-number">0</span>].bar(<span class="hljs-built_in">range</span>(<span class="hljs-built_in">len</span>(ch_err)), ch_err)
+    axes[<span class="hljs-number">1</span>, <span class="hljs-number">0</span>].set_title(<span class="hljs-string">&#x27;Per-Channel Mean Absolute Error&#x27;</span>)
+    axes[<span class="hljs-number">1</span>, <span class="hljs-number">0</span>].set_xlabel(<span class="hljs-string">&#x27;Channel&#x27;</span>)
+    
+    <span class="hljs-comment"># 4. SNR 分布</span>
+    snr = <span class="hljs-number">20</span> * np.log10(np.<span class="hljs-built_in">abs</span>(orig) / (np.<span class="hljs-built_in">abs</span>(err) + <span class="hljs-number">1e-10</span>))
+    snr = np.clip(snr, -<span class="hljs-number">20</span>, <span class="hljs-number">80</span>)
+    axes[<span class="hljs-number">1</span>, <span class="hljs-number">1</span>].hist(snr, bins=<span class="hljs-number">100</span>, alpha=<span class="hljs-number">0.7</span>)
+    axes[<span class="hljs-number">1</span>, <span class="hljs-number">1</span>].set_title(<span class="hljs-string">&#x27;SNR Distribution (dB)&#x27;</span>)
+    axes[<span class="hljs-number">1</span>, <span class="hljs-number">1</span>].set_xlabel(<span class="hljs-string">&#x27;SNR (dB)&#x27;</span>)
+    
+    plt.tight_layout()
+    <span class="hljs-keyword">return</span> fig
+</code></pre>
+<h3 id="76-量化测试通过标准汇总">7.6 量化测试通过标准汇总</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>测试层级</th>
+<th>指标</th>
+<th>INT8 通过标准</th>
+<th>INT4 通过标准</th>
+<th>FP8 通过标准</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单算子</td>
+<td>Cosine Similarity</td>
+<td>≥ 0.9999</td>
+<td>≥ 0.999</td>
+<td>≥ 0.9999</td>
+</tr>
+<tr>
+<td>单算子</td>
+<td>Max Relative Error</td>
+<td>&lt; 1%</td>
+<td>&lt; 5%</td>
+<td>&lt; 1%</td>
+</tr>
+<tr>
+<td>Layer-wise</td>
+<td>Cosine Similarity</td>
+<td>≥ 0.999</td>
+<td>≥ 0.995</td>
+<td>≥ 0.999</td>
+</tr>
+<tr>
+<td>Layer-wise</td>
+<td>SNR drop per layer</td>
+<td>&lt; 1 dB</td>
+<td>&lt; 3 dB</td>
+<td>&lt; 1 dB</td>
+</tr>
+<tr>
+<td>End-to-end</td>
+<td>Perplexity increase</td>
+<td>&lt; 0.5</td>
+<td>&lt; 1.0</td>
+<td>&lt; 0.3</td>
+</tr>
+<tr>
+<td>End-to-end</td>
+<td>MMLU drop</td>
+<td>&lt; 1%</td>
+<td>&lt; 2%</td>
+<td>&lt; 0.5%</td>
+</tr>
+<tr>
+<td>边界测试</td>
+<td>NaN/Inf 检测</td>
+<td>0 出现</td>
+<td>0 出现</td>
+<td>0 出现</td>
+</tr>
+<tr>
+<td>一致测试</td>
+<td>Greedy repeatability</td>
+<td>100% 相同</td>
+<td>100% 相同</td>
+<td>100% 相同</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="8-📊-对比总结表">8. 📊 对比总结表</h2>
+<h3 id="81-数据格式对比">8.1 数据格式对比</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>格式</th>
+<th>位宽</th>
+<th>存储缩减 (vs FP16)</th>
+<th>表示类型</th>
+<th>动态范围</th>
+<th>精度特征</th>
+<th>硬件原生支持</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>INT8 对称</td>
+<td>8 bit</td>
+<td>2×</td>
+<td>均匀整数</td>
+<td>固定 (±127)</td>
+<td>均匀量化误差</td>
+<td>T4/A100/H100</td>
+</tr>
+<tr>
+<td>INT8 非对称</td>
+<td>8 bit</td>
+<td>2×</td>
+<td>均匀整数</td>
+<td>灵活 (0-255)</td>
+<td>适应性更好</td>
+<td>T4/A100/H100</td>
+</tr>
+<tr>
+<td>FP8 E4M3</td>
+<td>8 bit</td>
+<td>2×</td>
+<td>浮点</td>
+<td>±240</td>
+<td>对数精度</td>
+<td><strong>H100+ (SM90)</strong></td>
+</tr>
+<tr>
+<td>FP8 E5M2</td>
+<td>8 bit</td>
+<td>2×</td>
+<td>浮点</td>
+<td>±57344</td>
+<td>范围优先</td>
+<td><strong>H100+ (SM90)</strong></td>
+</tr>
+<tr>
+<td>INT4 (GPTQ/AWQ)</td>
+<td>4 bit</td>
+<td><strong>4×</strong></td>
+<td>均匀整数</td>
+<td>固定 (±7)</td>
+<td>均匀量化误差</td>
+<td>Marlin kernel</td>
+</tr>
+<tr>
+<td>NF4</td>
+<td>4 bit</td>
+<td>4×</td>
+<td>非均匀整数</td>
+<td>归一化到 [-1,1]</td>
+<td><strong>正态最优</strong></td>
+<td>QLoRA 软件</td>
+</tr>
+<tr>
+<td>FP4 (E2M1)</td>
+<td>4 bit</td>
+<td>4×</td>
+<td>浮点</td>
+<td>±6</td>
+<td>低精度浮点</td>
+<td><strong>B200 (Blackwell)</strong></td>
+</tr>
+<tr>
+<td>INT2</td>
+<td>2 bit</td>
+<td><strong>8×</strong></td>
+<td>均匀整数</td>
+<td>固定 (±1)</td>
+<td>损失较大</td>
+<td>实验性</td>
+</tr>
+</tbody></table></div>
+<h3 id="82-精度损失对比（llama-2-7b-wikitext-2-perplexity）">8.2 精度损失对比（LLaMA-2 7B, WikiText-2 perplexity）</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>量化方案</th>
+<th>Perplexity</th>
+<th>Δ vs FP16</th>
+<th>MMLU</th>
+<th>Δ vs FP16</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FP16 (baseline)</td>
+<td>5.47</td>
+<td>-</td>
+<td>45.3%</td>
+<td>-</td>
+</tr>
+<tr>
+<td>INT8 per-tensor</td>
+<td>5.62</td>
+<td>+0.15</td>
+<td>44.8%</td>
+<td>-0.5%</td>
+</tr>
+<tr>
+<td>INT8 per-channel</td>
+<td>5.51</td>
+<td>+0.04</td>
+<td>45.1%</td>
+<td>-0.2%</td>
+</tr>
+<tr>
+<td>SmoothQuant W8A8</td>
+<td>5.50</td>
+<td>+0.03</td>
+<td>45.2%</td>
+<td>-0.1%</td>
+</tr>
+<tr>
+<td>FP8 E4M3 per-tensor</td>
+<td>5.53</td>
+<td>+0.06</td>
+<td>45.0%</td>
+<td>-0.3%</td>
+</tr>
+<tr>
+<td>FP8 E4M3 block</td>
+<td>5.48</td>
+<td>+0.01</td>
+<td>45.2%</td>
+<td>-0.1%</td>
+</tr>
+<tr>
+<td>GPTQ INT4 (g128)</td>
+<td>5.58</td>
+<td>+0.11</td>
+<td>44.3%</td>
+<td>-1.0%</td>
+</tr>
+<tr>
+<td>AWQ INT4 (g128)</td>
+<td>5.56</td>
+<td>+0.09</td>
+<td>44.6%</td>
+<td>-0.7%</td>
+</tr>
+<tr>
+<td>NF4 (QLoRA)</td>
+<td>5.54 (FT后)</td>
+<td>+0.07</td>
+<td>44.8%</td>
+<td>-0.5%</td>
+</tr>
+<tr>
+<td>FP4 E2M1 (模拟)</td>
+<td>6.21</td>
+<td>+0.74</td>
+<td>41.2%</td>
+<td>-4.1%</td>
+</tr>
+</tbody></table></div>
+<blockquote>
+<p>注：实际数值随模型、校准数据和 kernel 实现浮动，以上为代表性数字。</p>
+</blockquote>
+<h3 id="83-加速比对比">8.3 加速比对比</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>量化方案</th>
+<th>Prefill 加速</th>
+<th>Decode 加速</th>
+<th>内存节省</th>
+<th>主要瓶颈</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>INT8 per-tensor</td>
+<td>1.5-2.0×</td>
+<td>1.2-1.5×</td>
+<td>~2×</td>
+<td>激活量化 overhead</td>
+<td>大 batch prefill</td>
+</tr>
+<tr>
+<td>INT8 per-channel</td>
+<td>1.8-2.0×</td>
+<td>1.5-1.8×</td>
+<td>~2×</td>
+<td>scale 预取</td>
+<td>通用推理</td>
+</tr>
+<tr>
+<td>SmoothQuant W8A8</td>
+<td>1.8-2.0×</td>
+<td>1.5-1.8×</td>
+<td>~2×</td>
+<td>迁移因子融合</td>
+<td>FP16→INT8 迁移</td>
+</tr>
+<tr>
+<td>FP8 (H100)</td>
+<td>1.8-2.0×</td>
+<td>1.5-1.8×</td>
+<td>~2×</td>
+<td>scale 管理</td>
+<td>H100 原生推理</td>
+</tr>
+<tr>
+<td>FP8 block (FA3)</td>
+<td>2.0-2.5×</td>
+<td>1.5-2.0×</td>
+<td>~2×</td>
+<td>block scale 计算</td>
+<td>长序列注意力</td>
+</tr>
+<tr>
+<td>GPTQ INT4 (g128)</td>
+<td>1.0-1.2×</td>
+<td><strong>2.0-3.0×</strong></td>
+<td><strong>~4×</strong></td>
+<td>HBM 带宽</td>
+<td><strong>LLM 推理首选</strong></td>
+</tr>
+<tr>
+<td>AWQ INT4 (g128)</td>
+<td>1.0-1.2×</td>
+<td><strong>2.0-3.0×</strong></td>
+<td><strong>~4×</strong></td>
+<td>HBM 带宽</td>
+<td><strong>LLM 推理首选</strong></td>
+</tr>
+<tr>
+<td>NF4 (QLoRA)</td>
+<td>0.8-1.0×</td>
+<td>1.5-2.0×</td>
+<td>~4×</td>
+<td>反量化开销</td>
+<td>微调 / 小 batch</td>
+</tr>
+<tr>
+<td>FP8 KV Cache</td>
+<td>-</td>
+<td>1.1-1.3×</td>
+<td>~2× KV</td>
+<td>反量化融合</td>
+<td>长上下文</td>
+</tr>
+<tr>
+<td>INT4 KV Cache</td>
+<td>-</td>
+<td>1.2-1.5×</td>
+<td>~4× KV</td>
+<td>精度损失</td>
+<td>超长序列</td>
+</tr>
+</tbody></table></div>
+<h3 id="84-适用场景决策树">8.4 适用场景决策树</h3>
+<pre><code>你的量化需求？
+│
+├── 需要部署到 T4/V100（无 FP8）？
+│   ├── 精度敏感 → INT8 per-channel + SmoothQuant (W8A8)
+│   └── 显存受限 → AWQ/GPTQ INT4 (W4A16)
+│
+├── 使用 H100+ 硬件？
+│   ├── 训练/微调 → FP8 E4M3/E5M2 (Transformer Engine)
+│   └── 推理 → FP8 (最快的 GEMM) 或 AWQ INT4 (最小的显存)
+│
+├── 需要微调大模型？
+│   └── QLoRA (NF4) → 4× 显存节省，lora 适配器可训练
+│
+├── KV Cache 是瓶颈？
+│   ├── 长序列 (32K+) → FP8 KV Cache (硬件加速)
+│   ├── 超长序列 (128K+) → KIVI INT4 KV Cache
+│   └── 高并发 → FP8 KV Cache + PagedAttention
+│
+└── 追求极致速度？
+    └── FP8 (H100) 或 INT8 (T4/A100) → 配合算子融合和 FlashAttention
+</code></pre>
+<hr>
+<h2 id="🚀-下一步">🚀 下一步</h2>
+<p>量化技术仍在快速发展中，以下是一些值得关注的前沿方向：</p>
+<ol>
+<li><p><strong>混合精度量化</strong>：对模型的不同层/不同 token 使用不同 bit-width，在同等内存下获得更好精度。例如：Attention 层用 INT8，FFN 层用 INT4；salient tokens 用更高精度。</p>
+</li>
+<li><p><strong>量化 + 稀疏化联合优化</strong>：将 2:4 结构化稀疏（NVIDIA Ampere+ 的 2× 加速）与 INT4/FP8 量化结合，总加速可达 8×。</p>
+</li>
+<li><p><strong>硬件原生 FP4/FP6</strong>：Blackwell B200 的 FP4 Tensor Core 使 4-bit 浮点计算成为可能，MXFP4 micro-scaling 格式有望统一 INT4 和 FP4 的生态。</p>
+</li>
+<li><p><strong>自适应量化推理</strong>：运行时根据输入的难度动态调整量化精度——easy token 用 INT4，hard token 用 FP16。</p>
+</li>
+<li><p><strong>量化算子的自动化测试</strong>：将量化误差测试集成到 CI/CD 流水线中，每次 kernel 更新自动运行 end-to-end 评估。</p>
+</li>
+</ol>
+<h3 id="推荐资源">推荐资源</h3>
+<ul>
+<li>🔧 <a href="https://github.com/mit-han-lab/llm-awq">llm-awq</a> — AWQ 官方实现，包含 calibration 和推理代码</li>
+<li>🔧 <a href="https://github.com/qwopqwop200/GPTQ-for-LLaMa">GPTQ-for-LLaMA</a> — GPTQ 的 LLaMA 适配</li>
+<li>🔧 <a href="https://github.com/vllm-project/vllm">vLLM</a> — 生产级推理引擎，集成了 Marlin kernel 和 FP8 KV Cache</li>
+<li>📖 <a href="https://arxiv.org/abs/2211.10438">SmoothQuant (arXiv:2211.10438)</a> — W8A8 量化的代表作</li>
+<li>📖 <a href="https://arxiv.org/abs/2210.17323">GPTQ (arXiv:2210.17323)</a> — Hessian-aware INT4 量化的开创性工作</li>
+<li>📖 <a href="https://arxiv.org/abs/2306.00978">AWQ (arXiv:2306.00978)</a> — Activation-aware INT4 量化</li>
+<li>📖 <a href="https://arxiv.org/abs/2305.14314">QLoRA (arXiv:2305.14314)</a> — NF4 量化 + LoRA 微调</li>
+<li>📖 <a href="https://arxiv.org/abs/2402.02750">KIVI (arXiv:2402.02750)</a> — KV Cache 量化的关键工作</li>
+<li>📖 <a href="https://arxiv.org/abs/2209.05433">FP8 Formats (arXiv:2209.05433)</a> — FP8 E4M3/E5M2 格式详解</li>
+</ul>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

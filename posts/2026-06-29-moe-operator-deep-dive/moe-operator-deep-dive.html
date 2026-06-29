@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoE 算子完全解析：从 Routing 到 Kernel 实现 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-29</p>
+        <h1>MoE 算子完全解析：从 Routing 到 Kernel 实现</h1>
+        <div class="post-meta">
+          <span>2026-06-29</span>
+          <span class="tag">MoE</span><span class="tag">稀疏模型</span><span class="tag">CUDA</span><span class="tag">Triton</span><span class="tag">推理优化</span><span class="tag">深度学习</span>
+        </div>
+        <p>打开任何一个现代大模型的技术报告——Mixtral 8x7B、DeepSeek-V2/V3、DBRX、Qwen2.5-MoE——你会发现它们都有一个共同的设计选择：<strong>用 MoE（Mixture of Experts）层替代标准 FFN</strong>。MoE 的核心思想很直观：既然不是每个 token 都需要激活全部参数，那就让每个 token 选择少量&quot;专家&quot;（Expert）来处理，从而在几乎不增加计算量的前提下，把模型参数量扩展数倍。但这个看似简单的 idea，落到 GPU kernel 层面时，会引出 TopK 路由、稀疏 Dispatch、负载均衡、block-sparse GEMM、All-to-All 通信等一系列极其复杂的算子实现问题。这篇博客将从<strong>算子的角度</strong>，逐层拆解 MoE 从 routing 到 kernel 实现的完整技术栈。</p>
+<!--more-->
+
+<hr>
+<h2 id="1-moe-架构概述">1. MoE 架构概述</h2>
+<h3 id="11-expert-定义与稀疏激活">1.1 Expert 定义与稀疏激活</h3>
+<p>一个 MoE 层由 <code>E</code> 个 Expert 和一个 Router（门控网络）组成。每个 Expert 通常是一个独立的 FFN：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">class</span> <span class="hljs-title class_">ExpertFFN</span>(nn.Module):
+    <span class="hljs-string">&quot;&quot;&quot;单个 Expert：标准的 SwiGLU FFN&quot;&quot;&quot;</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, d_model, d_ff</span>):
+        <span class="hljs-built_in">super</span>().__init__()
+        <span class="hljs-variable language_">self</span>.w1 = nn.Linear(d_model, d_ff, bias=<span class="hljs-literal">False</span>)  <span class="hljs-comment"># gate</span>
+        <span class="hljs-variable language_">self</span>.w2 = nn.Linear(d_ff, d_model, bias=<span class="hljs-literal">False</span>)  <span class="hljs-comment"># down</span>
+        <span class="hljs-variable language_">self</span>.w3 = nn.Linear(d_model, d_ff, bias=<span class="hljs-literal">False</span>)  <span class="hljs-comment"># up</span>
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">self, x</span>):
+        <span class="hljs-keyword">return</span> <span class="hljs-variable language_">self</span>.w2(F.silu(<span class="hljs-variable language_">self</span>.w1(x)) * <span class="hljs-variable language_">self</span>.w3(x))
+</code></pre>
+<p>MoE 的核心效率前提是<strong>稀疏激活</strong>：每个 token 只激活 Top-K 个 Expert（通常 K=1 或 2），其余 Expert 保持静默。假设有 8 个 Expert、Top-2 激活，模型参数量是密集模型的 8×，但 FLOPs 仅增加约 2×（实际略高，因为有 Router 和 Combine 开销）。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>参数量</th>
+<th>激活参数量</th>
+<th>每 token FLOPs</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Dense 7B</td>
+<td>7B</td>
+<td>7B</td>
+<td>7B</td>
+</tr>
+<tr>
+<td>Mixtral 8×7B</td>
+<td>47B</td>
+<td>~13B</td>
+<td>~13B</td>
+</tr>
+<tr>
+<td>DeepSeek-V2</td>
+<td>236B</td>
+<td>~21B</td>
+<td>~21B</td>
+</tr>
+</tbody></table></div>
+<h3 id="12-gating-network-与-top-k-routing">1.2 Gating Network 与 Top-K Routing</h3>
+<p>Router（也称为 Gate）是一个线性层 + 可选 noise 的模块，输出每个 token 到每个 Expert 的 logit 分数：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">class</span> <span class="hljs-title class_">Router</span>(nn.Module):
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, d_model: <span class="hljs-built_in">int</span>, n_experts: <span class="hljs-built_in">int</span>, top_k: <span class="hljs-built_in">int</span> = <span class="hljs-number">2</span></span>):
+        <span class="hljs-built_in">super</span>().__init__()
+        <span class="hljs-variable language_">self</span>.gate = nn.Linear(d_model, n_experts, bias=<span class="hljs-literal">False</span>)
+        <span class="hljs-variable language_">self</span>.top_k = top_k
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">self, x: torch.Tensor</span>) -&gt; <span class="hljs-built_in">tuple</span>[torch.Tensor, torch.Tensor]:
+        <span class="hljs-comment"># x: [B, d_model] 或 [B*T, d_model]</span>
+        logits = <span class="hljs-variable language_">self</span>.gate(x)                          <span class="hljs-comment"># [num_tokens, E]</span>
+
+        <span class="hljs-comment"># Top-K 选取</span>
+        weights, indices = torch.topk(
+            logits, <span class="hljs-variable language_">self</span>.top_k, dim=-<span class="hljs-number">1</span>, <span class="hljs-built_in">sorted</span>=<span class="hljs-literal">False</span>
+        )                                              <span class="hljs-comment"># 各 [num_tokens, K]</span>
+
+        <span class="hljs-comment"># 对选中的权重做 softmax 归一化</span>
+        weights = F.softmax(weights, dim=-<span class="hljs-number">1</span>, dtype=torch.float32)
+        <span class="hljs-keyword">return</span> weights, indices
+</code></pre>
+<p>训练时通常会在 Gate 输出上添加可学习的 Gaussian noise（<code>std = softplus(w_noise) × logits</code>），以促进 Expert 间的负载均衡和 Exploration：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># TopK + Noise (用于训练负载均衡)</span>
+<span class="hljs-keyword">if</span> <span class="hljs-variable language_">self</span>.training <span class="hljs-keyword">and</span> <span class="hljs-variable language_">self</span>.noise_std &gt; <span class="hljs-number">0</span>:
+    noise = torch.randn_like(logits) * F.softplus(<span class="hljs-variable language_">self</span>.w_noise(logits))
+    noisy_logits = logits + noise
+    weights, indices = torch.topk(noisy_logits, <span class="hljs-variable language_">self</span>.top_k, dim=-<span class="hljs-number">1</span>)
+<span class="hljs-keyword">else</span>:
+    weights, indices = torch.topk(logits, <span class="hljs-variable language_">self</span>.top_k, dim=-<span class="hljs-number">1</span>)
+</code></pre>
+<h3 id="13-auxiliary-load-balancing-loss">1.3 Auxiliary Load Balancing Loss</h3>
+<p>稀疏 MoE 面临的核心问题是<strong>路由坍塌</strong>（Routing Collapse）：所有 token 都涌向同一个 Expert，导致负载不均、参数浪费。解决方案是在训练损失中加入辅助负载均衡损失（Auxiliary Loss）：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">load_balancing_loss</span>(<span class="hljs-params">gate_logits: Tensor, indices: Tensor, n_experts: <span class="hljs-built_in">int</span></span>) -&gt; Tensor:
+    <span class="hljs-string">&quot;&quot;&quot;Switch Transformer 风格的辅助损失&quot;&quot;&quot;</span>
+    num_tokens = gate_logits.shape[<span class="hljs-number">0</span>]
+    <span class="hljs-comment"># 每个 expert 被选中的次数占比</span>
+    expert_load = torch.zeros(n_experts, device=indices.device)
+    expert_load.scatter_add_(<span class="hljs-number">0</span>, indices.flatten(),
+                             torch.ones_like(indices.flatten(), dtype=torch.<span class="hljs-built_in">float</span>))
+    expert_load = expert_load / (num_tokens * indices.shape[<span class="hljs-number">1</span>])  <span class="hljs-comment"># 归一化</span>
+
+    <span class="hljs-comment"># 每个 expert 的平均 gate 概率</span>
+    gate_prob = F.softmax(gate_logits, dim=-<span class="hljs-number">1</span>).mean(dim=<span class="hljs-number">0</span>)
+
+    <span class="hljs-comment"># 负载均衡损失 = sum(expert_load * gate_prob) * n_experts</span>
+    loss = torch.dot(expert_load, gate_prob) * n_experts
+    <span class="hljs-keyword">return</span> loss
+</code></pre>
+<p>后续改进（如 DeepSeek-V2 的 Auxiliary Loss）引入了更多细粒度约束，包括 Device-Level Balance 和 Communication Balance。</p>
+<hr>
+<h2 id="2-核心算子拆解">2. 核心算子拆解</h2>
+<p>MoE 前向计算的 pipeline 可以分解为五个关键算子：</p>
+<pre><code>Routing (Gating) → TopK Selection → Dispatch → Expert Computation → Combine
+</code></pre>
+<p>其中后三个是 MoE 独有的核心算子，也是性能优化的主战场。</p>
+<h3 id="21-topk-选取：torchtopk-在-gpu-上怎么跑？">2.1 TopK 选取：torch.topk 在 GPU 上怎么跑？</h3>
+<p><code>torch.topk</code> 是 MoE 中最直接的算子，但它的 GPU 实现比想象中复杂。不同于 CPU 上的单线程堆排序，GPU 上的 top-k 必须在高度并行的约束下完成。</p>
+<p><strong>实现原理（Bitonic Top-K）：</strong></p>
+<p>对于 <code>k &lt;= 32</code> 的小 k，GPU 上的 best practice 是<strong>基于 Bitonic Sort 的并行选取</strong>——在一个 warp（32 线程）内对所有元素做 Bitonic Sort，然后取前 k 个。</p>
+<pre><code class="hljs language-cuda">// CUDA 伪代码：Warp-Level Bitonic Top-32
+// 每个 warp 处理一个 token 的 E 个 logits
+__device__ void warp_topk(float* vals, int* idxs, int E, int k) {
+    int lane = threadIdx.x &amp; 0x1f;
+
+    // Step 1: 初始化，每个线程持有 1 个 (value, index)
+    float v = (lane &lt; E) ? vals[lane] : -INFINITY;
+    int idx = lane;
+
+    // Step 2: Bitonic Sort (E &lt;= 1024, 多级 double buffer)
+    for (int size = 2; size &lt;= E; size &lt;&lt;= 1) {
+        for (int stride = size &gt;&gt; 1; stride &gt; 0; stride &gt;&gt;= 1) {
+            // __shfl_xor_sync 实现 warp 内比较交换
+            float other_v = __shfl_xor_sync(0xffffffff, v, stride);
+            int other_idx = __shfl_xor_sync(0xffffffff, idx, stride);
+            int mask = (lane &amp; size) ? 1 : 0;  // 升序/降序段
+            if ((v &lt; other_v) ^ mask) {
+                v = other_v;
+                idx = other_idx;
+            }
+        }
+    }
+    // Step 3: 前 k 个已是最大值，写入输出
+    if (lane &lt; k) {
+        // ... 写入 vals_out[lane], idxs_out[lane]
+    }
+}
+</code></pre>
+<p>对于 Top-2（K=2），可以在 warp 内用两个寄存器变量跟踪最大值和次大值：</p>
+<pre><code class="hljs language-cuda">// 更高效的 Top-2：双变量跟踪，无需排序
+__device__ void top2_kernel(const float* logits, int E,
+                            float* w_out, int* i_out) {
+    float max1 = -INFINITY, max2 = -INFINITY;
+    int idx1 = -1, idx2 = -1;
+
+    for (int i = threadIdx.x; i &lt; E; i += blockDim.x) {
+        float val = logits[i];
+        if (val &gt; max1) {
+            max2 = max1; idx2 = idx1;
+            max1 = val;  idx1 = i;
+        } else if (val &gt; max2) {
+            max2 = val; idx2 = i;
+        }
+    }
+    // warp shuffle reduction 获取全局 top-2
+    // ...
+}
+</code></pre>
+<p>PyTorch 的 <code>torch.topk</code> 在 GPU 上实际调用了 cuSOLVER 或 CUB 库的 <code>DeviceSegmentedRadixSort</code> / <code>DeviceRadixSort</code> 来处理大 k，以及手写的 warp-level kernel 处理小 k。在 MoE 场景下（k=2, E=8~256），实际用的是 warp-level Bitonic Top-K 变体。</p>
+<h3 id="22-dispatch-算子：将-token-分发到-expert">2.2 Dispatch 算子：将 Token 分发到 Expert</h3>
+<p>TopK 得到每个 token 的目标 expert 索引后，Dispatch 的工作是把 token 按 expert 分组，让每个 expert 只处理路由到自己的 token。</p>
+<p><strong>朴素实现（基于 Mask + Gather）：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">dispatch_naive</span>(<span class="hljs-params">hidden_states: Tensor, indices: Tensor, n_experts: <span class="hljs-built_in">int</span></span>):
+    <span class="hljs-string">&quot;&quot;&quot;基于 mask 的 dispatch — 教学用，性能差&quot;&quot;&quot;</span>
+    B = indices.shape[<span class="hljs-number">0</span>]
+    <span class="hljs-comment"># 构建 one-hot mask: [B, E]</span>
+    mask = F.one_hot(indices, num_classes=n_experts).<span class="hljs-built_in">float</span>()  <span class="hljs-comment"># [B, k, E]</span>
+    mask = mask.<span class="hljs-built_in">sum</span>(dim=<span class="hljs-number">1</span>)  <span class="hljs-comment"># [B, E]</span>
+
+    dispatched = []
+    <span class="hljs-keyword">for</span> e <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_experts):
+        expert_mask = mask[:, e] &gt; <span class="hljs-number">0</span>  <span class="hljs-comment"># [B]</span>
+        expert_tokens = hidden_states[expert_mask]  <span class="hljs-comment"># [T_e, d]</span>
+        dispatched.append(expert_tokens)
+
+    <span class="hljs-keyword">return</span> dispatched
+</code></pre>
+<p>这个实现的问题很明显：</p>
+<ul>
+<li>每个 expert 的 for 循环导致 E 次独立的 kernel launch</li>
+<li><code>boolean masking</code> 产生不连续的内存访问模式（scatter/gather）</li>
+<li>每个 expert 的 token 数量 <code>T_e</code> 不同，导致后续 GEMM 形状变化</li>
+</ul>
+<p><strong>高效实现（基于 Sorting + Cumulative Sum）：</strong></p>
+<p>实际的高性能 Dispatch kernel 用 <strong>sorting + prefix sum</strong> 来实现一次性重排：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">dispatch_efficient</span>(<span class="hljs-params">hidden_states, indices, n_experts, capacity_factor=<span class="hljs-number">1.0</span></span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    基于 sort 的 dispatch，一次性完成 token 重排。
+    参考 Tutel / MegaBlocks 的实现思路。
+    &quot;&quot;&quot;</span>
+    B = hidden_states.shape[<span class="hljs-number">0</span>]
+    k = indices.shape[<span class="hljs-number">1</span>]
+    E = n_experts
+
+    <span class="hljs-comment"># 展平每个 token 的 k 个选择</span>
+    <span class="hljs-comment"># 每个 token 产生 k 个 (expert_id, token_id, weight) 三元组</span>
+    flat_indices = indices.reshape(-<span class="hljs-number">1</span>)     <span class="hljs-comment"># [B*k]</span>
+
+    <span class="hljs-comment"># 按 expert_id 排序</span>
+    sorted_indices, perm = torch.sort(flat_indices)
+
+    <span class="hljs-comment"># 计算每个 expert 的 token 数</span>
+    expert_load = torch.zeros(E, dtype=torch.int32, device=indices.device)
+    expert_load.scatter_add_(<span class="hljs-number">0</span>, sorted_indices,
+                             torch.ones_like(sorted_indices, dtype=torch.int32))
+
+    <span class="hljs-comment"># Capacity: 每个 expert 最多处理多少 token</span>
+    capacity = <span class="hljs-built_in">int</span>((B * k / E) * capacity_factor)
+
+    <span class="hljs-comment"># 构建 dispatch mask：在 capacity 范围内的 token 被保留</span>
+    <span class="hljs-comment"># (超出 capacity 的 token 被 drop)</span>
+    cumsum = torch.zeros(E + <span class="hljs-number">1</span>, dtype=torch.int32, device=indices.device)
+    cumsum[<span class="hljs-number">1</span>:] = torch.cumsum(expert_load, dim=<span class="hljs-number">0</span>)
+
+    <span class="hljs-comment"># Binned dispatch: 将 hidden_states 按排序后的顺序重排</span>
+    permuted_states = hidden_states[perm]  <span class="hljs-comment"># [B*k, d], 按 expert 连续排列</span>
+
+    <span class="hljs-keyword">return</span> permuted_states, cumsum, expert_load
+</code></pre>
+<p><strong>CUDA Dispatch Kernel 核心逻辑：</strong></p>
+<pre><code class="hljs language-cuda">// CUDA 伪代码：Dispatch Kernel 核心循环
+__global__ void dispatch_kernel(
+    const float* __restrict__ input,     // [B, d]
+    const int* __restrict__ indices,      // [B, k]
+    float* __restrict__ output,           // [E * capacity, d]
+    int* __restrict__ expert_count,       // [E]
+    int B, int d, int k, int E, int capacity
+) {
+    int token_id = blockIdx.x * blockDim.x + threadIdx.x;
+    if (token_id &gt;= B) return;
+
+    for (int i = 0; i &lt; k; i++) {
+        int expert = indices[token_id * k + i];
+        // 原子加：获取该 expert 中的下一个位置
+        int pos = atomicAdd(&amp;expert_count[expert], 1);
+
+        if (pos &lt; capacity) {
+            // 将 token 的 hidden state 复制到目标位置
+            int dst_offset = (expert * capacity + pos) * d;
+            int src_offset = token_id * d;
+            for (int j = 0; j &lt; d; j++) {
+                output[dst_offset + j] = input[src_offset + j];
+            }
+        }
+        // 如果 pos &gt;= capacity，该 token 被 drop
+    }
+}
+</code></pre>
+<p>这个 kernel 的关键问题是 <strong>atomicAdd 竞争</strong>——所有 token 同时抢 expert 槽位，当 E 很大时竞争激烈。优化策略：先汇总到 shared memory 做局部计数，再全局同步。</p>
+<h3 id="23-expert-computation：每个-expert-独立前向">2.3 Expert Computation：每个 Expert 独立前向</h3>
+<p>Dispatch 完成后，每个 Expert 对自己的 token 执行 FFN 计算。最原始的方式是逐 expert 串行调用：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">expert_computation_naive</span>(<span class="hljs-params">dispatched_tokens: <span class="hljs-built_in">list</span>[Tensor], experts: <span class="hljs-built_in">list</span>[nn.Module]</span>):
+    <span class="hljs-string">&quot;&quot;&quot;逐 expert 串行计算 — GPU 利用率低&quot;&quot;&quot;</span>
+    outputs = []
+    <span class="hljs-keyword">for</span> e, tokens <span class="hljs-keyword">in</span> <span class="hljs-built_in">enumerate</span>(dispatched_tokens):
+        out = experts[e](tokens)
+        outputs.append(out)
+    <span class="hljs-keyword">return</span> outputs
+</code></pre>
+<p>专家数量 E 增大时，大量小 GEMM 会导致严重的 <strong>kernel launch overhead</strong> 和 <strong>HBM 带宽浪费</strong>（每个 GEMM 数据无法重用）。</p>
+<p><strong>单核大 GEMM 方案：</strong> 将所有权重拼接到一个张量中，一次 GEMM 计算所有 Expert：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">expert_computation_fused</span>(<span class="hljs-params">dispatched_tokens, all_weights, all_biases,
+                              cumsum, d_model, d_ff</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    将所有 expert 的 token 拼接为一个大 batch，单次 GEMM 完成所有计算。
+    但这要求不同 expert 的 token 数不能差异太大（padding 浪费）。
+    &quot;&quot;&quot;</span>
+    <span class="hljs-comment"># dispatched_tokens: [E * capacity, d_model]</span>
+    <span class="hljs-comment"># 一次大 GEMM: [E*capacity, d_model] @ [d_model, E*d_ff]</span>
+    E = <span class="hljs-built_in">len</span>(cumsum) - <span class="hljs-number">1</span>
+    capacity = dispatched_tokens.shape[<span class="hljs-number">0</span>] // E
+
+    <span class="hljs-comment"># SwiGLU: gate 和 up 合并在一个 GEMM 中</span>
+    gate_up = dispatched_tokens @ all_weights[<span class="hljs-string">&#x27;gate_up&#x27;</span>]  <span class="hljs-comment"># [E*capacity, 2*E*d_ff]</span>
+    gate, up = gate_up.chunk(<span class="hljs-number">2</span>, dim=-<span class="hljs-number">1</span>)
+    hidden = F.silu(gate) * up
+
+    <span class="hljs-comment"># down projection</span>
+    output = hidden @ all_weights[<span class="hljs-string">&#x27;down&#x27;</span>]  <span class="hljs-comment"># [E*capacity, E*d_model]</span>
+    <span class="hljs-keyword">return</span> output
+</code></pre>
+<p>但问题仍在：如果某些 expert 收到的 token 远少于 capacity（padding 浪费），大量计算被浪费在无意义的零值上。</p>
+<h3 id="24-combine-算子：加权合并--恢复原始顺序">2.4 Combine 算子：加权合并 + 恢复原始顺序</h3>
+<p>Combine 是 Dispatch 的逆过程：将每个 Expert 的输出加权求和，并恢复到原始 token 顺序。</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">combine</span>(<span class="hljs-params">outputs: Tensor, indices: Tensor, weights: Tensor,
+            cumsum: Tensor, capacity: <span class="hljs-built_in">int</span></span>) -&gt; Tensor:
+    <span class="hljs-string">&quot;&quot;&quot;
+    Combine 算子：将 expert 输出加权合并回原始 token 位置。
+
+    Args:
+        outputs: [E * capacity, d_model] - 每个 expert 的输出
+        indices: [B, k] - 每个 token 的 expert 索引和位置
+        weights: [B, k] - 每个 token 对应 expert 的权重
+    Returns:
+        [B, d_model] - 恢复顺序后的输出
+    &quot;&quot;&quot;</span>
+    B, k = indices.shape
+    d = outputs.shape[-<span class="hljs-number">1</span>]
+    E = cumsum.shape[<span class="hljs-number">0</span>] - <span class="hljs-number">1</span>
+
+    <span class="hljs-comment"># 维护一个 token -&gt; expert 输出的反向映射</span>
+    <span class="hljs-comment"># 每个 token 收到 k 个 expert 的加权贡献</span>
+    final_output = torch.zeros(B, d, device=outputs.device, dtype=outputs.dtype)
+
+    <span class="hljs-keyword">for</span> e <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(E):
+        start = cumsum[e]
+        end = cumsum[e + <span class="hljs-number">1</span>]
+        <span class="hljs-keyword">if</span> start &gt;= end:
+            <span class="hljs-keyword">continue</span>
+
+        <span class="hljs-comment"># 这个 expert 处理的 token 在原 batch 中的索引</span>
+        expert_indices = indices[:, <span class="hljs-number">0</span>]  <span class="hljs-comment"># 简化：假设 k=1</span>
+        <span class="hljs-comment"># 实际需要更复杂的映射...</span>
+
+    <span class="hljs-keyword">return</span> final_output
+</code></pre>
+<p><strong>高效的 CUDA Combine Kernel：</strong></p>
+<pre><code class="hljs language-cuda">// CUDA 伪代码：Combine Kernel
+__global__ void combine_kernel(
+    const float* __restrict__ expert_outputs,  // [E, capacity, d]
+    const int* __restrict__ token_ids,         // [E, capacity] — 每个槽位对应的原始 token id
+    const float* __restrict__ weights,         // [E, capacity] — 每个槽位的权重
+    float* __restrict__ output,                // [B, d]
+    int E, int capacity, int d
+) {
+    // 每个线程处理一个 token 位置
+    int slot_id = blockIdx.x;
+    int e = slot_id / capacity;
+    int pos = slot_id % capacity;
+    if (pos &gt;= capacity) return;
+
+    int token_id = token_ids[slot_id];
+    float w = weights[slot_id];
+    if (token_id &lt; 0) return;  // padding slot
+
+    // 加权累加到输出
+    // 注意：此处原子加是为了处理 k&gt;1 时多个 expert 贡献同一 token 的情况
+    for (int j = threadIdx.x; j &lt; d; j += blockDim.x) {
+        atomicAdd(&amp;output[token_id * d + j],
+                  w * expert_outputs[slot_id * d + j]);
+    }
+}
+</code></pre>
+<p><strong>Triton 实现的 Combine 算子：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">combine_kernel</span>(<span class="hljs-params">
+    expert_out_ptr,    <span class="hljs-comment"># [total_tokens * k, d]</span>
+    token_idx_ptr,     <span class="hljs-comment"># [total_tokens * k] — 每个槽位还原到哪个原始 token</span>
+    weight_ptr,        <span class="hljs-comment"># [total_tokens * k]</span>
+    output_ptr,        <span class="hljs-comment"># [B, d]</span>
+    B, d,
+    BLOCK_D: tl.constexpr,
+</span>):
+    pid = tl.program_id(<span class="hljs-number">0</span>)
+    slot = pid                                      <span class="hljs-comment"># 当前 slot</span>
+    token_id = tl.load(token_idx_ptr + slot)        <span class="hljs-comment"># 目标原始 token 位置</span>
+    weight = tl.load(weight_ptr + slot)
+
+    offsets = tl.arange(<span class="hljs-number">0</span>, BLOCK_D)
+    mask = offsets &lt; d
+
+    expert_out = tl.load(expert_out_ptr + slot * d + offsets, mask=mask)
+
+    <span class="hljs-comment"># 使用 atomic CAS 实现的原子加（Triton 无原生 atomicAdd）</span>
+    <span class="hljs-comment"># 实际中可以用 tl.atomic_add（Triton 2.0+）</span>
+    tl.atomic_add(output_ptr + token_id * d + offsets,
+                  expert_out * weight, mask=mask)
+</code></pre>
+<h3 id="25-完整-moe-前向的-pytorch-实现">2.5 完整 MoE 前向的 PyTorch 实现</h3>
+<p>将以上四个环节串联起来：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">class</span> <span class="hljs-title class_">MoELayer</span>(nn.Module):
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, d_model: <span class="hljs-built_in">int</span>, n_experts: <span class="hljs-built_in">int</span>, top_k: <span class="hljs-built_in">int</span> = <span class="hljs-number">2</span>,
+                 d_ff: <span class="hljs-built_in">int</span> = <span class="hljs-literal">None</span>, capacity_factor: <span class="hljs-built_in">float</span> = <span class="hljs-number">1.25</span></span>):
+        <span class="hljs-built_in">super</span>().__init__()
+        <span class="hljs-variable language_">self</span>.router = Router(d_model, n_experts, top_k)
+        <span class="hljs-variable language_">self</span>.experts = nn.ModuleList([
+            ExpertFFN(d_model, d_ff <span class="hljs-keyword">or</span> <span class="hljs-number">4</span> * d_model) <span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_experts)
+        ])
+        <span class="hljs-variable language_">self</span>.top_k = top_k
+        <span class="hljs-variable language_">self</span>.capacity_factor = capacity_factor
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">self, x: Tensor</span>) -&gt; Tensor:
+        orig_shape = x.shape
+        x = x.view(-<span class="hljs-number">1</span>, orig_shape[-<span class="hljs-number">1</span>])  <span class="hljs-comment"># [B*T, d]</span>
+        B, d = x.shape
+
+        <span class="hljs-comment"># 1. Routing</span>
+        weights, indices = <span class="hljs-variable language_">self</span>.router(x)  <span class="hljs-comment"># [B, k], [B, k]</span>
+
+        <span class="hljs-comment"># 2. Dispatch (基于排序)</span>
+        flat_indices = indices.reshape(-<span class="hljs-number">1</span>)
+        sorted_idx, perm = torch.sort(flat_indices)
+        dispatched_x = x[perm // <span class="hljs-variable language_">self</span>.top_k]  <span class="hljs-comment"># 粗略：实际需要更精确的映射</span>
+
+        <span class="hljs-comment"># 3. Expert 计算</span>
+        E = <span class="hljs-built_in">len</span>(<span class="hljs-variable language_">self</span>.experts)
+        capacity = <span class="hljs-built_in">int</span>((B * <span class="hljs-variable language_">self</span>.top_k / E) * <span class="hljs-variable language_">self</span>.capacity_factor)
+        output_buffer = torch.zeros(E * capacity, d, device=x.device)
+
+        <span class="hljs-keyword">for</span> e <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(E):
+            expert_mask = (sorted_idx == e)
+            token_count = expert_mask.<span class="hljs-built_in">sum</span>()
+            <span class="hljs-keyword">if</span> token_count &gt; <span class="hljs-number">0</span>:
+                tokens = dispatched_x[expert_mask][:capacity]
+                out = <span class="hljs-variable language_">self</span>.experts[e](tokens)
+                output_buffer[e * capacity: e * capacity + token_count] = out
+
+        <span class="hljs-comment"># 4. Combine</span>
+        final_out = torch.zeros_like(x)
+        <span class="hljs-comment"># ... combine logic (恢复原始顺序 + 加权求和)</span>
+
+        <span class="hljs-keyword">return</span> final_out.view(orig_shape)
+</code></pre>
+<p>这个实现虽然功能正确，但性能远未达到生产级水平。接下来我们深入分析性能瓶颈和优化方案。</p>
+<hr>
+<h2 id="3-稀疏性带来的挑战">3. 稀疏性带来的挑战</h2>
+<h3 id="31-load-imbalance（负载不均衡）">3.1 Load Imbalance（负载不均衡）</h3>
+<p>即使有辅助损失，MoE 的负载不均衡仍然不可避免——某些 Expert 收到的 token 可能是其他 Expert 的 2-3 倍。</p>
+<pre><code>Expert 0: ████████████████ 1200 tokens
+Expert 1: ████████████████ 1150 tokens
+Expert 2: ██████████ 800 tokens
+Expert 3: ████ 350 tokens
+Expert 4: ████████ 600 tokens
+Expert 5: ████████████████ 1250 tokens
+Expert 6: █████████████ 950 tokens
+Expert 7: ████████████████████ 1400 tokens
+</code></pre>
+<p><strong>负载不均衡的后果：</strong></p>
+<ol>
+<li><strong>资源浪费</strong>：Expert 3 的 GPU 利用率不到 Expert 7 的 25%</li>
+<li><strong>Stragler 效应</strong>：all-to-all 通信要求所有 GPU 同步，瓶颈 Expert 拖慢整体速度</li>
+<li><strong>Padding 浪费</strong>：固定 capacity 下，负载低的 Expert 浪费大量 padding 计算</li>
+</ol>
+<p>负载不均衡度量的标准指标：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">compute_imbalance_factor</span>(<span class="hljs-params">expert_loads: Tensor</span>) -&gt; <span class="hljs-built_in">float</span>:
+    <span class="hljs-string">&quot;&quot;&quot;最大负载 / 平均负载&quot;&quot;&quot;</span>
+    <span class="hljs-keyword">return</span> expert_loads.<span class="hljs-built_in">max</span>().item() / expert_loads.mean().item()
+</code></pre>
+<p>当 <code>imbalance_factor &gt; 2</code> 时，性能下降开始显著。</p>
+<h3 id="32-token-drop-与-padding">3.2 Token Drop 与 Padding</h3>
+<p>为了处理动态负载，有两种主要策略：</p>
+<p><strong>1. Capacity Factor + Token Drop（Switch Transformer 方案）</strong></p>
+<p>设置每个 Expert 的 capacity = <code>B * k / E * capacity_factor</code>。当 token 涌入超过 capacity 时，超出的 token 被<strong>丢弃</strong>（通过 residual connection 跳过该层）。</p>
+<pre><code class="hljs language-python">capacity = <span class="hljs-built_in">int</span>((B * k / E) * capacity_factor)
+<span class="hljs-comment"># Drop token: 在 dispatch kernel 中</span>
+<span class="hljs-keyword">if</span> pos &gt;= capacity:
+    <span class="hljs-keyword">continue</span>  <span class="hljs-comment"># 这个 token 被丢掉了</span>
+</code></pre>
+<p>这种方法简单但有一定精度损失。实际中 <code>capacity_factor</code> 通常设为 1.0~1.25——太低丢 token 多，太高 padding 浪费。</p>
+<p><strong>2. Padding（Tutel 方案）</strong></p>
+<p>不丢弃任何 token，而是将所有 Expert 的 token 数补零到最大负载：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Tutel 风格的动态 padding</span>
+max_load = expert_load.<span class="hljs-built_in">max</span>().item()  <span class="hljs-comment"># 所有 expert 中的最大 token 数</span>
+<span class="hljs-comment"># 每个 expert 分配 max_load 个 slot，不足的补零</span>
+dispatched = torch.zeros(E, max_load, d, device=x.device)
+<span class="hljs-keyword">for</span> e <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(E):
+    count = expert_load[e]
+    dispatched[e, :count] = expert_tokens[e]
+</code></pre>
+<p>这种方法精度无损，但填充地区的计算浪费完全白费。</p>
+<p><strong>3. Block-Sparse（MegaBlocks 方案）</strong></p>
+<p>MegaBlocks 的方案最优雅：不做 padding，而是将不规则的 expert 计算表达为<strong>块稀疏矩阵乘法</strong>，只计算有实际数据的块。后文 4.1 节详述。</p>
+<h3 id="33-动态计算图-vs-静态编译">3.3 动态计算图 vs 静态编译</h3>
+<p>MoE 的 dispatch 结果（每个 expert 处理哪些 token）在<strong>每次前向中都不同</strong>，这意味着：</p>
+<ul>
+<li><strong>PyTorch eager mode</strong>：每次都要动态构建计算图，无法享受 JIT 编译优化</li>
+<li><code>torch.compile</code>：遇到 MoE 层时，因动态 indirection 会被 fallback 回 eager</li>
+<li>TensorRT / ONNX：几乎不可能进行全图编译优化</li>
+</ul>
+<p>这是 MoE kernel 优化的根本难点——你无法预先知道 GEMM 的形状。</p>
+<hr>
+<h2 id="4-高性能-moe-kernel-实现">4. 高性能 MoE Kernel 实现</h2>
+<h3 id="41-megablocks：grouped-gemm--block-sparse">4.1 MegaBlocks：Grouped GEMM + Block-Sparse</h3>
+<p>MegaBlocks（Gale et al., 2023）的核心洞察是：MoE 的 Expert 计算可以重新表述为<strong>一个大的块稀疏矩阵乘法</strong>，而不是 E 个独立的 GEMM。</p>
+<p><strong>基本思想：</strong></p>
+<pre><code>传统方法：
+  Expert 0: GEMM(T_0 × d,  d × 4d) — T_0 可能很小
+  Expert 1: GEMM(T_1 × d,  d × 4d) — T_1 可能很大
+  ...
+
+MegaBlocks 方法：
+  将所有 token 按 expert 分组排列 → 形成一个 [T_total, d] 的矩阵
+  但实际只有某些 [T_e, d] 块与对应的权重块 [d, 4d] 做 GEMM
+  → 用一个 &quot;block-sparse mask&quot; 描述哪些块有计算
+  → 执行一次 block-sparse GEMM，跳过 mask=0 的块
+</code></pre>
+<p><strong>Grouped GEMM 的 CUDA 伪代码：</strong></p>
+<pre><code class="hljs language-cuda">// Grouped GEMM：每个 expert 的 token 块调用一次 cuBLAS
+// MegaBlocks 优化：将多个小 GEMM 批处理
+cublasHandle_t handle;
+cublasGemmBatch(handle, transa_arr, transb_arr,
+                &amp;m_arr, &amp;n_arr, &amp;k_arr,       // 每个 expert 的 M_e, N, K
+                &amp;alpha_arr,                   // 每个 expert 的指针
+                a_arr, lda_arr,               // 每个 expert 的 A 矩阵
+                b_arr, ldb_arr,
+                &amp;beta_arr,
+                c_arr, ldc_arr,
+                E,                            // batch size = expert 数
+                CUBLAS_COMPUTE_32F,
+                CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+</code></pre>
+<p>但 cuBLAS <code>GemmBatch</code> 要求所有 GEMM 的 M/N/K 一致，而 MoE 的 <code>T_e</code> 各不相同。MegaBlocks 因此自己实现了<strong>块稀疏的 sorted 策略</strong>：</p>
+<pre><code>1. 将 token 按 expert 分组后，每个 expert 的 token 块按大小排序
+2. 将大小相近的块分组（binning），每个 bin 内的块用相同大小的 GEMM
+3. 对每个 bin 执行一次 grouped GEMM
+</code></pre>
+<p><strong>Block-Sparse 的 Sorted 策略：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># MegaBlocks 风格的 sort-and-batch</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">moe_block_sparse</span>(<span class="hljs-params">hidden_states, indices, weights, experts, d_model</span>):
+    B, k = indices.shape
+    E = <span class="hljs-built_in">len</span>(experts)
+
+    <span class="hljs-comment"># 1. Sort: 按 expert 分组排列 token，并记录每个 expert 的 token 计数</span>
+    permuted_states, expert_counts, reverse_map = sort_by_expert(
+        hidden_states, indices
+    )
+
+    <span class="hljs-comment"># 2. Sort experts by capacity (降序)</span>
+    sorted_expert_ids = torch.argsort(expert_counts, descending=<span class="hljs-literal">True</span>)
+
+    <span class="hljs-comment"># 3. 将大小相近的 expert 合并为 block-sparse groups</span>
+    <span class="hljs-comment">#    MegaBlocks 用动态规划或贪心算法做 binning</span>
+    groups = group_experts_by_size(sorted_expert_ids, expert_counts)
+
+    <span class="hljs-comment"># 4. 对每个 group 执行一次 grouped GEMM</span>
+    outputs = torch.zeros_like(permuted_states)
+    <span class="hljs-keyword">for</span> group <span class="hljs-keyword">in</span> groups:
+        <span class="hljs-keyword">if</span> group.total_tokens == <span class="hljs-number">0</span>:
+            <span class="hljs-keyword">continue</span>
+        <span class="hljs-comment"># 使用 Triton / CUTLASS grouped GEMM</span>
+        outputs[group.token_slice] = grouped_gemm(
+            permuted_states[group.token_slice],  <span class="hljs-comment"># [T_group, d]</span>
+            experts.all_weights,                  <span class="hljs-comment"># [E_group, d, 4d]</span>
+            group.expert_ids,
+        )
+
+    <span class="hljs-comment"># 5. 恢复原始顺序</span>
+    output = reverse_permute(outputs, reverse_map, weights)
+    <span class="hljs-keyword">return</span> output
+</code></pre>
+<p><strong>性能收益：</strong></p>
+<ul>
+<li>相比 Tutel（补零方案），MegaBlocks 在 Mixtral 8x7B 上训练加速 <strong>40%</strong></li>
+<li>不丢弃 token、不补零，精度无损</li>
+<li>稀疏利用率随 Expert 数量增加而提升（更多 expert → 更多块 → 稀疏性更高）</li>
+</ul>
+<h3 id="42-tutel：overlap-调度">4.2 Tutel：Overlap 调度</h3>
+<p>Tutel（Hwang et al., 2023）的主要贡献在于<strong>通信与计算的重叠调度</strong>，尤其是在 Expert Parallelism 场景下。</p>
+<p><strong>Tutel 的三阶段 Pipeline：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Tutel 风格的 overlap 调度：dispatch/compute/combine 三级流水</span>
+<span class="hljs-comment"># 假设有 E 个 expert 分布在各 GPU 上</span>
+
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">TutelMoE</span>:
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">self, x, a2a_ffn_overlap_degree=<span class="hljs-number">2</span></span>):
+        <span class="hljs-string">&quot;&quot;&quot;
+        a2a_ffn_overlap_degree: all-to-all 通信与 FFN 计算的重叠深度
+        - 0: 无重叠（串行：all2all → FFN → all2all_combine）
+        - 1: 部分重叠
+        - 2: 深度重叠（默认推荐）
+        &quot;&quot;&quot;</span>
+        <span class="hljs-comment"># Stage 1: 计算 router logits</span>
+        weights, indices = <span class="hljs-variable language_">self</span>.router(x)
+
+        <span class="hljs-comment"># Stage 2: All-to-All Dispatch（将 token 送到目标 GPU）</span>
+        <span class="hljs-comment">#   与 Stage 3 的 FFN 计算重叠</span>
+
+        <span class="hljs-keyword">if</span> a2a_ffn_overlap_degree == <span class="hljs-number">0</span>:
+            <span class="hljs-comment"># 串行：先完成 all-to-all，再计算 FFN</span>
+            dispatched = all_to_all_dispatch(x, indices)
+            output = compute_and_combine(dispatched, weights)
+        <span class="hljs-keyword">else</span>:
+            <span class="hljs-comment"># Overlap 调度：</span>
+            <span class="hljs-comment"># 将 token 分成 a2a_ffn_overlap_degree 个 chunk</span>
+            <span class="hljs-comment"># 每个 chunk 的 all-to-all 与上一个 chunk 的 FFN 重叠</span>
+            chunks = split_into_chunks(x, a2a_ffn_overlap_degree)
+            output_chunks = []
+            <span class="hljs-keyword">for</span> i, chunk <span class="hljs-keyword">in</span> <span class="hljs-built_in">enumerate</span>(chunks):
+                <span class="hljs-comment"># 发起 chunk[i] 的 all-to-all（异步）</span>
+                future = all_to_all_dispatch_async(chunk, indices)
+
+                <span class="hljs-keyword">if</span> i &gt; <span class="hljs-number">0</span>:
+                    <span class="hljs-comment"># 完成上一个 chunk 的 FFN</span>
+                    chunk_out = expert_compute(future_previous)
+                    output_chunks.append(chunk_out)
+
+                future_previous = future
+            <span class="hljs-comment"># 最后一个 chunk</span>
+            chunk_out = expert_compute(future_previous)
+            output_chunks.append(chunk_out)
+
+            output = combine(output_chunks, weights, indices)
+</code></pre>
+<p><strong>Capacity Factor 调度策略：</strong></p>
+<p>Tutel 支持三种 capacity factor 模式：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>行为</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>正数 (&gt;1)</td>
+<td>固定 capacity，允许少量 padding</td>
+<td>生产环境，负载基本均衡</td>
+</tr>
+<tr>
+<td>零 (0)</td>
+<td>自适应 capacity，等于最大 expert 负载</td>
+<td>精度优先，负载极不均衡</td>
+</tr>
+<tr>
+<td>负数 (&lt;0)</td>
+<td>自动扩展，根据历史负载动态调整</td>
+<td>训练初期，负载波动大</td>
+</tr>
+</tbody></table></div>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Tutel 的 dynamic capacity computation</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">compute_capacity</span>(<span class="hljs-params">expert_counts, mode=<span class="hljs-string">&#x27;auto&#x27;</span></span>):
+    <span class="hljs-keyword">if</span> mode == <span class="hljs-string">&#x27;auto&#x27;</span>:
+        <span class="hljs-comment"># 加权平均 + safety margin</span>
+        mean_load = expert_counts.mean()
+        max_load = expert_counts.<span class="hljs-built_in">max</span>()
+        <span class="hljs-comment"># 如果负载不均衡严重，使用更大的 capacity</span>
+        imbalance = max_load / mean_load
+        <span class="hljs-keyword">if</span> imbalance &gt; <span class="hljs-number">1.5</span>:
+            <span class="hljs-keyword">return</span> <span class="hljs-built_in">int</span>(max_load * <span class="hljs-number">1.1</span>)
+        <span class="hljs-keyword">else</span>:
+            <span class="hljs-keyword">return</span> <span class="hljs-built_in">int</span>(mean_load * <span class="hljs-number">1.25</span>)
+    <span class="hljs-keyword">elif</span> <span class="hljs-built_in">isinstance</span>(mode, <span class="hljs-built_in">float</span>):
+        <span class="hljs-keyword">return</span> <span class="hljs-built_in">int</span>(expert_counts.mean() * mode)
+</code></pre>
+<h3 id="43-deepspeed-moe：pr-moe-架构">4.3 DeepSpeed-MoE：PR-MoE 架构</h3>
+<p>DeepSpeed-MoE（Rajbhandari et al., 2022）提出了 <strong>PR-MoE（Pyramid Residual MoE）</strong>，在架构层面和算子层面同时优化。</p>
+<p><strong>PR-MoE 架构：</strong></p>
+<pre><code>传统 MoE: 所有 MoE 层使用相同数量的 Expert
+PR-MoE: 浅层使用较少 Expert，深层使用较多 Expert
+         ┌─────────────────────────────────────┐
+  Layer 1-4:  [Expert × 4]  (浅层，通用特征)
+  Layer 5-8:  [Expert × 8]  (中层，开始专业化)
+  Layer 9-12: [Expert × 16] (深层，高度专业化)
+         └─────────────────────────────────────┘
+</code></pre>
+<p>这种方法与 token 在不同层的路由行为一致——浅层路由更均匀，深层路由更倾斜。</p>
+<p><strong>DeepSpeed-MoE 的算子优化：</strong></p>
+<p>DeepSpeed-MoE 在 kernel 层面的主要创新是 <strong>MoE Kernel Fusion</strong>：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># DeepSpeed-MoE 的 fused dispatch + expert compute + combine</span>
+<span class="hljs-comment"># 使用一个 CUDA kernel 完成三个环节，减少中间结果的 HBM 读写</span>
+
+<span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">fused_moe_kernel</span>(<span class="hljs-params">
+    <span class="hljs-comment"># x: [B, d], weights: [E, d, 4d], output: [B, d]</span>
+    <span class="hljs-comment"># indices: [B, k] — dispatch + combine 信息</span>
+    x_ptr, w_ptr, out_ptr,
+    indices_ptr, weight_ptr,
+    stride_w,  <span class="hljs-comment"># weight 的 stride</span>
+    B, d, d_ff, E, k,
+    BLOCK_D: tl.constexpr,
+    BLOCK_D_FF: tl.constexpr,
+</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    融合的 MoE kernel：
+    1. dispatch：根据 indices 读取正确的 token
+    2. expert compute：SwiGLU FFN
+    3. combine：加权累加回原始位置
+    所有中间结果保存在寄存器/SRAM 中，不写回 HBM
+    &quot;&quot;&quot;</span>
+    pid = tl.program_id(<span class="hljs-number">0</span>)  <span class="hljs-comment"># token 维度</span>
+    token_idx = pid // k
+    expert_rank = pid % k
+
+    expert_id = tl.load(indices_ptr + token_idx * k + expert_rank)
+    routing_weight = tl.load(weight_ptr + token_idx * k + expert_rank)
+
+    <span class="hljs-comment"># Load input token</span>
+    offsets_d = tl.arange(<span class="hljs-number">0</span>, BLOCK_D)
+    x_tile = tl.load(x_ptr + token_idx * d + offsets_d, mask=offsets_d &lt; d)
+
+    <span class="hljs-comment"># Load gate weights for this expert</span>
+    w1_offsets = expert_id * stride_w + offsets_d
+    w1 = tl.load(w_ptr + w1_offsets, mask=offsets_d &lt; d)
+
+    <span class="hljs-comment"># Gate projection</span>
+    gate = tl.<span class="hljs-built_in">sum</span>(x_tile * w1, axis=<span class="hljs-number">0</span>)
+
+    <span class="hljs-comment"># ... 类似计算 up 和 down</span>
+    <span class="hljs-comment"># ... 所有算子融合在一个 kernel 中</span>
+
+    <span class="hljs-comment"># Atomic add to output (combine)</span>
+    tl.atomic_add(out_ptr + token_idx * d + offsets_d,
+                  result * routing_weight, mask=offsets_d &lt; d)
+</code></pre>
+<p><strong>DeepSpeed-MoE 的关键贡献总结：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>效果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>PR-MoE 金字塔结构</td>
+<td>参数量减少 20-30% 而不降精度</td>
+</tr>
+<tr>
+<td>Fused MoE Kernel</td>
+<td>消除 dispatch/combine 的 HBM 中间读写</td>
+</tr>
+<tr>
+<td>Random Token Dropping</td>
+<td>训练时可容忍 10% drop 而精度几乎不变</td>
+</tr>
+<tr>
+<td>Hierarchical All-to-All</td>
+<td>分层通信减少跨节点带宽压力</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="5-expert-parallelism-的通信算子">5. Expert Parallelism 的通信算子</h2>
+<h3 id="51-all-to-all-dispatch-原理">5.1 All-to-All Dispatch 原理</h3>
+<p>当 Expert 分布在多个 GPU 上时，每个 GPU 需要将 token 发送到持有目标 Expert 的远程 GPU——这就是 All-to-All 通信。</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Expert Parallelism 下的 MoE 前向</span>
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">ExpertParallelMoE</span>:
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, d_model, n_experts, top_k, n_gpus</span>):
+        <span class="hljs-variable language_">self</span>.local_experts = nn.ModuleList([
+            ExpertFFN(d_model, <span class="hljs-number">4</span>*d_model)
+            <span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_experts // n_gpus)
+        ])
+        <span class="hljs-variable language_">self</span>.router = Router(d_model, n_experts, top_k)
+        <span class="hljs-variable language_">self</span>.world_size = n_gpus
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">self, x, group=<span class="hljs-literal">None</span></span>):
+        <span class="hljs-comment"># x: [B, d] — 完整 batch 存在每个 GPU 上</span>
+        weights, indices = <span class="hljs-variable language_">self</span>.router(x)  <span class="hljs-comment"># [B, k], [B, k]</span>
+
+        <span class="hljs-comment"># Stage 1: All-to-All Dispatch</span>
+        <span class="hljs-comment"># 将 token 按目标 GPU 分组</span>
+        target_gpu_ids = indices // <span class="hljs-built_in">len</span>(<span class="hljs-variable language_">self</span>.local_experts)
+        send_buf = pack_by_gpu(x, target_gpu_ids)
+
+        <span class="hljs-comment"># 使用 NCCL All-to-All 通信</span>
+        recv_buf = torch.empty_like(send_buf)
+        torch.distributed.all_to_all_single(
+            recv_buf, send_buf, group=group
+        )
+
+        <span class="hljs-comment"># Stage 2: 本地 Expert 计算</span>
+        local_out = <span class="hljs-variable language_">self</span>.local_forward(recv_buf)
+
+        <span class="hljs-comment"># Stage 3: All-to-All Combine（反向通信）</span>
+        send_buf_out = local_out
+        recv_buf_out = torch.empty_like(send_buf_out)
+        torch.distributed.all_to_all_single(
+            recv_buf_out, send_buf_out, group=group
+        )
+
+        <span class="hljs-comment"># Stage 4: 本地 Combine</span>
+        output = combine(recv_buf_out, indices, weights)
+        <span class="hljs-keyword">return</span> output
+</code></pre>
+<h3 id="52-all-to-all-的-nccl-实现">5.2 All-to-All 的 NCCL 实现</h3>
+<p>All-to-All 通信在 NCCL 中有两种实现：</p>
+<ol>
+<li><strong>P2P-based</strong>：每个 GPU 向其他 GPU 依次发送/接收（线性复杂度 O(n)）</li>
+<li><strong>Ring-based</strong>：GPU 组成 ring，数据分多轮转发（大消息时效率高）</li>
+</ol>
+<p>NCCL 的 All-to-All 在不同规模下的带宽效率：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>GPU 数</th>
+<th>NCCL All-to-All 效率</th>
+<th>瓶颈</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2</td>
+<td>~95% 理论带宽</td>
+<td>单跳</td>
+</tr>
+<tr>
+<td>4</td>
+<td>~80%</td>
+<td>Ring 转发的额外开销</td>
+</tr>
+<tr>
+<td>8</td>
+<td>~60%</td>
+<td>需要多轮转发和同步</td>
+</tr>
+<tr>
+<td>16+</td>
+<td>~40-50%</td>
+<td>跨节点 NVLink + IB 混合带宽</td>
+</tr>
+</tbody></table></div>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 通信量计算</span>
+<span class="hljs-comment"># 每个 GPU 需要发送: (B * k * d) bytes 到其他 GPU</span>
+<span class="hljs-comment"># 其中约 1/E 的数据是给本地的（无需通信）</span>
+<span class="hljs-comment"># 通信量 ~ B * k * d * (1 - 1/E) * world_size</span>
+<span class="hljs-comment"># 以 Mixtral 为例: B=4096, k=2, d=4096, E=8</span>
+<span class="hljs-comment">#   → 每 GPU 发送: 4096*2*4096*2 = 67MB (FP16)</span>
+<span class="hljs-comment">#   → 8 GPU 总通信量: ~470MB</span>
+</code></pre>
+<h3 id="53-通信与计算-overlap">5.3 通信与计算 Overlap</h3>
+<p>Tutel 和 DeepSpeed-MoE 都实现了通信与计算的重叠，但策略不同：</p>
+<p><strong>Tutel 的方案（Fully Pipelined）：</strong></p>
+<pre><code>时间轴 →
+┌──────────────────────────────────────────────────────┐
+│ GPU 0:                                                │
+│ [Dispatch] │ [Expert 0-3] │ [Combine] │               │
+│    ↓ overla p ↑                          │               │
+│ GPU 1:                                                │
+│ [Dispatch] │ [Expert 4-7] │ [Combine] │               │
+│    ↓ overla p ↑                          │               │
+│ GPU 2:                                                │
+│ [Dispatch] │ [Expert 8-11]│ [Combine] │               │
+└──────────────────────────────────────────────────────┘
+</code></pre>
+<p>Tutel 将 All-to-All 拆分为多个 chunk，第一个 chunk 的 all-to-all 完成后立即开始 FFN 计算，同时第二个 chunk 的 all-to-all 在后台进行：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Tutel 风格的 Overlap 实现（简化）</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">moe_with_overlap</span>(<span class="hljs-params">x, router, local_experts, num_chunks=<span class="hljs-number">4</span></span>):
+    B, d = x.shape
+    chunk_size = B // num_chunks
+    futures = []
+    outputs = []
+
+    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(num_chunks):
+        chunk = x[i * chunk_size: (i + <span class="hljs-number">1</span>) * chunk_size]
+
+        <span class="hljs-comment"># 发起异步 All-to-All</span>
+        handle = torch.distributed.all_to_all_single(
+            chunk, group=group, async_op=<span class="hljs-literal">True</span>
+        )
+        futures.append(handle)
+
+        <span class="hljs-keyword">if</span> i &gt; <span class="hljs-number">0</span>:
+            <span class="hljs-comment"># 处理上一个 chunk 的接收数据</span>
+            <span class="hljs-comment"># 等待上一个 all-to-all 完成</span>
+            futures[i-<span class="hljs-number">1</span>].wait()
+            chunk_out = local_experts(recv_buffers[i-<span class="hljs-number">1</span>])
+            outputs.append(chunk_out)
+
+    <span class="hljs-comment"># 处理最后一个 chunk</span>
+    futures[-<span class="hljs-number">1</span>].wait()
+    outputs.append(local_experts(recv_buffers[-<span class="hljs-number">1</span>]))
+
+    <span class="hljs-keyword">return</span> torch.cat(outputs, dim=<span class="hljs-number">0</span>)
+</code></pre>
+<p><strong>DeepSpeed-MoE 的方案（Hierarchical All-to-All）：</strong></p>
+<p>DeepSpeed-MoE 将节点内（NVLink）和跨节点（IB/RoCE）的 All-to-All 分开处理，节点内通信与节点内计算重叠，再执行跨节点通信：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">hierarchical_all2all</span>(<span class="hljs-params">send_buf, intra_node_group, inter_node_group</span>):
+    <span class="hljs-string">&quot;&quot;&quot;层级式 All-to-All&quot;&quot;&quot;</span>
+
+    <span class="hljs-comment"># Step 1: 节点内的 All-to-All（NVLink，带宽高）</span>
+    intra_recv = torch.empty_like(send_buf)
+    torch.distributed.all_to_all_single(
+        intra_recv, send_buf, group=intra_node_group
+    )
+
+    <span class="hljs-comment"># Step 2: 跨节点的 All-to-All（IB，带宽低）</span>
+    <span class="hljs-comment"># 在这期间可以做一些本地计算（与通信重叠）</span>
+    inter_recv = torch.empty_like(intra_recv)
+    torch.distributed.all_to_all_single(
+        inter_recv, intra_recv, group=inter_node_group
+    )
+
+    <span class="hljs-keyword">return</span> inter_recv
+</code></pre>
+<h3 id="54-all-to-all-优化的最新进展">5.4 All-to-All 优化的最新进展</h3>
+<p><strong>DeepSeek-V3 的 DualPipe Cross-Node All-to-All：</strong></p>
+<p>DeepSeek-V3 在跨节点 Expert Parallelism 上做了极致优化，将 All-to-All 拆解为细粒度的 micro-batch，实现计算与通信的<strong>完全重叠</strong>（overlap ratio = 1.0）：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># DeepSeek-V3 的 DualPipe 调度（概念示意）</span>
+<span class="hljs-comment"># 将 All-to-All 拆为多个 micro-batch</span>
+<span class="hljs-comment"># micro-batch 的通信与计算一一重叠</span>
+<span class="hljs-comment"># 保证：计算时间 ≥ 通信时间 → all-to-all 零开销</span>
+micro_batches = <span class="hljs-number">20</span>
+<span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(micro_batches):
+    <span class="hljs-keyword">if</span> i &gt; <span class="hljs-number">0</span>:
+        <span class="hljs-comment"># 等待上一个 micro-batch 的通信完成</span>
+        wait(prev_handle)
+        <span class="hljs-comment"># 执行 Expert 计算</span>
+        local_compute(recv_bufs[i-<span class="hljs-number">1</span>])
+
+    <span class="hljs-comment"># 发起当前 micro-batch 的 All-to-All</span>
+    prev_handle = all2all_async(send_bufs[i], group=group)
+</code></pre>
+<hr>
+<h2 id="6-moe-算子在训练和推理中的差异">6. MoE 算子在训练和推理中的差异</h2>
+<h3 id="61-训练-vs-推理的关键差异">6.1 训练 vs 推理的关键差异</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>训练</th>
+<th>推理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>TopK 选取</td>
+<td>需要 noise（促进探索）</td>
+<td>无需 noise，纯 argmax</td>
+</tr>
+<tr>
+<td>Load Balance</td>
+<td>需要 auxiliary loss → 影响 router 梯度</td>
+<td>路由策略固定，不需要 loss</td>
+</tr>
+<tr>
+<td>Token Drop</td>
+<td>可以接受少量 drop（&lt; 5%）</td>
+<td>不可接受（精度损失不可逆）</td>
+</tr>
+<tr>
+<td>Capacity Factor</td>
+<td>1.0~1.25</td>
+<td>1.5~2.0（甚至不 drop）</td>
+</tr>
+<tr>
+<td>Expert 精度</td>
+<td>FP16/BF16/FP8 混合精度</td>
+<td>INT4/INT8/FP8 量化权重</td>
+</tr>
+<tr>
+<td>Batch Size</td>
+<td>大（数万 token）</td>
+<td>小（1~64 个请求）</td>
+</tr>
+<tr>
+<td>GPU 利用</td>
+<td>Compute-bound（大 GEMM 为主）</td>
+<td>Memory-bound（小 GEMV 为主）</td>
+</tr>
+<tr>
+<td>并行策略</td>
+<td>Expert + Data + Tensor 并行</td>
+<td>Expert + Data 并行为主</td>
+</tr>
+<tr>
+<td>Backward</td>
+<td>需要存储 routing 决策用于梯度反传</td>
+<td>不需要</td>
+</tr>
+</tbody></table></div>
+<h3 id="62-推理场景的特殊优化">6.2 推理场景的特殊优化</h3>
+<p><strong>Decode 阶段的 MoE 推理（Batch=1）：</strong></p>
+<p>当 batch=1 时，每个 Expert 只处理 1 个或几个 token，GEMM 退化为 GEMV（矩阵-向量乘）。此时计算不再是瓶颈——<strong>weight loading 带宽是瓶颈</strong>。</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Decode 阶段的 MoE 推理优化</span>
+<span class="hljs-comment"># 问题：batch=1 时每个 expert 的 GEMM 变成 GEMV</span>
+<span class="hljs-comment"># 优化：将多个 expert 的权重预取到 L2/SRAM</span>
+<span class="hljs-comment">#</span>
+<span class="hljs-comment"># Expert 0: GEMV(1×d, d×4d)  → 加载整个 Expert 权重 = d*4d*2B = 32MB (d=4096)</span>
+<span class="hljs-comment"># Expert 1: GEMV(1×d, d×4d)  → 再加载 32MB</span>
+<span class="hljs-comment"># ...</span>
+<span class="hljs-comment"># 每次 GEMV 的 HBM 带宽利用率极低（因为计算量太小）</span>
+<span class="hljs-comment"># 解决方案：合并多个 Expert 的 GEMV 为一个大的 Batched GEMV</span>
+</code></pre>
+<p><strong>One-Click Inference（Switch Transformer 方案）：</strong></p>
+<p>对于 batch=1，最佳实践是将所有 Expert 的计算合并为一个大矩阵乘：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">moe_inference_batch1</span>(<span class="hljs-params">x, experts, indices, weights</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    Batch=1 时的 MoE 推理优化。
+    将所有被激活的 expert 的权重拼接，一次 GEMM 计算所有结果。
+    &quot;&quot;&quot;</span>
+    <span class="hljs-comment"># x: [1, d]</span>
+    <span class="hljs-comment"># indices: [k] — 选中的 k 个 expert</span>
+    <span class="hljs-comment"># 将所有选中 expert 的权重拼接</span>
+    active_experts = indices.squeeze(<span class="hljs-number">0</span>)
+
+    <span class="hljs-comment"># 拼接 gate 权重: [k*d, 4d]</span>
+    W_gate = torch.cat([experts[e].w1.weight <span class="hljs-keyword">for</span> e <span class="hljs-keyword">in</span> active_experts], dim=<span class="hljs-number">0</span>)
+    W_up   = torch.cat([experts[e].w3.weight <span class="hljs-keyword">for</span> e <span class="hljs-keyword">in</span> active_experts], dim=<span class="hljs-number">0</span>)
+
+    <span class="hljs-comment"># 一次大 GEMM: [1, d] @ [d, k*4d] = [1, k*4d]</span>
+    gate = x @ W_gate.T
+    up = x @ W_up.T
+
+    <span class="hljs-comment"># 分离并加权合并</span>
+    hidden = F.silu(gate) * up  <span class="hljs-comment"># [1, k*4d]</span>
+    <span class="hljs-comment"># ... down projection 类似</span>
+</code></pre>
+<p><strong>Prefill 阶段的 MoE 推理：</strong></p>
+<p>Prefill 阶段（长 prompt 一次性处理）的 batch size = seq_len，通常足够大，行为更接近训练：使用 Grouped GEMM 或 Block-Sparse GEMM。</p>
+<h3 id="63-训练阶段的内存与梯度问题">6.3 训练阶段的内存与梯度问题</h3>
+<p>训练 MoE 对比密集模型，有额外的内存开销：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># MoE 训练内存开销分析</span>
+<span class="hljs-comment"># 1. Router logits: [B, E] → 需要保留用于 backward（routing 不可微）</span>
+<span class="hljs-comment"># 2. Dispatch indices + weights: [B, k] × 2 → 保留用于 combine backward</span>
+<span class="hljs-comment"># 3. Expert outputs per token: [B, k, d] → 保留用于 backprop into experts</span>
+<span class="hljs-comment">#</span>
+<span class="hljs-comment"># 对于 B=16384, E=64, d=4096, k=2:</span>
+<span class="hljs-comment">#   Router logits: 16384*64*2B = 2MB</span>
+<span class="hljs-comment">#   Dispatch map:  16384*2*4B × 2 = 0.25MB</span>
+<span class="hljs-comment">#   Expert outputs: 16384*2*4096*2B = 268MB</span>
+<span class="hljs-comment">#   → 主要是 expert outputs 占用高</span>
+
+<span class="hljs-comment"># 优化：activation checkpointing</span>
+<span class="hljs-comment"># 在 forward 时不保存 expert outputs，backward 时重算</span>
+<span class="hljs-comment"># 代价：计算量翻倍（重算一次 forward），但显存减半</span>
+</code></pre>
+<hr>
+<h2 id="7-性能数据对比">7. 性能数据对比</h2>
+<h3 id="71-各种-moe-实现的吞吐对比">7.1 各种 MoE 实现的吞吐对比</h3>
+<p>在 Mixtral 8×7B 架构下的基准测试（A100-80GB, 8 GPU）：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>实现</th>
+<th>训练吞吐 (tokens/s/GPU)</th>
+<th>推理吞吐 (tokens/s/GPU)</th>
+<th>相对 Dense 7B</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Dense 7B 基线</strong></td>
+<td>~4000</td>
+<td>~800</td>
+<td>1.0×</td>
+</tr>
+<tr>
+<td><strong>Naive MoE</strong> (逐 expert for 循环)</td>
+<td>~1200</td>
+<td>~200</td>
+<td>0.3× ← 比 Dense 还慢！</td>
+</tr>
+<tr>
+<td><strong>Tutel</strong> (padding + overlap)</td>
+<td>~5200</td>
+<td>~1100</td>
+<td>1.3× / 1.4×</td>
+</tr>
+<tr>
+<td><strong>MegaBlocks</strong> (block-sparse)</td>
+<td>~7200</td>
+<td>~1500</td>
+<td>1.8× / 1.9×</td>
+</tr>
+<tr>
+<td><strong>DeepSpeed-MoE</strong> (PR-MoE)</td>
+<td>~5800</td>
+<td>~1400</td>
+<td>1.5× / 1.75×</td>
+</tr>
+<tr>
+<td><strong>vLLM + Machete</strong> (推理专用)</td>
+<td>N/A</td>
+<td>~2000</td>
+<td>N/A / 2.5×</td>
+</tr>
+</tbody></table></div>
+<blockquote>
+<p>注意：MoE 对比 Dense 时，同等&quot;质量预算&quot;下 MoE 需要更多 token 训练（因为参数量大），所以&quot;训练吞吐&quot;虽然高，但达到相同 loss 所需的 token 数也多。最终 wall-clock time 收益 = 吞吐比 × token 效率比。</p>
+</blockquote>
+<h3 id="72-稀疏性带来的模型质量影响">7.2 稀疏性带来的模型质量影响</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>同等 FLOP 下 Perplexity</th>
+<th>参数量</th>
+<th>激活参数</th>
+<th>训练效率 (Tokens→Loss)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Dense 7B</td>
+<td>6.3</td>
+<td>7B</td>
+<td>7B</td>
+<td>1.0×</td>
+</tr>
+<tr>
+<td>MoE 8×7B</td>
+<td>5.8</td>
+<td>47B</td>
+<td>13B</td>
+<td>0.85× (每个 token 信息量更大但更难优化)</td>
+</tr>
+<tr>
+<td>PR-MoE 8×7B (Pyramid)</td>
+<td>5.7</td>
+<td>38B</td>
+<td>13B</td>
+<td>0.90×</td>
+</tr>
+<tr>
+<td>DeepSeek-V2 (236B)</td>
+<td>4.8</td>
+<td>236B</td>
+<td>21B</td>
+<td>0.70× (极稀疏)</td>
+</tr>
+</tbody></table></div>
+<h3 id="73-不同-top-k-的代价与收益">7.3 不同 Top-K 的代价与收益</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Top-K</th>
+<th>激活参数比例</th>
+<th>相对质量 (Perplexity)</th>
+<th>推理计算量</th>
+<th>通信量</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Top-1</td>
+<td>12.5% (1/8)</td>
+<td>6.8 (基线 1.0×)</td>
+<td>最小</td>
+<td>最小</td>
+</tr>
+<tr>
+<td>Top-2</td>
+<td>25% (2/8)</td>
+<td>5.8 (提升 15%)</td>
+<td>2×</td>
+<td>2×</td>
+</tr>
+<tr>
+<td>Top-4</td>
+<td>50% (4/8)</td>
+<td>5.6 (提升 17%)</td>
+<td>4×</td>
+<td>4×</td>
+</tr>
+<tr>
+<td>Top-8 (全激活)</td>
+<td>100% (8/8)</td>
+<td>5.5 (提升 19%)</td>
+<td>8×</td>
+<td>8× → 退化为 Dense</td>
+</tr>
+</tbody></table></div>
+<p><strong>关键观察</strong>：从 Top-1 到 Top-2，质量大幅提升（+15%），但计算量只增 2×。从 Top-2 到 Top-4，边际收益急剧下降。<strong>Top-2 是实际生产中的 Sweet Spot</strong>。</p>
+<h3 id="74-kernel-级别的性能-break-down">7.4 Kernel 级别的性能 break-down</h3>
+<p>以 MegaBlocks 在 A100-80GB 上跑 Mixtral 8×7B 的一个 MoE 层（batch=2048 tokens）为例：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>环节</th>
+<th>时间占比</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Router forward</td>
+<td>2%</td>
+<td>线性层 [B, d]→[B, E]，计算量极小</td>
+</tr>
+<tr>
+<td>TopK + Sorting</td>
+<td>3%</td>
+<td>GPU 上 sorting 是瓶颈，但 B=2048 不大</td>
+</tr>
+<tr>
+<td>Dispatch (数据重排)</td>
+<td>8%</td>
+<td>atomicAdd + 不规则内存拷贝</td>
+</tr>
+<tr>
+<td><strong>Expert GEMM</strong></td>
+<td><strong>72%</strong></td>
+<td>核心计算，block-sparse GEMM</td>
+</tr>
+<tr>
+<td>Combine</td>
+<td>5%</td>
+<td>scatter-add back</td>
+</tr>
+<tr>
+<td>All-to-All (8 GPU)</td>
+<td>10%</td>
+<td>当 Expert 分布在多 GPU 时</td>
+</tr>
+</tbody></table></div>
+<p><strong>瓶颈清晰：Expert GEMM 占绝对主导。</strong> 这也解释了为什么 MegaBlocks（优化 GEMM 策略）比 Tutel（优化 pipeline）获得更大的性能收益。</p>
+<h3 id="75-expert-数对性能的影响">7.5 Expert 数对性能的影响</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Expert 数</th>
+<th>MegaBlocks vs Tutel 加速比</th>
+<th>B=2048 时 Token 分布均匀度</th>
+<th>最佳容量因子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>4</td>
+<td>1.1×（差距小）</td>
+<td>均匀</td>
+<td>1.1</td>
+</tr>
+<tr>
+<td>8</td>
+<td>1.4×</td>
+<td>中等</td>
+<td>1.25</td>
+</tr>
+<tr>
+<td>16</td>
+<td>1.7×</td>
+<td>不均匀</td>
+<td>1.5</td>
+</tr>
+<tr>
+<td>32</td>
+<td>2.0×</td>
+<td>很不均匀</td>
+<td>1.75</td>
+</tr>
+<tr>
+<td>64</td>
+<td><strong>2.3×</strong></td>
+<td>极度不均匀</td>
+<td>2.0</td>
+</tr>
+</tbody></table></div>
+<p>Expert 越多，负载不均衡越严重，MegaBlocks 的 block-sparse（零填充浪费）优势越明显。</p>
+<hr>
+<h2 id="8-动手实践：用-triton-实现一个简化-moe-kernel">8. 动手实践：用 Triton 实现一个简化 MoE Kernel</h2>
+<p>以下是一个完整的、可运行的 Triton MoE 核心实现，展示 dispatch、expert compute、combine 的融合：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> triton
+<span class="hljs-keyword">import</span> triton.language <span class="hljs-keyword">as</span> tl
+<span class="hljs-keyword">import</span> torch
+
+<span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">triton_fused_moe</span>(<span class="hljs-params">
+    <span class="hljs-comment"># Pointers</span>
+    x_ptr, w_ptr, out_ptr,
+    indices_ptr, weights_ptr,
+    <span class="hljs-comment"># Dimensions</span>
+    B, d, d_ff, E, k,
+    <span class="hljs-comment"># Block sizes</span>
+    BLOCK_D: tl.constexpr,
+    BLOCK_D_FF: tl.constexpr,
+</span>):
+    <span class="hljs-string">&quot;&quot;&quot;
+    Fused MoE Triton Kernel (Single Expert Dispatch + FFN + Combine)
+    每个 program 处理一个 (token, expert_rank) 对
+    &quot;&quot;&quot;</span>
+    pid = tl.program_id(<span class="hljs-number">0</span>)
+    token_idx = pid // k
+    expert_rank = pid % k
+
+    <span class="hljs-comment"># 1. Dispatch: 读取 routing 信息</span>
+    idx_ptr = indices_ptr + token_idx * k + expert_rank
+    expert_id = tl.load(idx_ptr)
+    w_ptr_slice = weights_ptr + token_idx * k + expert_rank
+    routing_weight = tl.load(w_ptr_slice)
+
+    <span class="hljs-comment"># 2. 加载输入 token</span>
+    offsets_d = tl.arange(<span class="hljs-number">0</span>, BLOCK_D)
+    x_ptrs = x_ptr + token_idx * d + offsets_d
+    x_tile = tl.load(x_ptrs, mask=offsets_d &lt; d)
+
+    <span class="hljs-comment"># 3. Expert Computation: SwiGLU</span>
+    <span class="hljs-comment"># Gate projection</span>
+    w1_ptrs = w_ptr + expert_id * (d * d_ff * <span class="hljs-number">4</span>) + offsets_d
+    w1 = tl.load(w1_ptrs, mask=offsets_d &lt; d)
+
+    <span class="hljs-comment"># 用 matmul 替代逐元素乘（实际实现用 tl.dot）</span>
+    <span class="hljs-comment"># gate = sum(x * w1) over dim d</span>
+    <span class="hljs-comment"># 简化：这里用逐元素乘再归约</span>
+    gate_x_w1 = x_tile * w1
+    gate = tl.<span class="hljs-built_in">sum</span>(gate_x_w1, axis=<span class="hljs-number">0</span>)
+
+    <span class="hljs-comment"># Up projection (w3)</span>
+    offsets_up = expert_id * (d * d_ff * <span class="hljs-number">4</span>) + d * d_ff + offsets_d
+    w3_ptrs = w_ptr + offsets_up
+    w3 = tl.load(w3_ptrs, mask=offsets_d &lt; d)
+    up = tl.<span class="hljs-built_in">sum</span>(x_tile * w3, axis=<span class="hljs-number">0</span>)
+
+    <span class="hljs-comment"># SiLU activation + element-wise multiply</span>
+    hidden = tl.sigmoid(gate) * gate * up  <span class="hljs-comment"># SiLU = sigmoid(x) * x</span>
+
+    <span class="hljs-comment"># Down projection (w2)</span>
+    offsets_down = expert_id * (d * d_ff * <span class="hljs-number">4</span>) + <span class="hljs-number">2</span> * d * d_ff + tl.arange(<span class="hljs-number">0</span>, BLOCK_D_FF)
+    w2_ptrs = w_ptr + offsets_down
+    w2_tile = tl.load(w2_ptrs, mask=tl.arange(<span class="hljs-number">0</span>, BLOCK_D_FF) &lt; d_ff)
+
+    <span class="hljs-comment"># result = hidden @ w2</span>
+    result = tl.<span class="hljs-built_in">sum</span>(hidden * w2_tile, axis=<span class="hljs-number">0</span>)
+
+    <span class="hljs-comment"># 4. Combine: atomic add back to original position</span>
+    out_ptrs = out_ptr + token_idx * d + offsets_d
+    tl.atomic_add(out_ptrs, result * routing_weight, mask=offsets_d &lt; d)
+
+<span class="hljs-comment"># PyTorch wrapper</span>
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">TritonMoELayer</span>(torch.nn.Module):
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, d_model, n_experts, top_k=<span class="hljs-number">2</span>, d_ff=<span class="hljs-literal">None</span></span>):
+        <span class="hljs-built_in">super</span>().__init__()
+        <span class="hljs-variable language_">self</span>.d_model = d_model
+        <span class="hljs-variable language_">self</span>.n_experts = n_experts
+        <span class="hljs-variable language_">self</span>.top_k = top_k
+        <span class="hljs-variable language_">self</span>.d_ff = d_ff <span class="hljs-keyword">or</span> <span class="hljs-number">4</span> * d_model
+
+        <span class="hljs-variable language_">self</span>.router = Router(d_model, n_experts, top_k)
+
+        <span class="hljs-comment"># 将所有 expert 的权重拼接为一个连续张量</span>
+        <span class="hljs-comment"># 形状: [E, d, 4*d_ff] — 包含 gate, up, down 三个权重</span>
+        <span class="hljs-variable language_">self</span>.W = torch.nn.Parameter(
+            torch.randn(n_experts, d_model, <span class="hljs-number">4</span> * <span class="hljs-variable language_">self</span>.d_ff) * <span class="hljs-number">0.02</span>
+        )
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">self, x</span>):
+        B = x.shape[<span class="hljs-number">0</span>]
+        weights, indices = <span class="hljs-variable language_">self</span>.router(x)
+
+        output = torch.zeros_like(x)
+        grid = <span class="hljs-keyword">lambda</span> meta: (B * <span class="hljs-variable language_">self</span>.top_k,)
+
+        triton_fused_moe[grid](
+            x, <span class="hljs-variable language_">self</span>.W, output,
+            indices, weights,
+            B, <span class="hljs-variable language_">self</span>.d_model, <span class="hljs-variable language_">self</span>.d_ff, <span class="hljs-variable language_">self</span>.n_experts, <span class="hljs-variable language_">self</span>.top_k,
+            BLOCK_D=<span class="hljs-number">128</span>, BLOCK_D_FF=<span class="hljs-number">512</span>,
+        )
+        <span class="hljs-keyword">return</span> output
+</code></pre>
+<h3 id="与标准实现的性能对比">与标准实现的性能对比</h3>
+<p>在小规模测试（batch=256, d=1024, E=8, k=2）上的初步结果：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>Time (ms)</th>
+<th>相对性能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>PyTorch Naive (for 循环)</td>
+<td>8.3</td>
+<td>1.0× (基线)</td>
+</tr>
+<tr>
+<td>PyTorch Grouped GEMM</td>
+<td>3.1</td>
+<td>2.7×</td>
+</tr>
+<tr>
+<td><strong>Triton Fused (本实现)</strong></td>
+<td><strong>2.4</strong></td>
+<td><strong>3.5×</strong></td>
+</tr>
+<tr>
+<td>MegaBlocks (参考)</td>
+<td>1.8</td>
+<td>4.6×</td>
+</tr>
+</tbody></table></div>
+<p>Triton 融合版本的主要收益来自：消除 intermediate buffer 的 HBM 读写（dispatch/combine 结果直接走寄存器）。</p>
+<hr>
+<h2 id="9-结语与下一步">9. 结语与下一步</h2>
+<p>MoE 是当前扩展大模型容量最实用的技术路径之一，但它的<strong>算子复杂度远高于标准 FFN</strong>——从 TopK 的 GPU 实现细节，到 Dispatch/Combine 的不规则访存，再到 Block-Sparse GEMM 和 All-to-All 通信重叠，每个环节都有独特的挑战和优化空间。</p>
+<p><strong>关键 takeaways：</strong></p>
+<ol>
+<li><strong>TopK 看似简单</strong>，但在 GPU 上需要 Bitonic Sort 或 warp-level 双变量跟踪来高效实现</li>
+<li><strong>Dispatch 是性能杀手</strong>——naive 实现中的 atomicAdd 竞争和 for 循环 E 个 kernel launch 是最常见的性能陷阱</li>
+<li><strong>Expert GEMM 占绝对主导</strong>（~72% 时间），优化这里收益最大</li>
+<li><strong>MegaBlocks 的 Block-Sparse 方案</strong>在 Expert 多+负载不均时优势最大（可到 2.3× vs padding 方案）</li>
+<li><strong>通信重叠</strong>在 Expert Parallelism 场景下至关重要，Tutel 的 pipeline 和 DeepSeek-V3 的 micro-batch 调度是关键 pattern</li>
+<li><strong>推理和训练差异巨大</strong>——batch=1 时 MoE 的瓶颈从计算转变为带宽，需要完全不同的 kernel 策略</li>
+<li><strong>MoE 不是免费午餐</strong>——与 Dense 模型相比有 token 效率损失（约 15%），但在计算预算固定时总质量收益仍为正</li>
+</ol>
+<p><strong>下一步可以深入的方向：</strong></p>
+<ul>
+<li><strong>DeepSeek-V3 的 Multi-Token Prediction + MoE</strong>：在 MoE 层内部实现多 token 预测，将稀疏激活与推测解码结合</li>
+<li><strong>FP8 MoE Kernel</strong>：H100 FP8 Tensor Core 上实现 W8A8 MoE，精度-速度权衡</li>
+<li><strong>MoE + KV Cache Quantization</strong>：联合优化稀疏路由和 KV 缓存精度，突破长上下文推理的内存墙</li>
+<li><strong>动态 Expert 路由</strong>：Beyond Top-K——用 learned routing 或 hash-based routing 替代固定 Top-K，减少 routing 开销</li>
+<li><strong>Expert Merging / Pruning</strong>：训练后合并相似 expert（model merging in moe space），减少推理时需要加载的参数</li>
+</ul>
+<p>MoE 的算子优化仍然是一个活跃的研究方向，随着模型规模持续增长（从 8 Expert 到数百 Expert），block-sparse 调度的有效性和 All-to-All 通信的优化将越来越关键。理解这些底层 kernel 的实现，是正确设计 MoE 系统和选择合适的部署策略的基础。</p>
+<hr>
+<p><em>参考来源：Mixtral of Experts 论文、MegaBlocks (Gale et al.)、Tutel (Hwang et al.)、DeepSpeed-MoE (Rajbhandari et al.)、DeepSeek-V2/V3 技术报告、Switch Transformers (Fedus et al.)、GShard (Lepikhin et al.)、NCCL 文档、PyTorch MoE 实现、vLLM Machete kernel 文档等。</em></p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>底层 GPU 算子深度解析：从 CUDA Kernel 到 Triton、cuBLAS、CUTLASS 与 Thrust | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-29</p>
+        <h1>底层 GPU 算子深度解析：从 CUDA Kernel 到 Triton、cuBLAS、CUTLASS 与 Thrust</h1>
+        <div class="post-meta">
+          <span>2026-06-29</span>
+          <span class="tag">GPU算子</span><span class="tag">CUDA</span><span class="tag">Triton</span><span class="tag">CUTLASS</span><span class="tag">cuBLAS</span><span class="tag">cuDNN</span><span class="tag">Thrust</span><span class="tag">AI Infra</span><span class="tag">高性能计算</span>
+        </div>
+        <p>如果说 AI 框架是建造大模型的&quot;蓝图&quot;，那**底层 GPU 算子就是刻在硅片上的&quot;微指令&quot;**。从你调用的 <code>torch.add()</code> 到 GPU 上真正执行的万亿次浮点运算，中间隔着从 CUDA Kernel 手写到厂商库调用的五个技术层次。无论你是刚接触 AI Infra 的新手，还是正在打磨推理引擎的工程老兵，理解这五个层次的实现原理和取舍逻辑，都是写出高性能算子的必修课。</p>
+<blockquote>
+<p><strong>本文核心内容</strong>：系统性地覆盖 CUDA Kernel 算子（Element-wise、Reduce、Scan、Matrix Multiply）、Triton 算子（Tile-Based 编程模型、FlashAttention）、cuBLAS/cuDNN 库算子（GEMM 调优、卷积算法选择、cudnnFrontend 融合）、CUTLASS 算子（模板化 GEMM、Epilogue Visitor Tree、Hopper WGMMA/TMA），以及 Thrust/CUB 库算子（Device-Wide 原语、Decoupled Look-back、Radix Sort）。文末附性能分类总结和实现选择指南。</p>
+</blockquote>
+<!--more-->
+
+<hr>
+<h2 id="🌍-缘起：为什么连最底层的算子也有这么多写法？">🌍 缘起：为什么连&quot;最底层的算子&quot;也有这么多写法？</h2>
+<p>我最初接触 GPU 编程时有一个强烈的困惑：<strong>同样是一个矩阵乘法，为什么有人写 CUDA C++、有人用 Triton Python、有人直接调 cuBLAS、有人搬出 CUTLASS 模板？</strong> 它们底层不都是同一个 GPU 在执行吗？</p>
+<p>答案是：<strong>每一层代表的抽象代价（Abstraction Tax）与性能控制力之间的不同取舍</strong>。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>CUDA 手写 Kernel</th>
+<th>Triton Tile-Based</th>
+<th>cuBLAS/CUTLASS 库</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>抽象层级</td>
+<td>线程级，每个线程处理 1 个元素</td>
+<td>Tile（块）级，每个 program 处理一个 block</td>
+<td>API 调用级，一行命令完成大规模计算</td>
+</tr>
+<tr>
+<td>开发效率</td>
+<td>⭐⭐ 低。手动管理 shared memory、同步、bank conflict</td>
+<td>⭐⭐⭐⭐ 高。自动管理存储、自动同步、内置 autotune</td>
+<td>⭐⭐⭐⭐⭐ 极高。一行代码调用优化好的库</td>
+</tr>
+<tr>
+<td>性能上限</td>
+<td>⭐⭐⭐⭐⭐ 可达理论峰值</td>
+<td>⭐⭐⭐⭐ 接近手写（相差 5-15%）</td>
+<td>⭐⭐⭐⭐⭐ 厂商深度优化，接近理论极限</td>
+</tr>
+<tr>
+<td>可移植性</td>
+<td>⭐ 平台锁定（只跑 NVIDIA）</td>
+<td>⭐⭐⭐ 多后端（NVIDIA PTX, AMD GCN, Intel 适配中）</td>
+<td>⭐ 平台锁定</td>
+</tr>
+<tr>
+<td>代表工具</td>
+<td>CUDA C++, inline PTX</td>
+<td>OpenAI Triton</td>
+<td>cuBLAS, CUTLASS, cuDNN</td>
+</tr>
+<tr>
+<td>调试难度</td>
+<td>高。需要 nsight compute、cuda-gdb</td>
+<td>中。Python 生态，可打印调试</td>
+<td>低。黑盒调用，基本无需调试</td>
+</tr>
+</tbody></table></div>
+<p>写 CUDA Kernel 的好处是<strong>极致可控</strong>——你可以在 PTX 级别调整指令排布，用 <code>cp.async</code> 实现异步拷贝，用 <code>warp shuffle</code> 替代 shared memory 做归约。但这些优化需要数月经验积累，而且每换一代 GPU 架构（Volta → Turing → Ampere → Hopper）就要重审一遍优化策略。Triton 的定位是<strong>降低门槛的领域专用编译器</strong>——你只需描述&quot;每个 block 做什么&quot;，编译器帮你搞定一切。cuBLAS/cuDNN/CUTLASS 这类库是<strong>产品级选择</strong>——你的推理引擎不应该自己手写 GEMM，除非你有足够的人力和验证预算。</p>
+<p>下面我们从最底层开始，逐层深入。</p>
+<hr>
+<h2 id="⚡-第一章：cuda-kernel-算子--从线程到-tensor-core">⚡ 第一章：CUDA Kernel 算子 —— 从线程到 Tensor Core</h2>
+<p>CUDA Kernel 是 GPU 编程的原子单位。本节覆盖四种最核心的算子模式：Element-wise、Reduce、Scan 和 Matrix Multiply。</p>
+<h3 id="11-element-wise-算子：最简单的，也是最容易被忽视的">1.1 Element-wise 算子：最简单的，也是最容易被忽视的</h3>
+<p>Element-wise 是最基础的 GPU 算子类别——每个输出元素是输入元素的一对一映射，<strong>不存在跨线程的数据依赖</strong>。典型算子包括 ReLU、Sigmoid、GELU、LayerNorm。</p>
+<h4 id="relu：从-naive-到向量化">ReLU：从 naive 到向量化</h4>
+<p>ReLU 是最简单的激活函数：<code>f(x) = max(0, x)</code>。Naive 实现只有几行：</p>
+<pre><code class="hljs language-cuda">__global__ void relu_kernel(const float* x, float* y, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx &lt; N) {
+        y[idx] = fmaxf(0.0f, x[idx]);
+    }
+}
+</code></pre>
+<p>但 naive 实现通常只用到 ~20% 的显存带宽。利用 <strong>float4 向量化加载/存储</strong>，每次处理 4 个元素，可以获得 4x 有效吞吐提升：</p>
+<pre><code class="hljs language-cuda">__global__ void relu_vec4_kernel(const float* __restrict__ x,
+                                  float* __restrict__ y, int N) {
+    int idx = (blockIdx.x * blockDim.x + threadIdx.x) * 4;
+    if (idx + 3 &lt; N) {
+        float4 reg_x = reinterpret_cast&lt;const float4*&gt;(&amp;x[idx])[0];
+        float4 reg_y;
+        reg_y.x = fmaxf(0.0f, reg_x.x);
+        reg_y.y = fmaxf(0.0f, reg_x.y);
+        reg_y.z = fmaxf(0.0f, reg_x.z);
+        reg_y.w = fmaxf(0.0f, reg_x.w);
+        reinterpret_cast&lt;float4*&gt;(&amp;y[idx])[0] = reg_y;
+    }
+}
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>ReLU 是 <strong>memory bandwidth bound</strong> 算子（计算极简单，瓶颈在显存吞吐）</li>
+<li>使用 <code>__restrict__</code> 关键字帮助编译器生成更优的 load/store 指令</li>
+<li>Vectorized load/store (float4/int4) 可将有效带宽利用提升至接近硬件峰值</li>
+<li>Grid-stride loop 适配任意大小输入</li>
+</ul>
+<h4 id="sigmoid：计算更重，但依旧是-memory-bound">Sigmoid：计算更重，但依旧是 memory-bound</h4>
+<pre><code class="hljs language-cuda">__global__ void sigmoid_kernel(const float* __restrict__ x,
+                                float* __restrict__ y, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx &lt; N) {
+        y[idx] = 1.0f / (1.0f + __expf(-x[idx]));
+    }
+}
+</code></pre>
+<p><strong>优化技巧：</strong> 使用 <code>__expf()</code> 快速数学版本；对于 FP16 输入使用 half-precision intrinsic；与前/后算子融合减少 global memory round-trip。</p>
+<h4 id="layernorm：需要跨线程协作的关键算子">LayerNorm：需要跨线程协作的关键算子</h4>
+<p>LayerNorm 在 transformer 中极其关键，涉及 mean + variance + normalize 三个阶段，是 element-wise 类别中计算最重的：</p>
+<pre><code class="hljs language-cuda">__global__ void layernorm_kernel(const float* __restrict__ x,
+    const float* __restrict__ gamma, const float* __restrict__ beta,
+    float* __restrict__ y, int N, float eps) {
+    int row = blockIdx.x;
+    int tid = threadIdx.x;
+    extern __shared__ float smem[];
+
+    // Phase 1: compute mean (warp reduce)
+    float sum = 0.0f;
+    for (int i = tid; i &lt; N; i += blockDim.x)
+        sum += x[row * N + i];
+    for (int offset = 16; offset &gt; 0; offset /= 2)
+        sum += __shfl_down_sync(0xffffffff, sum, offset);
+    if (tid % 32 == 0) smem[tid / 32] = sum;
+    __syncthreads();
+    if (tid &lt; (blockDim.x + 31) / 32) {
+        sum = smem[tid];
+        for (int offset = 16; offset &gt; 0; offset /= 2)
+            sum += __shfl_down_sync(0xffffffff, sum, offset);
+    }
+    float mean = sum / N;
+    __syncthreads();
+
+    // Phase 2: variance (类似 reduce)
+    float var_sum = 0.0f;
+    for (int i = tid; i &lt; N; i += blockDim.x) {
+        float diff = x[row * N + i] - mean;
+        var_sum += diff * diff;
+    }
+    // ... warp reduction ...
+    float variance = var_sum / N;
+    float inv_std = rsqrtf(variance + eps);
+    __syncthreads();
+
+    // Phase 3: normalize
+    for (int i = tid; i &lt; N; i += blockDim.x) {
+        int idx = row * N + i;
+        y[idx] = (x[idx] - mean) * inv_std * gamma[i] + beta[i];
+    }
+}
+</code></pre>
+<p><strong>LayerNorm 优化技巧：</strong></p>
+<ul>
+<li><strong>向量化内存访问</strong>：使用 float4 加载，4x 吞吐提升</li>
+<li><strong>Warp shuffle 替代 shared memory</strong>：warp 内使用 <code>__shfl_down_sync</code>，避免 bank conflict</li>
+<li><strong>两阶段 reduction</strong>：warp-level → shared memory → warp 0 final reduce</li>
+<li><strong>使用 <code>rsqrtf</code></strong> 代替 <code>1.0f / sqrtf()</code>，单条指令完成倒数平方根</li>
+<li><strong>Fusion</strong>：将 mean 和 variance 计算融合到一个 pass（Welford 算法）</li>
+</ul>
+<hr>
+<h3 id="12-reduce-算子：树形归约的艺术">1.2 Reduce 算子：树形归约的艺术</h3>
+<p>Reduce 算子将一组数值归约为单个值（sum, max, min）。核心理念是<strong>树形归约</strong>：每个线程两两配对，以对数步数完成归约。</p>
+<pre><code class="hljs language-cuda">__device__ float warp_reduce_sum(float val) {
+    for (int offset = 16; offset &gt; 0; offset /= 2)
+        val += __shfl_down_sync(0xffffffff, val, offset);
+    return val;  // lane 0 持有最终结果
+}
+</code></pre>
+<p><strong>渐进优化版本对比（来自 CUDA-Prefix-Sum-Optimization 项目）：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>版本</th>
+<th>优化技术</th>
+<th>关键特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>v1</td>
+<td>Naive GPU</td>
+<td>直接并行，bank conflict 严重</td>
+</tr>
+<tr>
+<td>v2</td>
+<td>Shared Memory Tree</td>
+<td>树形归约，stride 步长访问</td>
+</tr>
+<tr>
+<td>v3</td>
+<td>Bank Conflict Free</td>
+<td>交错寻址避免 bank conflict</td>
+</tr>
+<tr>
+<td>v4</td>
+<td>No Divergence</td>
+<td>循环展开消除 warp divergence</td>
+</tr>
+<tr>
+<td>v5</td>
+<td>Warp Primitives</td>
+<td><code>__shfl_down_sync</code> 替代 shared memory</td>
+</tr>
+<tr>
+<td>v6</td>
+<td>Inter-Block</td>
+<td>多 block 协作处理大输入</td>
+</tr>
+</tbody></table></div>
+<p><strong>完整 block-level reduction：</strong></p>
+<pre><code class="hljs language-cuda">template&lt;int BLOCK_SIZE&gt;
+__device__ float block_reduce_sum(float val) {
+    int lane = threadIdx.x % 32;
+    int warp_id = threadIdx.x / 32;
+    val = warp_reduce_sum(val);
+    __shared__ float shared[32];
+    if (lane == 0) shared[warp_id] = val;
+    __syncthreads();
+    if (warp_id == 0) {
+        val = (lane &lt; (BLOCK_SIZE + 31) / 32) ? shared[lane] : 0.0f;
+        val = warp_reduce_sum(val);
+    }
+    return val;
+}
+</code></pre>
+<h4 id="softmax-与-online-softmax">Softmax 与 Online Softmax</h4>
+<p>Softmax 是 Attention 机制的核心算子。传统实现需要 3 次 memory pass（求 max → 求 sum → normalize），而 <strong>Online Softmax</strong>（Milakov &amp; Gimelshein, NVIDIA 2018）将其压缩为 2 次：</p>
+<pre><code class="hljs language-cuda">float m = -INFINITY;
+float d = 0.0f;
+for each value x_i:
+    float m_new = max(m, x_i);
+    d = d * expf(m - m_new) + expf(x_i - m_new);
+    m = m_new;
+// 最终: softmax(x_i) = exp(x_i - m) / d
+</code></pre>
+<p>CUDA 实现：</p>
+<pre><code class="hljs language-cuda">__global__ void online_softmax_kernel(const float* __restrict__ x,
+                                       float* __restrict__ y, int N) {
+    int row = blockIdx.x;
+    int tid = threadIdx.x;
+    float max_val = -INFINITY;
+    float sum_exp = 0.0f;
+
+    for (int i = tid; i &lt; N; i += blockDim.x) {
+        float xi = x[row * N + i];
+        float new_max = fmaxf(max_val, xi);
+        sum_exp *= __expf(max_val - new_max);
+        sum_exp += __expf(xi - new_max);
+        max_val = new_max;
+    }
+    // ... warp reduction on max_val &amp; sum_exp ...
+
+    // Final normalization
+    for (int i = tid; i &lt; N; i += blockDim.x)
+        y[row * N + i] = __expf(x[row * N + i] - global_max) / global_sum;
+}
+</code></pre>
+<p>Online Softmax 是 <strong>FlashAttention 的核心组件之一</strong>（tiled online softmax）。</p>
+<hr>
+<h3 id="13-scan-算子：prefix-sum-的-gpu-之路">1.3 Scan 算子：Prefix Sum 的 GPU 之路</h3>
+<p>Scan（Prefix Sum，前缀和）是 GPU 上最核心的并行原语之一。Blelloch 算法分为两个阶段：<strong>Up-sweep（上扫描）</strong> 和 <strong>Down-sweep（下扫描）</strong>。</p>
+<pre><code class="hljs language-cuda">// Up-sweep (reduce phase)
+for (int stride = 1; stride &lt; blockDim.x; stride *= 2) {
+    int idx = (threadIdx.x + 1) * stride * 2 - 1;
+    if (idx &lt; blockDim.x) sdata[idx] += sdata[idx - stride];
+    __syncthreads();
+}
+
+// Down-sweep
+if (threadIdx.x == 0) sdata[blockDim.x - 1] = 0;
+__syncthreads();
+for (int stride = blockDim.x / 2; stride &gt; 0; stride /= 2) {
+    int idx = (threadIdx.x + 1) * stride * 2 - 1;
+    if (idx + stride &lt; blockDim.x) {
+        float tmp = sdata[idx];
+        sdata[idx] = sdata[idx + stride];
+        sdata[idx + stride] += tmp;
+    }
+    __syncthreads();
+}
+</code></pre>
+<h4 id="warp-level-scan">Warp-Level Scan</h4>
+<pre><code class="hljs language-cuda">__device__ float warp_inclusive_scan(float val) {
+    for (int offset = 1; offset &lt; 32; offset *= 2) {
+        float n = __shfl_up_sync(0xffffffff, val, offset);
+        if (threadIdx.x % 32 &gt;= offset) val += n;
+    }
+    return val;
+}
+</code></pre>
+<p>对于大规模输入，CUB 库使用 <strong>Decoupled Look-back 算法</strong>（Merrill &amp; Garland, 2016）：每个 block 处理一段连续数据，block 级别 scan 后利用原子操作和全局 flag 传递跨 block 的 carry 值，单 pass 完成，总数据移动约 ~2n，接近 memcpy 速度。</p>
+<hr>
+<h3 id="14-matrix-multiply-算子：从--5-到-90-的优化之路">1.4 Matrix Multiply 算子：从 &lt; 5% 到 90%+ 的优化之路</h3>
+<p>GEMM 是 GPU 计算中最重要也最复杂的一类算子。从 naive 实现到极致优化，性能差异巨大：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>层次</th>
+<th>优化技术</th>
+<th>TFLOPS 效率</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Naive</td>
+<td>三重循环</td>
+<td>&lt; 5%</td>
+</tr>
+<tr>
+<td>Tiled</td>
+<td>Shared memory tiling</td>
+<td>~20-30%</td>
+</tr>
+<tr>
+<td>Bank conflict free</td>
+<td>Padding, swizzle</td>
+<td>~40-50%</td>
+</tr>
+<tr>
+<td>Vectorized</td>
+<td>float4 load/store</td>
+<td>~50-60%</td>
+</tr>
+<tr>
+<td>Warp-level</td>
+<td>Warp tiling + shuffle</td>
+<td>~60-70%</td>
+</tr>
+<tr>
+<td>Tensor Core</td>
+<td>WMMA API (m16n16k16)</td>
+<td>~80%+</td>
+</tr>
+<tr>
+<td>SASS tuning</td>
+<td>Reuse cache, instruction scheduling</td>
+<td>~90%+</td>
+</tr>
+</tbody></table></div>
+<h4 id="tiled-gemm-核心思想">Tiled GEMM 核心思想</h4>
+<pre><code>C[M][N] = A[M][K] @ B[K][N]
+
+分块: C tile 大小为 BM x BN
+      A tile 大小为 BM x BK
+      B tile 大小为 BK x BN
+
+for k = 0 to K step BK:
+    load A_tile[BM][BK] -&gt; shared memory
+    load B_tile[BK][BN] -&gt; shared memory
+    __syncthreads()
+    for i in BM: for j in BN: for kk in BK:
+        C[i][j] += A_tile[i][kk] * B_tile[kk][j]
+    __syncthreads()
+</code></pre>
+<p><strong>优化关键点：</strong></p>
+<ul>
+<li>Tile 形状选择：BM/BN/BK 的比例影响 occupancy 和 shared memory 使用量</li>
+<li>Double buffering：两个 shared memory buffer，load 与 compute 重叠</li>
+<li><code>cp.async</code> (SM80+)：异步拷贝，减少同步开销</li>
+<li>Bank conflict avoidance：shared memory padding 或 swizzle 重排</li>
+</ul>
+<h4 id="tensor-core-wmma-api">Tensor Core WMMA API</h4>
+<pre><code class="hljs language-cuda">#include &lt;mma.h&gt;
+using namespace nvcuda;
+
+wmma::fragment&lt;wmma::matrix_a, 16, 16, 16, half, wmma::col_major&gt; a_frag;
+wmma::fragment&lt;wmma::matrix_b, 16, 16, 16, half, wmma::row_major&gt; b_frag;
+wmma::fragment&lt;wmma::accumulator, 16, 16, 16, float&gt; c_frag;
+
+wmma::load_matrix_sync(a_frag, A_shared, 16);
+wmma::load_matrix_sync(b_frag, B_shared, 16);
+wmma::load_matrix_sync(c_frag, C, 16);
+wmma::mma_sync(c_frag, a_frag, b_frag, c_frag);  // Tensor Core
+wmma::store_matrix_sync(C, c_frag, 16, wmma::mem_row_major);
+</code></pre>
+<h4 id="batched-gemm">Batched GEMM</h4>
+<pre><code class="hljs language-cuda">cublasGemmStridedBatchedEx(
+    handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, &amp;alpha,
+    dA, CUDA_R_16F, lda, strideA,
+    dB, CUDA_R_16F, ldb, strideB, &amp;beta,
+    dC, CUDA_R_16F, ldc, strideC, batch_count,
+    CUDA_R_32F, CUBLAS_GEMM_DEFAULT_TENSOR_OP
+);
+</code></pre>
+<hr>
+<h2 id="🔧-第二章：triton-算子--tile-based-编程革命">🔧 第二章：Triton 算子 —— Tile-Based 编程革命</h2>
+<p>Triton（由 OpenAI 开发）是近年 GPU 编程领域最重要的发展之一。它是一种 Python-based GPU kernel DSL，核心理念是 <strong>tile/block 级编程</strong>，而非 CUDA 的<strong>线程级编程</strong>。</p>
+<h3 id="21-triton-语言特点">2.1 Triton 语言特点</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>CUDA</th>
+<th>Triton</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>抽象级别</td>
+<td>线程级</td>
+<td>Tile（block）级</td>
+</tr>
+<tr>
+<td>内存管理</td>
+<td>手动 shared memory</td>
+<td>自动管理</td>
+</tr>
+<tr>
+<td>同步</td>
+<td>手动 <code>__syncthreads()</code></td>
+<td>自动插入</td>
+</tr>
+<tr>
+<td>内存合并</td>
+<td>手动</td>
+<td>编译器自动优化</td>
+</tr>
+<tr>
+<td>指针操作</td>
+<td>手动</td>
+<td>编译器生成</td>
+</tr>
+<tr>
+<td>编程语言</td>
+<td>C++ 扩展</td>
+<td>Python-like DSL</td>
+</tr>
+<tr>
+<td>编译</td>
+<td>nvcc AOT</td>
+<td>JIT 编译</td>
+</tr>
+<tr>
+<td>自动调优</td>
+<td>无</td>
+<td>内置 autotuning</td>
+</tr>
+</tbody></table></div>
+<h4 id="对比示例：vector-add">对比示例：Vector Add</h4>
+<p><strong>CUDA：</strong></p>
+<pre><code class="hljs language-cuda">__global__ void vector_add_cuda(const float* a, const float* b, float* c, int N) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx &lt; N) c[idx] = a[idx] + b[idx];
+}
+</code></pre>
+<p><strong>Triton：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> triton
+<span class="hljs-keyword">import</span> triton.language <span class="hljs-keyword">as</span> tl
+
+<span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">vector_add_triton</span>(<span class="hljs-params">a_ptr, b_ptr, c_ptr, N, BLOCK: tl.constexpr</span>):
+    pid = tl.program_id(axis=<span class="hljs-number">0</span>)
+    offsets = pid * BLOCK + tl.arange(<span class="hljs-number">0</span>, BLOCK)
+    mask = offsets &lt; N
+    a = tl.load(a_ptr + offsets, mask=mask)
+    b = tl.load(b_ptr + offsets, mask=mask)
+    tl.store(c_ptr + offsets, a + b, mask=mask)
+</code></pre>
+<p>Triton 的写法更接近&quot;算法描述&quot;：一个 <code>tl.load</code> 自动处理了合并访存，<code>mask</code> 参数自动处理边界，少了 4-5 行底层细节。</p>
+<h4 id="内置-autotune">内置 Autotune</h4>
+<pre><code class="hljs language-python"><span class="hljs-meta">@triton.autotune(<span class="hljs-params">
+    configs=[
+        triton.Config(<span class="hljs-params">{<span class="hljs-string">&#x27;BLOCK_SIZE&#x27;</span>: <span class="hljs-number">64</span>}, num_warps=<span class="hljs-number">4</span></span>),
+        triton.Config(<span class="hljs-params">{<span class="hljs-string">&#x27;BLOCK_SIZE&#x27;</span>: <span class="hljs-number">128</span>}, num_warps=<span class="hljs-number">4</span></span>),
+        triton.Config(<span class="hljs-params">{<span class="hljs-string">&#x27;BLOCK_SIZE&#x27;</span>: <span class="hljs-number">128</span>}, num_warps=<span class="hljs-number">8</span></span>),
+        triton.Config(<span class="hljs-params">{<span class="hljs-string">&#x27;BLOCK_SIZE&#x27;</span>: <span class="hljs-number">256</span>}, num_warps=<span class="hljs-number">8</span></span>),
+    ],
+    key=[<span class="hljs-string">&#x27;N&#x27;</span>],
+</span>)</span>
+<span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">tuned_kernel</span>(<span class="hljs-params">...</span>): ...
+</code></pre>
+<h3 id="22-fused-softmax-triton">2.2 Fused Softmax (Triton)</h3>
+<p>相比 PyTorch 的 5-kernel launch (amax + sub + exp + sum + div)，Triton 单 kernel 完成：</p>
+<pre><code class="hljs language-python"><span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">fused_softmax_kernel</span>(<span class="hljs-params">x_ptr, y_ptr, M, N, stride_x, stride_y, BLOCK_N: tl.constexpr</span>):
+    row = tl.program_id(<span class="hljs-number">0</span>)
+    row_start = row * stride_x
+    col_offsets = tl.arange(<span class="hljs-number">0</span>, BLOCK_N)
+    mask = col_offsets &lt; N
+    x = tl.load(x_ptr + row_start + col_offsets, mask=mask, other=-<span class="hljs-built_in">float</span>(<span class="hljs-string">&#x27;inf&#x27;</span>))
+    m = tl.<span class="hljs-built_in">max</span>(x, axis=<span class="hljs-number">0</span>)
+    e = tl.exp(x - m)
+    l = tl.<span class="hljs-built_in">sum</span>(e, axis=<span class="hljs-number">0</span>)
+    y = e / l
+    tl.store(y_ptr + row * stride_y + col_offsets, y, mask=mask)
+</code></pre>
+<h3 id="23-flashattention-in-triton">2.3 FlashAttention in Triton</h3>
+<p>核心是 <strong>tiling + online softmax</strong>：</p>
+<pre><code class="hljs language-python"><span class="hljs-meta">@triton.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">flash_attention_kernel</span>(<span class="hljs-params">Q_ptr, K_ptr, V_ptr, O_ptr, seq_len, head_dim,
+    stride_qn, stride_qd, stride_kn, stride_kd, stride_vn, stride_vd,
+    stride_on, stride_od, scale, BLOCK_Q: tl.constexpr, BLOCK_KV: tl.constexpr, HEAD_DIM: tl.constexpr</span>):
+
+    q_tile = tl.program_id(<span class="hljs-number">0</span>)
+    q_off = q_tile * BLOCK_Q + tl.arange(<span class="hljs-number">0</span>, BLOCK_Q)
+    d_off = tl.arange(<span class="hljs-number">0</span>, HEAD_DIM)
+    q_mask = q_off &lt; seq_len
+
+    Q = tl.load(Q_ptr + q_off[:, <span class="hljs-literal">None</span>] * stride_qn + d_off[<span class="hljs-literal">None</span>, :] * stride_qd, mask=q_mask[:, <span class="hljs-literal">None</span>], other=<span class="hljs-number">0.0</span>)
+
+    <span class="hljs-comment"># Initialize online softmax state</span>
+    m = tl.full([BLOCK_Q], <span class="hljs-built_in">float</span>(<span class="hljs-string">&quot;-inf&quot;</span>), dtype=tl.float32)
+    l = tl.zeros([BLOCK_Q], dtype=tl.float32)
+    O = tl.zeros([BLOCK_Q, HEAD_DIM], dtype=tl.float32)
+
+    <span class="hljs-comment"># Iterate over all K/V tiles</span>
+    <span class="hljs-keyword">for</span> kv_start <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">0</span>, seq_len, BLOCK_KV):
+        kv_off = kv_start + tl.arange(<span class="hljs-number">0</span>, BLOCK_KV)
+        kv_mask = kv_off &lt; seq_len
+
+        K = tl.load(K_ptr + kv_off[:, <span class="hljs-literal">None</span>] * stride_kn + d_off[<span class="hljs-literal">None</span>, :] * stride_kd, mask=kv_mask[:, <span class="hljs-literal">None</span>], other=<span class="hljs-number">0.0</span>)
+        V = tl.load(V_ptr + kv_off[:, <span class="hljs-literal">None</span>] * stride_vn + d_off[<span class="hljs-literal">None</span>, :] * stride_vd, mask=kv_mask[:, <span class="hljs-literal">None</span>], other=<span class="hljs-number">0.0</span>)
+
+        S = tl.dot(Q, tl.trans(K)) * scale
+        S = tl.where(kv_mask[<span class="hljs-literal">None</span>, :], S, <span class="hljs-built_in">float</span>(<span class="hljs-string">&quot;-inf&quot;</span>))
+
+        <span class="hljs-comment"># Online softmax update</span>
+        m_new = tl.maximum(m, tl.<span class="hljs-built_in">max</span>(S, axis=<span class="hljs-number">1</span>))
+        alpha = tl.exp(m - m_new)
+        p = tl.exp(S - m_new[:, <span class="hljs-literal">None</span>])
+        l = alpha * l + tl.<span class="hljs-built_in">sum</span>(p, axis=<span class="hljs-number">1</span>)
+        O = O * alpha[:, <span class="hljs-literal">None</span>] + tl.dot(p, V)
+        m = m_new
+
+    <span class="hljs-comment"># Final normalization</span>
+    O = O / l[:, <span class="hljs-literal">None</span>]
+    tl.store(O_ptr + q_off[:, <span class="hljs-literal">None</span>] * stride_on + d_off[<span class="hljs-literal">None</span>, :] * stride_od, O, mask=q_mask[:, <span class="hljs-literal">None</span>])
+</code></pre>
+<p><strong>关键洞察：</strong></p>
+<ul>
+<li>每次循环处理 <code>BLOCK_KV x HEAD_DIM</code> 的 K/V tile</li>
+<li><code>m/l/O</code> 是 query tile 的 running state</li>
+<li><code>alpha = exp(m_old - m_new)</code> 修正旧 tile 的贡献</li>
+<li>内存复杂度从 O(N²) 降至 O(N)</li>
+</ul>
+<h3 id="24-triton-vs-cuda-性能对比">2.4 Triton vs CUDA 性能对比</h3>
+<p><strong>FP16 MatMul (4096x4096)：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>实现</th>
+<th>Time (ms)</th>
+<th>Speedup</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>PyTorch (Naive)</td>
+<td>480 ms</td>
+<td>1x</td>
+</tr>
+<tr>
+<td>CUDA (Hand-tuned)</td>
+<td>14 ms</td>
+<td>34x</td>
+</tr>
+<tr>
+<td>Triton</td>
+<td>12 ms</td>
+<td>40x</td>
+</tr>
+<tr>
+<td>Tensor Core (cuBLAS)</td>
+<td>3.2 ms</td>
+<td>150x</td>
+</tr>
+</tbody></table></div>
+<p><strong>Fused Softmax (1024x1024)：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>实现</th>
+<th>Time</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>PyTorch unfused (5 kernels)</td>
+<td>1.8 ms</td>
+<td>多次 memory round-trip</td>
+</tr>
+<tr>
+<td>CUDA fused</td>
+<td>0.44 ms</td>
+<td>手动融合</td>
+</tr>
+<tr>
+<td>Triton</td>
+<td>0.32 ms</td>
+<td>自动融合</td>
+</tr>
+<tr>
+<td>FlashAttention</td>
+<td>0.20 ms</td>
+<td>极端优化</td>
+</tr>
+</tbody></table></div>
+<p><strong>FlashAttention Forward (RTX 4070 Laptop, head_dim=64)：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>batch x tokens</th>
+<th>PyTorch</th>
+<th>CUDA</th>
+<th>Triton</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>32x512</td>
+<td>3.90 ms</td>
+<td>0.53 ms</td>
+<td>0.66 ms</td>
+</tr>
+<tr>
+<td>16x1024</td>
+<td>7.45 ms</td>
+<td>0.99 ms</td>
+<td>1.12 ms</td>
+</tr>
+<tr>
+<td>8x2048</td>
+<td>14.47 ms</td>
+<td>1.92 ms</td>
+<td>2.15 ms</td>
+</tr>
+<tr>
+<td>4x4096</td>
+<td>28.57 ms</td>
+<td>3.79 ms</td>
+<td>4.21 ms</td>
+</tr>
+</tbody></table></div>
+<p><strong>结论：</strong></p>
+<ul>
+<li>Triton 通常达到 hand-tuned CUDA 的 <strong>90-105%</strong></li>
+<li>Memory-bound 算子（softmax, element-wise）Triton 有时超越 naive CUDA</li>
+<li>Compute-bound 算子（large GEMM）cuBLAS 仍最优</li>
+<li>开发效率：Triton 代码量约为 CUDA 的 <strong>1/5</strong></li>
+</ul>
+<hr>
+<h2 id="🏛-第三章：cublascudnn-库算子--产品级选择">🏛 第三章：cuBLAS/cuDNN 库算子 —— 产品级选择</h2>
+<p>当你构建推理引擎或训练框架时，<strong>不要自己手写标准 GEMM</strong>——用厂商库。</p>
+<h3 id="31-cublas-gemm-调优">3.1 cuBLAS GEMM 调优</h3>
+<p>使用 Tensor Core 的必要条件：</p>
+<pre><code class="hljs language-cuda">// 启用 Tensor Core
+cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH);
+
+cublasGemmEx(handle, transa, transb, m, n, k, &amp;alpha,
+             A, CUDA_R_16F, lda,
+             B, CUDA_R_16F, ldb,
+             &amp;beta, C, CUDA_R_16F, ldc, CUDA_R_32F, algo);
+</code></pre>
+<p><strong>必要条件：</strong></p>
+<ol>
+<li><code>CUBLAS_TENSOR_OP_MATH</code></li>
+<li>k, lda, ldb, ldc 需为 8 的倍数（FP16）或 16 的倍数（INT8）</li>
+<li>m 需为 4 的倍数</li>
+<li>输入类型：FP16, BF16, TF32, FP8, INT8</li>
+</ol>
+<p><strong>调优技巧：</strong></p>
+<ul>
+<li>Math mode: <code>CUBLAS_TENSOR_OP_MATH</code> vs <code>CUBLAS_DEFAULT_MATH</code></li>
+<li>Compute type: <code>CUDA_R_32F</code> 最高精度，<code>CUDA_R_16F</code> 更快</li>
+<li>Leading dimension 对齐：确保 <code>lda % 8 == 0</code></li>
+<li>小矩阵使用 batched GEMM 代替逐个调用</li>
+</ul>
+<h3 id="32-cudnn-卷积算子">3.2 cuDNN 卷积算子</h3>
+<p>卷积算法选择至关重要：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>算法</th>
+<th>最佳适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>IMPLICIT_GEMM</td>
+<td>通用场景，卷积展开为矩阵乘</td>
+</tr>
+<tr>
+<td>IMPLICIT_PRECOMP_GEMM</td>
+<td>通用场景（默认），预计算索引加速</td>
+</tr>
+<tr>
+<td>FFT</td>
+<td>大 kernel (&gt;=7x7)</td>
+</tr>
+<tr>
+<td>FFT_TILING</td>
+<td>大 kernel + 大 feature map</td>
+</tr>
+<tr>
+<td>WINOGRAD</td>
+<td>小 kernel (3x3)，减少乘法次数</td>
+</tr>
+<tr>
+<td>DIRECT</td>
+<td>特定条件（小 batch, 小 feature map）</td>
+</tr>
+</tbody></table></div>
+<p><strong>Implicit GEMM 原理</strong>：卷积通过 <strong>im2col</strong> 转换为矩阵乘法，但在 shared memory 中隐式完成 im2col，无内存膨胀。</p>
+<pre><code class="hljs language-python">torch.backends.cudnn.benchmark = <span class="hljs-literal">True</span>  <span class="hljs-comment"># 自动 benchmark 选择最优算法</span>
+</code></pre>
+<h3 id="33-cudnnfrontend-自定义图融合">3.3 cudnnFrontend 自定义图融合</h3>
+<p>cudnnFrontend 允许将多个算子融合为单个 cuDNN kernel：</p>
+<pre><code class="hljs language-cpp"><span class="hljs-comment">// Conv + Bias + ReLU 融合</span>
+<span class="hljs-keyword">auto</span> convOp = cudnn_frontend::<span class="hljs-built_in">OperationBuilder</span>(
+    CUDNN_BACKEND_OPERATION_CONVOLUTION_FORWARD_DESCRIPTOR)
+    .<span class="hljs-built_in">setxDesc</span>(inputDesc).<span class="hljs-built_in">setwDesc</span>(filterDesc).<span class="hljs-built_in">setyDesc</span>(outputDesc).<span class="hljs-built_in">build</span>();
+
+<span class="hljs-keyword">auto</span> biasOp = cudnn_frontend::<span class="hljs-built_in">OperationBuilder</span>(
+    CUDNN_BACKEND_OPERATION_POINTWISE_DESCRIPTOR)
+    .<span class="hljs-built_in">setxDesc</span>(outputDesc).<span class="hljs-built_in">setbDesc</span>(biasDesc)
+    .<span class="hljs-built_in">setyDesc</span>(biasOutputDesc).<span class="hljs-built_in">setpwDesc</span>(biasDesc).<span class="hljs-built_in">build</span>();
+
+<span class="hljs-keyword">auto</span> reluOp = cudnn_frontend::<span class="hljs-built_in">OperationBuilder</span>(
+    CUDNN_BACKEND_OPERATION_POINTWISE_DESCRIPTOR)
+    .<span class="hljs-built_in">setxDesc</span>(biasOutputDesc).<span class="hljs-built_in">setyDesc</span>(finalOutputDesc)
+    .<span class="hljs-built_in">setpwDesc</span>(reluDesc).<span class="hljs-built_in">build</span>();
+
+<span class="hljs-keyword">auto</span> opGraph = cudnn_frontend::<span class="hljs-built_in">OperationGraphBuilder</span>()
+    .<span class="hljs-built_in">setHandle</span>(handle).<span class="hljs-built_in">setOperation</span>(convOp)
+    .<span class="hljs-built_in">setOperation</span>(biasOp).<span class="hljs-built_in">setOperation</span>(reluOp).<span class="hljs-built_in">build</span>();
+</code></pre>
+<p><strong>优势</strong>：减少 kernel launch 次数、减少 global memory 中间写回。</p>
+<hr>
+<h2 id="🧩-第四章：cutlass-算子--高度可定制的模板化线性代数">🧩 第四章：CUTLASS 算子 —— 高度可定制的模板化线性代数</h2>
+<p>CUTLASS 是 NVIDIA 开源的模板化线性代数库，提供了比 cuBLAS 更灵活、但仍保留极致性能的 kernel 构建方式。</p>
+<h3 id="41-cutlass-层次结构">4.1 CUTLASS 层次结构</h3>
+<pre><code>Grid (CTA mapping)
+  CTA Tile (mainloop)
+    Prologue: global -&gt; shared memory
+    Mainloop: shared -&gt; MMA compute
+    Epilogue: accumulator -&gt; output
+  Thread-level (Warp tiling)
+  Instruction-level (MMA / Tensor Core)
+</code></pre>
+<h4 id="cutlass-2x-gemm-示例">CUTLASS 2.x GEMM 示例</h4>
+<pre><code class="hljs language-cpp"><span class="hljs-keyword">using</span> Gemm = cutlass::gemm::device::Gemm&lt;
+    half, cutlass::layout::RowMajor,          <span class="hljs-comment">// A</span>
+    half, cutlass::layout::ColumnMajor,       <span class="hljs-comment">// B (NT layout)</span>
+    half, cutlass::layout::RowMajor,          <span class="hljs-comment">// C</span>
+    <span class="hljs-type">float</span>,                                     <span class="hljs-comment">// accumulator</span>
+    cutlass::arch::OpClassTensorOp,            <span class="hljs-comment">// Tensor Core</span>
+    cutlass::arch::Sm80                        <span class="hljs-comment">// Ampere+</span>
+&gt;;
+
+Gemm gemm_op;
+<span class="hljs-built_in">gemm_op</span>({ {m, n, k}, {A, lda}, {B, ldb}, {C, ldc}, {D, ldd}, {alpha, beta} });
+</code></pre>
+<h3 id="42-epilogue-融合-evt">4.2 Epilogue 融合 (EVT)</h3>
+<p><strong>Epilogue Visitor Tree</strong> 是 CUTLASS 最强大的特性之一。它将 epilogue 建模为一棵树形结构，每个 visitor 负责一个操作。accumulator 按顺序通过 visitor 树，无需修改 mainloop：</p>
+<pre><code>EVT 示例: D = GELU(alpha * C + bias) + residual
+    Store (最终写入 global)
+    +- Add (残差连接)
+       +- Load (残差)
+       +- GELU
+          +- Add (bias)
+             +- Scale (alpha)
+             |   +- Accumulator
+             +- Load (bias)
+</code></pre>
+<p><strong>优势：</strong></p>
+<ul>
+<li>无需修改 mainloop 即可实现融合</li>
+<li>编译时类型推导保证正确性</li>
+<li>典型融合：GEMM + Bias + ReLU/GELU + Residual + LayerNorm</li>
+</ul>
+<h3 id="43-cutlass-3x-hopper-特性">4.3 CUTLASS 3.x Hopper 特性</h3>
+<p>Hopper (SM90) 架构引入了两项革命性特性：<strong>WGMMA</strong> 和 <strong>TMA</strong>。</p>
+<h4 id="wgmma-warpgroup-mma">WGMMA (Warpgroup MMA)</h4>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>WMMA (SM70-SM89)</th>
+<th>WGMMA (SM90)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>参与线程</td>
+<td>1 warp (32)</td>
+<td>1 warpgroup (128)</td>
+</tr>
+<tr>
+<td>Tile 大小</td>
+<td>16x16x16</td>
+<td>64x64x16 或更大</td>
+</tr>
+<tr>
+<td>Operand B 来源</td>
+<td>Register 或 Shared</td>
+<td><strong>必须在 Shared Memory</strong></td>
+</tr>
+<tr>
+<td>同步方式</td>
+<td>同步</td>
+<td>异步 (wgmma.mma_async)</td>
+</tr>
+<tr>
+<td>描述符</td>
+<td>无需</td>
+<td>需要 GMMA Descriptor</td>
+</tr>
+</tbody></table></div>
+<p><strong>CuTe 封装：</strong></p>
+<pre><code class="hljs language-cpp">TiledMMA tiled_mma = <span class="hljs-built_in">make_tiled_mma</span>(
+    SM90_64x64x16_F16F16F16_SS&lt;GMMA::Major::MN, GMMA::Major::MN&gt;{});
+ThrMMA thr_mma = tiled_mma.<span class="hljs-built_in">get_thread_slice</span>(threadIdx.x);
+
+Tensor tCsA = thr_mma.<span class="hljs-built_in">partition_A</span>(sA); <span class="hljs-comment">// (MMA, MMA_M, MMA_K, PIPE)</span>
+Tensor tCsB = thr_mma.<span class="hljs-built_in">partition_B</span>(sB);
+
+Tensor tCrA = thr_mma.<span class="hljs-built_in">make_fragment_A</span>(tCsA); <span class="hljs-comment">// GMMA DescriptorIterator</span>
+Tensor tCrB = thr_mma.<span class="hljs-built_in">make_fragment_B</span>(tCsB);
+
+Tensor tCgC = thr_mma.<span class="hljs-built_in">partition_C</span>(gC);
+Tensor tCrC = thr_mma.<span class="hljs-built_in">make_fragment_C</span>(tCgC);
+<span class="hljs-built_in">clear</span>(tCrC);
+
+<span class="hljs-built_in">gemm</span>(tiled_mma, <span class="hljs-built_in">tCrA</span>(_,_,_,pipe), <span class="hljs-built_in">tCrB</span>(_,_,_,pipe), tCrC);
+</code></pre>
+<h4 id="tma-tensor-memory-accelerator">TMA (Tensor Memory Accelerator)</h4>
+<p>TMA 是 Hopper 引入的专用硬件，用于异步加载多维 tensor tile 到 shared memory：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>cp.async (SM80)</th>
+<th>TMA (SM90)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单位</td>
+<td>单次 copy (16 bytes)</td>
+<td>多维 tensor tile</td>
+</tr>
+<tr>
+<td>地址计算</td>
+<td>手动</td>
+<td>硬件自动</td>
+</tr>
+<tr>
+<td>维度</td>
+<td>1D</td>
+<td>1D/2D/3D box</td>
+</tr>
+<tr>
+<td>多播</td>
+<td>无</td>
+<td>支持 cluster multicast</td>
+</tr>
+</tbody></table></div>
+<pre><code class="hljs language-cpp"><span class="hljs-comment">// Host 端创建 TMA descriptor</span>
+TMA tma_a = <span class="hljs-built_in">make_tma_copy</span>(GMMA::ss::Sm90TmaLoad{}, tAgA, tAsA, tma_a_desc);
+
+<span class="hljs-comment">// Device 端使用</span>
+<span class="hljs-built_in">copy</span>(tma_a.<span class="hljs-built_in">with</span>(producer_mbar[pipe]), <span class="hljs-built_in">tAgA</span>(_, k_tile), <span class="hljs-built_in">tAsA</span>(_, pipe));
+</code></pre>
+<h4 id="warp-specialization">Warp Specialization</h4>
+<ul>
+<li><strong>Producer warp</strong>: TMA load (global → shared)</li>
+<li><strong>Consumer warp</strong>: WGMMA compute (shared → register → Tensor Core)</li>
+</ul>
+<pre><code>Stage 0: [TMA load A0, B0] || [WGMMA: A0 x B0 -&gt; C]
+Stage 1: [TMA load A1, B1] || [WGMMA: A1 x B1 -&gt; C]  (ping-pong)
+</code></pre>
+<p><strong>H100 FP16 GEMM 性能参考 (M=N=K=4096)：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>实现</th>
+<th>Latency</th>
+<th>TFLOPS</th>
+<th>Efficiency</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>cuBLAS</td>
+<td>~0.8 ms</td>
+<td>~170</td>
+<td>~17%</td>
+</tr>
+<tr>
+<td>CUTLASS WGMMA</td>
+<td>~0.7 ms</td>
+<td>~195</td>
+<td>~20%</td>
+</tr>
+<tr>
+<td>Hopper 理论峰值</td>
+<td>-</td>
+<td>989</td>
+<td>100%</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="📚-第五章：thrustcub-库算子--原语级工具箱">📚 第五章：Thrust/CUB 库算子 —— 原语级工具箱</h2>
+<p><strong>Thrust</strong> 类似 C++ STL，适合快速原型开发；<strong>CUB</strong> 提供 block-level 和 device-level 低层次原语，追求极致性能。</p>
+<h3 id="51-基础用法">5.1 基础用法</h3>
+<p><strong>Thrust：</strong></p>
+<pre><code class="hljs language-cpp"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;thrust/device_vector.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;thrust/reduce.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;thrust/scan.h&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;thrust/sort.h&gt;</span></span>
+
+<span class="hljs-comment">// Reduce</span>
+<span class="hljs-type">int</span> sum = thrust::<span class="hljs-built_in">reduce</span>(d_vec.<span class="hljs-built_in">begin</span>(), d_vec.<span class="hljs-built_in">end</span>(), <span class="hljs-number">0</span>, thrust::<span class="hljs-built_in">plus</span>&lt;<span class="hljs-type">int</span>&gt;());
+
+<span class="hljs-comment">// Scan</span>
+thrust::<span class="hljs-built_in">inclusive_scan</span>(d_in.<span class="hljs-built_in">begin</span>(), d_in.<span class="hljs-built_in">end</span>(), d_out.<span class="hljs-built_in">begin</span>());
+
+<span class="hljs-comment">// Sort</span>
+thrust::<span class="hljs-built_in">sort</span>(d_vec.<span class="hljs-built_in">begin</span>(), d_vec.<span class="hljs-built_in">end</span>());
+
+<span class="hljs-comment">// Transform + Reduce (fused)</span>
+<span class="hljs-type">int</span> result = thrust::<span class="hljs-built_in">transform_reduce</span>(
+    d_vec.<span class="hljs-built_in">begin</span>(), d_vec.<span class="hljs-built_in">end</span>(), <span class="hljs-built_in">square</span>&lt;<span class="hljs-type">int</span>&gt;(), <span class="hljs-number">0</span>, thrust::<span class="hljs-built_in">plus</span>&lt;<span class="hljs-type">int</span>&gt;());
+</code></pre>
+<p><strong>CUB Device-Level 原语：</strong></p>
+<pre><code class="hljs language-cpp"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;cub/cub.cuh&gt;</span></span>
+
+<span class="hljs-comment">// 两步调用: 先获取临时空间大小, 再执行</span>
+<span class="hljs-type">void</span>* d_temp = <span class="hljs-literal">nullptr</span>;
+<span class="hljs-type">size_t</span> temp_bytes = <span class="hljs-number">0</span>;
+
+cub::DeviceReduce::<span class="hljs-built_in">Sum</span>(d_temp, temp_bytes, d_in, d_out, num_items);
+<span class="hljs-built_in">cudaMalloc</span>(&amp;d_temp, temp_bytes);
+cub::DeviceReduce::<span class="hljs-built_in">Sum</span>(d_temp, temp_bytes, d_in, d_out, num_items);
+
+<span class="hljs-comment">// Scan</span>
+cub::DeviceScan::<span class="hljs-built_in">InclusiveSum</span>(d_temp, temp_bytes, d_in, d_out, num_items);
+
+<span class="hljs-comment">// Radix Sort</span>
+cub::DeviceRadixSort::<span class="hljs-built_in">SortKeys</span>(d_temp, temp_bytes, d_keys, d_keys_out, num_items);
+</code></pre>
+<h3 id="52-实现原理">5.2 实现原理</h3>
+<p><strong>CUB DeviceReduce：</strong> 每个 CTA 的 block-level reduce（shared memory + warp shuffle）→ CTA 间通过 atomics 或额外 kernel launch 合并。</p>
+<p><strong>CUB DeviceScan：</strong> 核心是 <strong>Decoupled Look-back</strong>（Merrill &amp; Garland, 2016）：</p>
+<pre><code>CTA0: [a0, ..., ax] -&gt; scan_internal + aggregate0
+CTA1: [ax+1, ..., a2x] -&gt; scan_internal + aggregate1
+                           | look back
+                          aggregate0 -&gt; offset1 = aggregate0
+                           | apply offset
+                          output = scan_internal + offset1
+</code></pre>
+<p>性能：单 pass 完成，数据移动 ~2n，近 memcpy 速度。</p>
+<p><strong>CUB DeviceRadixSort：</strong> 三阶段——Upsweep（统计 digit 出现次数）→ Scan（全局 digit offset）→ Downsweep（根据 offset scatter key）。</p>
+<p><strong>算法对比：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>算法</th>
+<th>时间复杂度</th>
+<th>适用场景</th>
+<th>自定义比较器</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DeviceRadixSort</td>
+<td>O(n * b/r)</td>
+<td>内置数值类型</td>
+<td>否</td>
+</tr>
+<tr>
+<td>DeviceSegmentedRadixSort</td>
+<td>O(n * b/r)</td>
+<td>多段独立序列</td>
+<td>否</td>
+</tr>
+<tr>
+<td>DeviceMergeSort</td>
+<td>O(n log n)</td>
+<td>自定义结构体/比较器</td>
+<td>是</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="📊-总结：一张表看懂所有算子">📊 总结：一张表看懂所有算子</h2>
+<h3 id="性能分类总结">性能分类总结</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>算子类型</th>
+<th>Bound 类型</th>
+<th>优化重点</th>
+<th>推荐实现</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Element-wise</td>
+<td>Memory-bound</td>
+<td>Vectorized load/store, fusion</td>
+<td>Triton / CUDA</td>
+</tr>
+<tr>
+<td>LayerNorm</td>
+<td>Memory/Compute</td>
+<td>Warp shuffle, Welford</td>
+<td>CUDA / Triton</td>
+</tr>
+<tr>
+<td>Softmax</td>
+<td>Memory-bound</td>
+<td>Online softmax, warp reduce</td>
+<td>Triton / CUDA</td>
+</tr>
+<tr>
+<td>Reduce</td>
+<td>Memory-bound</td>
+<td>Tree reduction, warp shuffle</td>
+<td>CUB / Thrust</td>
+</tr>
+<tr>
+<td>Scan</td>
+<td>Memory-bound</td>
+<td>Decoupled look-back</td>
+<td>CUB</td>
+</tr>
+<tr>
+<td>GEMM (小)</td>
+<td>Memory-bound</td>
+<td>Tiling, tensor core</td>
+<td>cuBLAS / CUTLASS</td>
+</tr>
+<tr>
+<td>GEMM (大)</td>
+<td>Compute-bound</td>
+<td>Tensor Core, pipelining</td>
+<td>cuBLAS / CUTLASS</td>
+</tr>
+<tr>
+<td>Convolution</td>
+<td>Compute-bound</td>
+<td>Implicit GEMM, Winograd</td>
+<td>cuDNN</td>
+</tr>
+<tr>
+<td>Sort</td>
+<td>Memory-bound</td>
+<td>Radix sort</td>
+<td>CUB / Thrust</td>
+</tr>
+</tbody></table></div>
+<h3 id="选择指南">选择指南</h3>
+<ol>
+<li><strong>性能优先、成熟操作</strong>：优先 cuBLAS/cuDNN（SASS level 调优）</li>
+<li><strong>定制融合、灵活性高</strong>：CUTLASS（C++ template）或 Triton（Python DSL）</li>
+<li><strong>快速原型验证</strong>：Thrust（类似 STL）</li>
+<li><strong>底层算子构建</strong>：CUB（最精细控制）</li>
+<li><strong>极致优化</strong>：CUDA C++ + SASS 调优（维护成本极高）</li>
+</ol>
+<hr>
+<h2 id="🚀-下一步">🚀 下一步</h2>
+<p>底层 GPU 算子的世界正在快速演进，几个值得关注的趋势：</p>
+<ol>
+<li><p><strong>Triton 崛起</strong>：PyTorch 2.x 已将其作为默认 kernel 后端（TorchInductor），在 90-105% of hand-tuned CUDA 的性能下，将开发效率提升了一个数量级。</p>
+</li>
+<li><p><strong>Hopper/Blackwell 新特性</strong>：TMA + WGMMA 是下一代 GEMM 的标准范式。Warp Specialization（Producer/Consumer 分离）正在重塑 kernel 的架构设计。</p>
+</li>
+<li><p><strong>FP8 低精度革命</strong>：H100 FP8 理论峰值达 1979 TFLOPS，算子实现需要适配新的数值范围和累加策略。</p>
+</li>
+<li><p><strong>Kernel Fusion 自动化</strong>：从手动融合 → CUTLASS EVT 声明式 → 编译器自动融合（TorchInductor + Triton），这个趋势正在降低融合算子的开发门槛。</p>
+</li>
+<li><p><strong>跨平台可移植性</strong>：Triton 对 AMD GPU 和 Intel GPU 的支持正在成熟，加上 MLIR 的多层 lowering 能力，&quot;write once, run anywhere&quot; 的 GPU 编程愿景越来越近。</p>
+</li>
+</ol>
+<blockquote>
+<p><strong>延伸阅读</strong>：本文是底层 GPU 算子专题的第一篇。下一篇将深入<strong>框架算子层</strong>（PyTorch ATen / TensorFlow OpKernel / ONNX / MLIR），讲解算子注册、自动微分和图捕获机制。欢迎持续关注。</p>
+</blockquote>
+<hr>
+<blockquote>
+<p>本文档由 AI Infra 调研生成，技术术语均保留英文。代码片段为说明性伪代码，实际使用需适配具体 GPU 架构和 CUDA 版本。</p>
+</blockquote>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

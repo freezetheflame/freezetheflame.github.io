@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>推理优化与量化算子深度技术调研 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-29</p>
+        <h1>推理优化与量化算子深度技术调研</h1>
+        <div class="post-meta">
+          <span>2026-06-29</span>
+          <span class="tag">推理优化</span><span class="tag">量化</span><span class="tag">FlashAttention</span><span class="tag">MoE</span><span class="tag">融合算子</span><span class="tag">推测解码</span><span class="tag">技术调研</span>
+        </div>
+        <p>如果你正在构建 LLM 推理服务，总会在某个时刻碰上这样的问题：一个 70B 参数的模型怎样才能在单张 H100 上跑出可以接受的延迟？为什么别人的服务支持 128K 上下文而你的一到 16K 就 OOM？KV Cache 到底能不能省？——这些问题最终都会落到一个共同的方向上：<strong>推理优化算子</strong>。</p>
+<p>推理优化不是某一招鲜的技术，而是一套组合拳。从权重用多少比特表示（量化），到注意力机制怎么在 GPU 上高效实现（FlashAttention），到稀疏激活的专家网络如何部署（MoE），再到如何把多个小算子合并成一个大算子减少访存（融合），最后到用草稿-验证范式打破自回归的串行瓶颈（推测解码）——这五大领域构成了现代 LLM 推理引擎的技术骨架。</p>
+<!--more-->
+
+<p>这篇调研面向 LLM 推理优化开发者，按<strong>量化算子 → FlashAttention → MoE 算子 → 融合算子 → 推测解码</strong>的路径，逐章深挖原理、实现思路和性能关键点。每章都配有代码片段和对比表，方便你快速理解不同方案的取舍。</p>
+<hr>
+<h2 id="1-量化算子">1. 量化算子</h2>
+<h3 id="11-概述">1.1 概述</h3>
+<p>量化将高精度浮点权重/激活值映射到低位宽表示，核心目标是<strong>减少内存占用和访存带宽</strong>，同时尽量保持模型精度。对于 LLM 推理，量化主要在以下三个层面展开：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>层面</th>
+<th>典型精度</th>
+<th>收益</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>权重量化 (W)</td>
+<td>INT4, INT8, FP8</td>
+<td>模型加载减半/减至 1/4</td>
+</tr>
+<tr>
+<td>激活量化 (A)</td>
+<td>INT8, FP8 E4M3/E5M2</td>
+<td>GEMM 计算加速</td>
+</tr>
+<tr>
+<td>KV Cache 量化</td>
+<td>FP8, INT8, INT4</td>
+<td>长序列支持、高并发</td>
+</tr>
+</tbody></table></div>
+<h3 id="12-int8-对称非对称量化">1.2 INT8 对称/非对称量化</h3>
+<p><strong>原理：</strong></p>
+<ul>
+<li><strong>对称量化</strong>：<code>q = round(x / scale)</code>，zero_point = 0。映射范围 <code>[-127, 127]</code>（有符号）。适用于权重分布接近零对称的场景（如经过 LayerNorm 之后的激活值）。</li>
+<li><strong>非对称量化</strong>：<code>q = round(x / scale) + zero_point</code>，zero_point 非零。映射范围 <code>[0, 255]</code>（无符号）。能更好地拟合非对称分布。</li>
+</ul>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 对称量化</span>
+scale = <span class="hljs-built_in">max</span>(|x|) / <span class="hljs-number">127</span>
+q = torch.clamp(torch.<span class="hljs-built_in">round</span>(x / scale), -<span class="hljs-number">127</span>, <span class="hljs-number">127</span>).to(torch.int8)
+
+<span class="hljs-comment"># 非对称量化</span>
+x_min, x_max = x.<span class="hljs-built_in">min</span>(), x.<span class="hljs-built_in">max</span>()
+scale = (x_max - x_min) / <span class="hljs-number">255</span>
+zero_point = torch.<span class="hljs-built_in">round</span>(-x_min / scale)
+q = torch.clamp(torch.<span class="hljs-built_in">round</span>(x / scale) + zero_point, <span class="hljs-number">0</span>, <span class="hljs-number">255</span>).to(torch.uint8)
+</code></pre>
+<p><strong>实现思路：</strong></p>
+<ul>
+<li>Per-tensor（整个张量一个 scale）最简单但精度低；Per-channel（每输出通道一个 scale）是 LLM INT8 的主流选择。</li>
+<li>去量化（dequant）通常融合进下游 GEMM kernel：<code>x_deq = (q - zp) * scale</code>，在 Tensor Core 计算前完成类型转换。</li>
+<li>对于 W8A8 INT8，需要同时对权重和激活做量化，GEMM 调用 <code>cublasLtMatmul</code> 的 INT8 路径或自定义 CUTLASS kernel。</li>
+</ul>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>INT8 Tensor Core 吞吐是 FP16 的 2×（理论值），实际受制于 scale 的额外计算和 memory-bound 的激活量化。</li>
+<li>激活量化需要收集统计量（absmax 或 min/max），引入额外 kernel launch 开销——融合进前一个算子（如 LayerNorm+Quant）可以消除。</li>
+<li>非对称量化需要额外的 zero-point 处理，GEMM kernel 如果做了 INT8 对称优化则无法直接复用。</li>
+</ul>
+<h3 id="13-int4-量化--gptq-与-awq">1.3 INT4 量化 — GPTQ 与 AWQ</h3>
+<h4 id="gptq-gpt-post-training-quantization">GPTQ (GPT Post-Training Quantization)</h4>
+<p><strong>原理：</strong> 基于最优脑手术（OBS/OBD）框架的二次误差最小化。逐列量化权重，用已量化列的误差补偿未量化列。</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 伪代码：GPTQ 逐列量化</span>
+<span class="hljs-keyword">for</span> col <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(W.shape[<span class="hljs-number">1</span>]):
+    q_col = quantize(W_hat[:, col])          <span class="hljs-comment"># 量化当前列</span>
+    err = W_hat[:, col] - dequantize(q_col)  <span class="hljs-comment"># 量化误差</span>
+    <span class="hljs-comment"># 将误差按 Hessian 逆矩阵分配到剩余列</span>
+    W_hat[:, col:] -= err * H_inv[col, col:] / H_inv[col, col]
+</code></pre>
+<p><strong>实现要点（Marlin kernel）：</strong></p>
+<ul>
+<li>权重重排为 <code>group_size × 16</code> 的块状布局，支持连续的向量化加载。</li>
+<li>使用 <code>mma</code>（matrix multiply-accumulate）指令在 FP16 下计算，INT4 权重在寄存器内解包。</li>
+<li>支持 group-wise scale（典型 group_size=128），scale 在 shared memory 中做预取。</li>
+</ul>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>Marlin kernel（vLLM 默认后端）在 A100 上接近 FP16 GEMM 的理论带宽利用率。</li>
+<li>GPTQ 的 Hessian 计算（<code>H = 2 * X^T X + λI</code>）成本高，calibration dataset 通常取 128 条样本即可。</li>
+<li>Group size 越小精度越高但 scale 存储开销越大（<code>group_size=128</code> 时 scale 占 0.5 bit/param）。</li>
+</ul>
+<h4 id="awq-activation-aware-weight-quantization">AWQ (Activation-aware Weight Quantization)</h4>
+<p><strong>原理：</strong> 观察到权重中约 1% 的&quot;salient channels&quot;（对应激活值幅度大的通道）对精度影响最大。AWQ 不直接保留这些通道为 FP16，而是通过<strong>按通道缩放</strong>来保护它们：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># AWQ 核心：寻找最优缩放因子 s</span>
+<span class="hljs-comment"># 对每个输出通道：W&#x27;&#x27; = W * s, x&#x27;&#x27; = x / s</span>
+<span class="hljs-comment"># 选择 s 使得量化后的 W&#x27;&#x27; 在 salient channel 上误差最小</span>
+<span class="hljs-keyword">for</span> channel <span class="hljs-keyword">in</span> salient_channels:
+    s = argmin || Q(W * s) * (x / s) - W*x ||
+</code></pre>
+<p><strong>实现要点：</strong></p>
+<ul>
+<li>AWQ 与 GPTQ 共享相同的 kernel 后端（Marlin），模型格式兼容。</li>
+<li>缩放因子通过搜索得到，通常在 [0.5, 1.0] 区间内以 0.01 步长搜索。</li>
+<li>与 GPTQ 相比，AWQ 不需要 Hessian 逆矩阵计算，calibration 更快（分钟级 vs 小时级）。</li>
+</ul>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>AWQ INT4 在精度上通常优于 GPTQ（同等 bit-width），特别是在 4-bit 场景下 MMLU 损失 &lt; 1%。</li>
+<li>Marlin kernel 同时支持 GPTQ 和 AWQ，只需在加载时解析不同的模型格式。</li>
+<li>在 decode 阶段（batch=1），W4A16 的 GEMV 主要由 HBM 带宽瓶颈，INT4 的 4× 内存减半带来的收益直接转化为 ~2× 速度提升。</li>
+</ul>
+<h3 id="14-fp8-量化--e4m3--e5m2">1.4 FP8 量化 — E4M3 / E5M2</h3>
+<p><strong>两种格式对比：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>格式</th>
+<th>指数位</th>
+<th>尾数位</th>
+<th>最大范围</th>
+<th>精度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>E4M3</td>
+<td>4</td>
+<td>3</td>
+<td>±240</td>
+<td>更高（尾数多 1 bit）</td>
+</tr>
+<tr>
+<td>E5M2</td>
+<td>5</td>
+<td>2</td>
+<td>±57344</td>
+<td>范围更大（梯度场景）</td>
+</tr>
+</tbody></table></div>
+<p><strong>原理：</strong></p>
+<ul>
+<li>FP8 不是整数量化，而是低精度浮点。硬件（H100/H200/B200 Tensor Core）原生支持 FP8 GEMM。</li>
+<li>KV Cache 量化用 FP8 E4M3 更合适，因为注意力分数范围有限。</li>
+<li>权重+激活 W8A8 FP8 通常保留 99%+ 精度（perplexity 上升 &lt; 0.3%）。</li>
+</ul>
+<p><strong>实现思路：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># FP8 量化（对称、per-tensor）</span>
+<span class="hljs-keyword">from</span> float8_experimental <span class="hljs-keyword">import</span> Float8Linear
+
+<span class="hljs-comment"># H100 硬件路径：直接设置 dtype 为 torch.float8_e4m3fn</span>
+q = q.to(torch.float8_e4m3fn)
+k = k.to(torch.float8_e4m3fn)
+<span class="hljs-comment"># 注意：H100 FP8 GEMM 需要 scale，存储在额外 tensor 中</span>
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>H100 SM90 Tensor Core 的 FP8 吞吐为 1.979 TFLOPS（是 FP16 的 2×）。</li>
+<li>FP8 需要 2:1 的 scale 存储（每 tensor 一个 FP32 scale），但相对模型权重可忽略。</li>
+<li>Transformer Engine（NVIDIA）自动处理 FP8 的 scaling factor 管理和 delayed scaling。</li>
+<li>FP8 KV Cache 将单条序列 KV cache 减半，在长上下文场景（32K+ tokens）下收益显著。</li>
+</ul>
+<h3 id="15-smoothquant">1.5 SmoothQuant</h3>
+<p><strong>原理：</strong> INT8 激活量化困难的原因在于激活值存在<strong>异常值（outliers）</strong>——集中在特定通道且幅度远大于平均值。SmoothQuant 通过<strong>平滑迁移量化难度</strong>解决此问题：</p>
+<pre><code>Y = X · W
+  = (X · diag(s)^(-1)) · (diag(s) · W)   # 迁移
+  = X_hat · W_hat                          # X_hat 易量化, W_hat 略难一点
+</code></pre>
+<p>关键思路：将激活的量化难度&quot;平滑&quot;转移到权重上，通过一个 per-channel 的平滑因子 s。</p>
+<p><strong>实现思路：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># SmoothQuant 迁移因子计算</span>
+alpha = <span class="hljs-number">0.5</span>  <span class="hljs-comment"># 迁移强度，典型值 0.5</span>
+s = (per_channel_max(X)^alpha) / (per_channel_max(W)^(<span class="hljs-number">1</span>-alpha))
+
+<span class="hljs-comment"># 迁移后的张量</span>
+X_hat = X / s       <span class="hljs-comment"># 激活值范围被压缩，易于 INT8 量化</span>
+W_hat = W * s       <span class="hljs-comment"># 权重范围扩大，略难量化但仍可接受</span>
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>SmoothQuant 是<strong>训练后量化（PTQ）</strong>，无需重训练。</li>
+<li>在 OPT-66B 上实现 W8A8 INT8 且精度损失 &lt; 1%。</li>
+<li>Migration factor <code>alpha</code> 控制迁移强度：alpha=0 不迁移（激活难量化），alpha=1 完全迁移（权重可能溢出）。</li>
+<li>实际部署时迁移因子可以融合进权重做离线处理，推理时只做激活量化。</li>
+</ul>
+<h3 id="16-kv-cache-量化">1.6 KV Cache 量化</h3>
+<p><strong>为什么需要量化 KV Cache：</strong> KV Cache 随着序列长度和并发数线性增长，是推理 OOM 的主要瓶颈。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>FP16 KV Cache</th>
+<th>FP8 KV Cache</th>
+<th>INT4 KV Cache</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LLaMA-70B, 32K ctx</td>
+<td>~10.7 GB/req</td>
+<td>~5.4 GB/req</td>
+<td>~2.7 GB/req</td>
+</tr>
+<tr>
+<td>并发 8 req</td>
+<td>~86 GB</td>
+<td>~43 GB</td>
+<td>~22 GB</td>
+</tr>
+</tbody></table></div>
+<p><strong>实现思路：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># FP8 KV Cache 量化（per-token, per-channel 两种粒度）</span>
+<span class="hljs-comment"># per-token: 每个 token 计算自己的 scale</span>
+scale_k = k.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>).values / <span class="hljs-number">240.0</span>  <span class="hljs-comment"># E4M3 max</span>
+k_q = (k / scale_k).to(torch.float8_e4m3fn)
+
+<span class="hljs-comment"># per-channel (per head): 每个 head_dim 维度一个 scale</span>
+scale_k = k.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>(dim=-<span class="hljs-number">2</span>, keepdim=<span class="hljs-literal">True</span>).values / <span class="hljs-number">240.0</span>
+</code></pre>
+<p><strong>主要方法对比：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>精度</th>
+<th>粒度</th>
+<th>硬件要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FP8 E4M3</td>
+<td>高质量</td>
+<td>Per-tensor / per-token</td>
+<td>H100+</td>
+</tr>
+<tr>
+<td>INT8 per-token</td>
+<td>高质量</td>
+<td>Per-token asymmetric</td>
+<td>通用 (Triton)</td>
+</tr>
+<tr>
+<td>KIVI (INT4)</td>
+<td>中高质量</td>
+<td>K per-channel, V per-token</td>
+<td>通用</td>
+</tr>
+<tr>
+<td>KVQuant (INT4)</td>
+<td>中高质量</td>
+<td>带 outlier 感知</td>
+<td>通用</td>
+</tr>
+<tr>
+<td>ZipCache (INT4)</td>
+<td>高质量</td>
+<td>混合精度</td>
+<td>通用</td>
+</tr>
+</tbody></table></div>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>KV Cache 量化对<strong>注意力分布的质量</strong>有直接影响——量化误差会改变 softmax 输出分布。</li>
+<li>在长上下文检索任务上，FP8 KV Cache 通常 &lt; 0.5 点精度损失；INT4 方案需要仔细调优。</li>
+<li><strong>推测解码 + KV Cache 量化的交互是隐藏陷阱</strong>：量化后的 logit 分布偏移可能降低 draft token 接受率 0.3 - 1.5，需要重新调优 num_speculative_tokens。</li>
+<li>去量化必须融合进 Attention kernel（如 FlashAttention 的 FP8 变体），否则单独的 dequant kernel 会抵消带宽收益。</li>
+</ul>
+<hr>
+<h2 id="2-flashattention-系列">2. FlashAttention 系列</h2>
+<h3 id="21-背景：gpu-存储器层次与-attention-的-io-瓶颈">2.1 背景：GPU 存储器层次与 Attention 的 IO 瓶颈</h3>
+<p>现代 GPU 有两层关键存储：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>层级</th>
+<th>容量 (A100)</th>
+<th>带宽</th>
+<th>特性</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SRAM (片上)</td>
+<td>~20 MB (192KB/SM)</td>
+<td>~19 TB/s</td>
+<td>极快但极小</td>
+</tr>
+<tr>
+<td>HBM (显存)</td>
+<td>40-80 GB</td>
+<td>~1.5-2.0 TB/s</td>
+<td>大容量但慢</td>
+</tr>
+</tbody></table></div>
+<p>标准 Attention：<code>O = softmax(QK^T / sqrt(d)) * V</code> 需要将中间矩阵 <code>S = QK^T</code>（N×N）写入 HBM，再读回做 softmax，存在 <strong>6 次 HBM 访存</strong>（Q/K 读、S 写、S 读、P 写、P/V 读、O 写）。FlashAttention 通过 tiling 将中间结果保持在 SRAM 中，只需 <strong>2 次 HBM 访存</strong>（一次读 Q/K/V blocks，一次写 O）。</p>
+<h3 id="22-flashattention-v1--io-aware-tiling--online-softmax">2.2 FlashAttention v1 — IO-Aware Tiling + Online Softmax</h3>
+<p><strong>核心算法 — Tiling：</strong></p>
+<pre><code># 外层循环：遍历 K/V 的 tile
+for k_tile, v_tile in zip(tile(K, Bc), tile(V, Bc)):
+    # 内层循环：遍历 Q 的 tile
+    for q_tile in tile(Q, Br):
+        m = -inf    # 每行的 running max
+        l = 0       # 每行的 running sum (normalizer)
+        o = 0       # 每行的 running output
+
+        s = q_tile @ k_tile.T          # Br * Bc, 在 SRAM
+        s = s / sqrt(d)                 # scaling
+        s = apply_mask(s)               # causal mask
+
+        m_new = max(m, row_max(s))
+        l = l * exp(m - m_new) + row_sum(exp(s - m_new))
+        o = o * exp(m - m_new) + exp(s - m_new) @ v_tile
+        m = m_new
+
+    out[q_tile] = o / l                 # 归一化后写回 HBM
+</code></pre>
+<p><strong>Online Softmax 原理：</strong> 标准 softmax 需要看到所有 logits 才能计算分母 <code>sum(exp(s_j))</code>。Online softmax 通过维护 running max <code>m</code> 和 running sum <code>l</code>，在逐 block 流式处理中正确更新：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 数学推导：从已知 m_old, l_old 到新 block 的合并</span>
+m_new = <span class="hljs-built_in">max</span>(m_old, <span class="hljs-built_in">max</span>(s_new))          <span class="hljs-comment"># 新全局最大值</span>
+l_new = l_old * exp(m_old - m_new) + <span class="hljs-built_in">sum</span>(exp(s_new - m_new))
+o_new = o_old * exp(m_old - m_new) + <span class="hljs-built_in">sum</span>(exp(s_new - m_new) @ v_new)
+<span class="hljs-comment"># 最终: out = o / l</span>
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>Tile 大小选择受 SRAM 容量约束：<code>Br * Bc * d * dtype_size * 3 &lt;= SRAM_per_SM</code>。</li>
+<li>典型值：<code>Br=128, Bc=128, d=128</code> 时 tile 占用约 192KB（接近 SRAM 上限）。</li>
+<li>FA1 外层循环是 K/V tile（先遍历 K/V），每个 Q tile 需要多次从 HBM 读取。</li>
+</ul>
+<h3 id="23-flashattention-v2--更好的并行性与工作分配">2.3 FlashAttention v2 — 更好的并行性与工作分配</h3>
+<p><strong>相对于 FA1 的主要改进：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>改进点</th>
+<th>FA1</th>
+<th>FA2</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>循环顺序</td>
+<td>外层 K/V, 内层 Q</td>
+<td><strong>外层 Q, 内层 K/V</strong></td>
+</tr>
+<tr>
+<td>Warp 分配</td>
+<td>Q tile 内按列划分</td>
+<td><strong>Q tile 内按行划分</strong></td>
+</tr>
+<tr>
+<td>非 matmul 操作</td>
+<td>每个 block 内做 rescale</td>
+<td><strong>推迟到最后做一次 rescale</strong></td>
+</tr>
+<tr>
+<td>Softmax 归一化</td>
+<td>每个 block 内部</td>
+<td>全局 scale 后统一归一化</td>
+</tr>
+</tbody></table></div>
+<p><strong>外层 Q 循环的优势：</strong></p>
+<ul>
+<li>每个 Q tile 加载一次后流式处理所有 K/V tiles，最后<strong>一次</strong>写入 HBM（FA1 是每次内层迭代都写回再读取）。</li>
+<li>GPU 实现<strong>顺序写</strong>而非分散写，合并访存效率更高。</li>
+<li>减少 HBM 写入量：<code>O(Br * d)</code> 而非 <code>O(Br * Bc * #tiles)</code>。</li>
+</ul>
+<p><strong>Warp 按行划分：</strong></p>
+<ul>
+<li>每个 warp 负责 Q tile 中连续的若干行。在最后归一化（除以 l）时所有 warp 可以独立进行，无需跨 warp 同步。</li>
+<li>FA1 按列划分导致每次 rescale 需要跨 warp 通信。</li>
+</ul>
+<p><strong>性能数据：</strong></p>
+<ul>
+<li>FA2 在 A100 上达到 140 TFLOPS（FP16），约 50-70% 的理论峰值。</li>
+<li>相比于 FA1 的 2-4x 加速，FA2 进一步提升了 2x。</li>
+</ul>
+<h3 id="24-flashattention-v3--hopper-gpu-上的异步与低精度">2.4 FlashAttention v3 — Hopper GPU 上的异步与低精度</h3>
+<p><strong>核心改进（三方面）：</strong></p>
+<h4 id="1-warp-specialization（warp-专业化）">1. Warp Specialization（Warp 专业化）</h4>
+<ul>
+<li>将 warp 分为两组：<strong>GEMM warp</strong>（负责 matmul）和 <strong>Softmax warp</strong>（负责 softmax 归一化）。</li>
+<li>两组 warp 通过 shared memory 异步通信，实现<strong>流水线并行</strong>——当一个 GEMM warp 计算下一组数据时，softmax warp 处理上一组结果。</li>
+</ul>
+<h4 id="2-tma--异步执行">2. TMA + 异步执行</h4>
+<ul>
+<li>H100 的 TMA（Tensor Memory Accelerator）硬件单元负责 HBM 到 SRAM 的数据搬运。</li>
+<li>WGMMA（Warpgroup Matrix Multiply-Accumulate）指令允许在 GEMM 计算过程中同时进行数据加载。</li>
+<li>采用<strong>ping-pong 调度</strong>：两个 buffer 轮流加载/计算，消除 stall。</li>
+</ul>
+<h4 id="3-fp8-低精度支持">3. FP8 低精度支持</h4>
+<ul>
+<li>利用 H100 原生 FP8 Tensor Core（E4M3）。</li>
+<li>引入 <strong>block quantization</strong>：每个 tile 计算独立的 scale，相比 per-tensor FP8 误差降低 2.6x。</li>
+<li>使用<strong>非相干处理（incoherent processing）</strong>：对 Q/K 做随机旋转减少 FP8 量化误差的相关性。</li>
+</ul>
+<p><strong>性能数据：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>FA2 (H100)</th>
+<th>FA3 (H100 FP16)</th>
+<th>FA3 (H100 FP8)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>TFLOPS</td>
+<td>350 (35%)</td>
+<td>740 (75%)</td>
+<td>~1,200</td>
+</tr>
+<tr>
+<td>vs FA2 加速比</td>
+<td>1x</td>
+<td>1.5-2.0x</td>
+<td>2.6-3.0x</td>
+</tr>
+<tr>
+<td>精度误差</td>
+<td>---</td>
+<td>---</td>
+<td>比 baseline FP8 低 2.6x</td>
+</tr>
+</tbody></table></div>
+<h3 id="25-pagedattention--vllm-的内存管理核心">2.5 PagedAttention — vLLM 的内存管理核心</h3>
+<p><strong>原理：</strong> 受 OS 虚拟内存分页启发，将 KV Cache 切分为固定大小的 block（page）。</p>
+<p><strong>数据结构：</strong></p>
+<pre><code>Logical KV Stream   Block Table   Physical Blocks
+  Token 0-15    --&gt;   Block 0   --&gt;   Physical Block 7
+  Token 16-31   --&gt;   Block 1   --&gt;   Physical Block 3
+  Token 32-47   --&gt;   Block 2   --&gt;   Physical Block 12
+</code></pre>
+<p><strong>实现要点：</strong></p>
+<ul>
+<li>Block 大小通常为 16 tokens（平衡碎片和寻址开销）。</li>
+<li><strong>Copy-on-Write</strong>：共享前缀的请求可以指向同一物理块（如系统 prompt 在 8 个并发请求间共享）。</li>
+<li>自定义 CUDA kernel 通过 block table 间接寻址，在注意力计算中<strong>动态 gather</strong> 物理块。</li>
+<li>分配器维护 free list，分配/释放为 O(1)。</li>
+</ul>
+<p><strong>性能收益：</strong></p>
+<ul>
+<li>内存碎片从传统方式的 60-80% 降低到 &lt; 4%。</li>
+<li>单条 KV cache 仅最后一个 block 有浪费（平均 waste = block_size/2 tokens）。</li>
+<li>并行采样（一个 prompt 生成多个 continuation）通过 block 共享节省大量内存。</li>
+<li>结合 prefix caching（自动检测共享前缀），首 token 延迟降低 60-90%。</li>
+</ul>
+<h3 id="26-multi-head-latent-attention-mla--deepseek-的核心创新">2.6 Multi-head Latent Attention (MLA) — DeepSeek 的核心创新</h3>
+<p><strong>动机：</strong> 标准 MHA 的 KV cache 随 head 数线性增长。DeepSeek-V2/V3 提出 MLA，通过<strong>低秩压缩</strong>大幅压缩 KV cache。</p>
+<p><strong>核心思想：</strong></p>
+<pre><code># 标准 MHA:
+K = X @ W_K               # [n, d] -&gt; [n, h, d_k]
+V = X @ W_V               # [n, d] -&gt; [n, h, d_v]
+# KV cache 存储: h * d_k + h * d_v  per token
+
+# MLA (压缩版本):
+c_KV = X @ W_DKV          # [n, d] -&gt; [n, d_c]   # 压缩到低维
+K = c_KV @ W_UK           # [n, d_c] -&gt; [n, h, d_k]  # 上投影
+V = c_KV @ W_UV           # [n, d_c] -&gt; [n, h, d_v]  # 上投影
+# KV cache 只需存储: d_c per token (d_c &lt;&lt; h * d_k)
+</code></pre>
+<p><strong>Matrix Absorption（矩阵吸收）—— 关键推理优化：</strong></p>
+<p>在 decode 阶段，不需要显式重建完整 K/V。因为：</p>
+<pre><code>O = softmax(Q @ K^T / sqrt(d)) @ V
+  = softmax(Q @ (c_KV @ W_UK)^T / sqrt(d)) @ (c_KV @ W_UV)
+  = softmax((Q @ W_UK^T) @ c_KV^T / sqrt(d)) @ c_KV @ W_UV
+</code></pre>
+<p>即：Q 和 W_UK 可以预乘，V 投影 W_UV 可以推迟到输出时再乘。这样 KV cache 只需缓存低维的 <code>c_KV</code>。</p>
+<p><strong>FlashMLA（DeepSeek 开源实现）：</strong></p>
+<ul>
+<li>基于 FlashAttention 2/3 和 CUTLASS 的高效 MLA kernel。</li>
+<li>同时支持 prefill（dense attention）和 decode（sparse page attention）。</li>
+<li>稀疏 MLA prefill kernel 支持 top-k 稀疏（通过 indices 参数指定要关注的 KV token）。</li>
+<li>在 Blackwell (B200) 上达到优秀的硬件利用率。</li>
+</ul>
+<h3 id="27-ring-attention--序列维度分布式-attention">2.7 Ring Attention — 序列维度分布式 Attention</h3>
+<p><strong>动机：</strong> 当序列长度超过单 GPU 内存容量（如 1M+ tokens），需要在多 GPU 上按<strong>序列维度</strong>切分 Attention。</p>
+<p><strong>原理：</strong></p>
+<pre><code>GPU 0: Q[0:N/4], K[0:N/4], V[0:N/4]
+GPU 1: Q[N/4:N/2], K[N/4:N/2], V[N/4:N/2]
+GPU 2: Q[N/2:3N/4], K[N/2:3N/4], V[N/2:3N/4]
+GPU 3: Q[3N/4:N], K[3N/4:N], V[3N/4:N]
+
+# 每个 GPU 在自己的 Q 块上，做 online softmax
+# 然后通过 ring 拓扑传递 K/V 块：
+#   GPU 0 -&gt; GPU 1 -&gt; GPU 2 -&gt; GPU 3 -&gt; GPU 0
+# 每轮计算 partial attention，更新 running max/sum
+# 经过 N 轮后，每个 GPU 持有完整的 O
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>通信可以<strong>重叠</strong>在计算上：发送当前 K/V 块的同时计算当前块的注意力。</li>
+<li>通信量：每轮 <code>d * Bc</code>（K 和 V 各传一个 block），总共 N/Bc 轮。</li>
+<li>相对于 head-parallelism（DeepSpeed Ulysses），Ring Attention 不受 head 数限制，可以扩展到更多 GPU。</li>
+<li>在 cross-attention 场景（如多模态 LLM 的视觉特征很长），Q 小 KV 大，LV-XAttn 等变体将通信量降低到 Ring Attention 的 0.48%。</li>
+</ul>
+<hr>
+<h2 id="3-moe-算子">3. MoE 算子</h2>
+<h3 id="31-概述">3.1 概述</h3>
+<p>MoE（Mixture of Experts）层以稀疏激活的方式扩展模型容量：</p>
+<pre><code># 每层 MoE 前向
+logits = router(x)                              # [B, E], E = expert count
+weights, indices = top_k(logits, k=2)            # 每 token 选 top-2 expert
+weights = softmax(weights)                       # 归一化权重
+
+# Dispatch: 将 token 分配到对应 expert
+dispatched = dispatch(x, indices)                # [T_k, d], 每个 expert 上的 token
+
+# Expert 计算（每个 expert 是独立 FFN）
+expert_outputs = expert_fn(dispatched)           # 可并行
+
+# Combine: 加权合并输出
+output = combine(expert_outputs, indices, weights)
+</code></pre>
+<h3 id="32-top-k-routing--dispatch--combine">3.2 Top-k Routing + Dispatch + Combine</h3>
+<p><strong>Router 实现：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">class</span> <span class="hljs-title class_">Router</span>(nn.Module):
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, d_model, n_experts, top_k=<span class="hljs-number">2</span></span>):
+        <span class="hljs-built_in">super</span>().__init__()
+        <span class="hljs-variable language_">self</span>.gate = nn.Linear(d_model, n_experts, bias=<span class="hljs-literal">False</span>)
+        <span class="hljs-variable language_">self</span>.top_k = top_k
+
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">self, x</span>):
+        <span class="hljs-comment"># x: [B, d_model]</span>
+        logits = <span class="hljs-variable language_">self</span>.gate(x)                    <span class="hljs-comment"># [B, n_experts]</span>
+        weights, indices = logits.topk(<span class="hljs-variable language_">self</span>.top_k, dim=-<span class="hljs-number">1</span>)  <span class="hljs-comment"># [B, k], [B, k]</span>
+        weights = F.softmax(weights, dim=-<span class="hljs-number">1</span>)
+        <span class="hljs-keyword">return</span> weights, indices
+</code></pre>
+<p><strong>Dispatch 的两种实现策略：</strong></p>
+<ol>
+<li><strong>基于 scatter/gather：</strong> 根据 indices 将 token 重新排列到 expert 对应的连续内存中。问题是<strong>不规则访存</strong>——不同 token 去不同 expert，导致 HBM 访问模式低效。</li>
+<li><strong>基于 Mask（One-hot 矩阵乘）：</strong><pre><code class="hljs language-python"><span class="hljs-comment"># 构建 dispatch mask [B, E]</span>
+mask = F.one_hot(indices, num_classes=E).<span class="hljs-built_in">float</span>()  <span class="hljs-comment"># [B, k, E]</span>
+mask = mask.<span class="hljs-built_in">sum</span>(dim=<span class="hljs-number">1</span>)                            <span class="hljs-comment"># [B, E]</span>
+<span class="hljs-comment"># 对每个 expert e：取 mask[:, e] &gt; 0 的 token</span>
+</code></pre>
+</li>
+</ol>
+<p><strong>Combine 实现：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 每个 token 的最终输出 = sum(weight_e * expert_output_e for e in top_k)</span>
+<span class="hljs-comment"># 实现：将 expert 输出 scatter back 到原始 token 位置</span>
+output = torch.zeros_like(x)
+<span class="hljs-keyword">for</span> e <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_experts):
+    token_indices = (indices == e).nonzero()
+    output[token_indices] += weights[token_indices] * expert_outputs[e]
+</code></pre>
+<h3 id="33-megablocks--基于-block-sparse-的高效-moe">3.3 Megablocks — 基于 Block Sparse 的高效 MoE</h3>
+<p><strong>核心思想：</strong> 将 MoE 的计算重新表述为<strong>块稀疏矩阵乘法（block-sparse GEMM）</strong>。</p>
+<p>传统 MoE Dispatch 中，每个 expert 需要独立的 GEMM，导致大量小 GEMM launch 和 HBM 带宽浪费。Megablocks 将所有 expert 的 token 拼接为一个稀疏矩阵：</p>
+<pre><code># 所有 token 排列后：[T, d]，但根据 expert 分组
+# 构建 block-sparse mask：将分组信息编码为稀疏模式
+# 一次大的 block-sparse GEMM 搞定所有 expert 的计算
+
+Megablocks block-sparse GEMM:
+  out[Ti, :] = in[Ti, :] @ W_e  (对每个 expert e)
+  -&gt; 转化为: out = block_sparse_matmul(in_grouped, W_all, mask)
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>相比 Tutel 的 padding 方案（补零到最大 expert 容量），Megablocks <strong>不丢弃 token、不填充</strong>。</li>
+<li>Block-sparse GEMM 的稀疏模式由 routing 动态决定，在 GPU 上需要高效的 metadata 管理。</li>
+<li>在 Mixtral 8x7B 上训练加速达 40%（vs Tutel），吞吐 2.4x 优于密集模型（相同 FLOP 预算）。</li>
+<li>限制：当 expert 数量很多（64+）且分布极度倾斜时，block-sparse 调度的固定 tile 大小会导致利用率下降。</li>
+</ul>
+<h3 id="34-tutel--优化的-moe-通信与计算">3.4 Tutel — 优化的 MoE 通信与计算</h3>
+<p><strong>Tutel 的关键优化：</strong></p>
+<ol>
+<li><strong>All-to-All 通信优化：</strong> 在 expert parallelism 场景下，每个 GPU 持有部分 expert，需要 all-to-all 通信来路由 token。Tutel 将 all-to-all 与 FFN 计算做<strong>重叠（overlap）</strong>。</li>
+<li><strong>Capacity Factor 调度：</strong> 支持正（固定容量上限）、零（自适应）、负（自动扩展）三种 capacity factor 策略。</li>
+<li><strong>Auxiliary Loss 管理：</strong> 内置 load balancing loss，可配置 <code>a2a_ffn_overlap_degree</code> 控制通信与计算重叠深度。</li>
+</ol>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Tutel 配置示例</span>
+moe_layer = tutel_moe.moe_layer(
+    gate_type={<span class="hljs-string">&#x27;type&#x27;</span>: <span class="hljs-string">&#x27;top&#x27;</span>, <span class="hljs-string">&#x27;k&#x27;</span>: <span class="hljs-number">2</span>},
+    experts={<span class="hljs-string">&#x27;count_per_node&#x27;</span>: <span class="hljs-number">2</span>, <span class="hljs-string">&#x27;type&#x27;</span>: <span class="hljs-string">&#x27;ffn&#x27;</span>},
+    model_dim=<span class="hljs-number">4096</span>,
+    a2a_ffn_overlap_degree=<span class="hljs-number">2</span>,  <span class="hljs-comment"># all-to-all 与一半的 GEMM 重叠</span>
+)
+</code></pre>
+<h3 id="35-expert-parallelism--多-gpu-expert-部署">3.5 Expert Parallelism — 多 GPU Expert 部署</h3>
+<p><strong>原理：</strong> 将不同的 expert 分配到不同的 GPU 上。每个 GPU 只计算分配给它的 expert。</p>
+<pre><code># Token 路由流程（以 4 GPU、16 Expert、每 GPU 4 Expert 为例）
+GPU 0: Expert 0-3     GPU 1: Expert 4-7
+GPU 2: Expert 8-11    GPU 3: Expert 12-15
+
+Step 1: 每个 GPU 的本地 router 计算每个 token 的目标 expert
+Step 2: All-to-All 通信，将 token 发送到目标 GPU
+Step 3: 每个 GPU 计算本地的 expert FFN
+Step 4: All-to-All 通信，将结果送回原始 GPU
+Step 5: Combine 加权合并
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li><strong>通信是瓶颈</strong>：all-to-all 的通信量正比于 token 数和 hidden dim。Expert 越多，通信占比越大。</li>
+<li>MoE 使用<strong>数据并行 + expert 并行</strong>混合：attention 层数据并行，FFN 层 expert 并行。</li>
+<li>通信重叠：Tutel 和 DeepSpeed-MoE 都支持将 all-to-all 与 GEMM 计算重叠。</li>
+<li><strong>负载不均衡问题</strong>：某些 expert 接收更多 token 导致 straggler。使用 capacity factor + auxiliary loss 缓解。</li>
+</ul>
+<hr>
+<h2 id="4-融合算子">4. 融合算子</h2>
+<h3 id="41-概述">4.1 概述</h3>
+<p>融合算子（Fused Operators）将多个连续的 kernel 调用合并为一个，主要收益：</p>
+<ol>
+<li><strong>减少 kernel launch 开销</strong>（CUDA kernel launch latency ~5-15 us）</li>
+<li><strong>减少 HBM 中间结果的读写</strong>（带宽瓶颈下尤为关键）</li>
+<li><strong>增加计算密度</strong>（提高算术强度，从 memory-bound 转为 compute-bound）</li>
+</ol>
+<h3 id="42-fused-qkv-projection">4.2 Fused QKV Projection</h3>
+<p><strong>动机：</strong> 标准实现中，Q、K、V 的线性投影是三个独立的 <code>nn.Linear</code> -&gt; 三个 kernel launch + 三次 HBM 读写。</p>
+<p><strong>融合方式：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 未融合:</span>
+Q = x @ W_Q           <span class="hljs-comment"># [B, d] -&gt; [B, h*d_k]</span>
+K = x @ W_K           <span class="hljs-comment"># [B, d] -&gt; [B, h*d_k]</span>
+V = x @ W_V           <span class="hljs-comment"># [B, d] -&gt; [B, h*d_v]</span>
+<span class="hljs-comment"># HBM 写入: 3x (B * h * d) 个元素</span>
+
+<span class="hljs-comment"># 融合: 单次大 GEMM</span>
+QKV = x @ [W_Q | W_K | W_V]   <span class="hljs-comment"># [B, d] -&gt; [B, h*d_k + h*d_k + h*d_v]</span>
+<span class="hljs-comment"># 然后 split</span>
+Q, K, V = torch.split(QKV, [h*d_k, h*d_k, h*d_v], dim=-<span class="hljs-number">1</span>)
+<span class="hljs-comment"># HBM 写入: 1x (B * (2*h*d_k + h*d_v)) 个元素</span>
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>单次大 GEMM 相比三次小 GEMM：提高 Tensor Core 利用率，减少 kernel launch 3 倍。</li>
+<li>split 操作是纯元数据操作（view/stride 变化），几乎零开销。</li>
+<li>GQA/MQA 情况下 Q 的 head 数与 K/V 不同，需分别处理 W_Q 和 W_KV 融合。</li>
+</ul>
+<h3 id="43-flashattention--mlp-融合">4.3 FlashAttention + MLP 融合</h3>
+<p><strong>动机：</strong> Transformer block = Attention + FFN。中间结果 <code>attn_out</code> 从 SRAM 写回 HBM，又被 FFN 读取。融合后直接在 SRAM 中完成整个 block。</p>
+<p><strong>实现思路：</strong></p>
+<pre><code># 标准 block（2 次 HBM 读写交界）:
+attn_out = attention(Q, K, V)       # -&gt; HBM
+ffn_out = FFN(LayerNorm(attn_out))  # &lt;- HBM (读 attn_out)
+x = x + attn_out + ffn_out
+
+# 融合 block（去掉中间 HBM 写入）:
+# attention 的最后一次输出不进 HBM，直接留给 FFN
+# 需要将 FFN 的第一层 GEMM 也放到同一个 kernel 中
+</code></pre>
+<p><strong>挑战：</strong></p>
+<ul>
+<li>Attention 和 FFN 的 tile 策略不同（attention 需要 K/V 分块流式处理，FFN 是标准 GEMM）。</li>
+<li>需要额外的 shared memory 来传递 attention 输出到 FFN，增加了 SRAM 压力。</li>
+<li>现有实现（NVIDIA FasterTransformer / TensorRT-LLM）在 batch=1 时收益明显，大 batch 时 tiles 策略复杂化。</li>
+</ul>
+<h3 id="44-layernorm--quantization-融合">4.4 LayerNorm + Quantization 融合</h3>
+<p><strong>动机：</strong> Activation quantization 需要收集统计量（absmax 或 min/max），这些统计量通常紧跟 LayerNorm 之后的激活分布。如果先做 LayerNorm 写回 HBM，再加载做量化，浪费带宽。</p>
+<p><strong>融合方式：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 未融合:</span>
+x = layer_norm(hidden_states)  <span class="hljs-comment"># 输出 FP16 -&gt; HBM</span>
+<span class="hljs-comment"># ... 后续量化</span>
+scale = x.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>() / <span class="hljs-number">127</span>
+x_q = (x / scale).to(torch.int8)
+
+<span class="hljs-comment"># 融合 (LayerNorm + Quant in one kernel):</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">fused_layernorm_quant</span>(<span class="hljs-params">x, gamma, beta</span>):
+    <span class="hljs-comment"># Step 1: 在 SRAM 中计算 mean/var</span>
+    mean = x.mean(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>)
+    var = x.var(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>)
+    <span class="hljs-comment"># Step 2: 在 SRAM 中归一化</span>
+    x_norm = (x - mean) / torch.sqrt(var + eps) * gamma + beta
+    <span class="hljs-comment"># Step 3: 在 SRAM 中收集量化 scale</span>
+    scale = x_norm.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>(dim=-<span class="hljs-number">1</span>, keepdim=<span class="hljs-literal">True</span>).values / <span class="hljs-number">127.0</span>
+    x_q = (x_norm / scale).to(torch.int8)
+    <span class="hljs-comment"># 一次性写回 HBM: x_q + scale</span>
+    <span class="hljs-keyword">return</span> x_q, scale
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>消除了一次 FP16 激活值的 HBM 写入再读取（2x B*d 个元素）。</li>
+<li>统计量的收集在 SRAM 中做 reduction 即可，无需额外 kernel。</li>
+<li>类似的：<strong>RMSNorm + Quant</strong>、<strong>LayerNorm + RoPE</strong> 等变体同样有效。</li>
+</ul>
+<h3 id="45-rope--qk-gemm-融合">4.5 RoPE + QK GEMM 融合</h3>
+<p><strong>动机：</strong> RoPE（Rotary Position Embedding）需要在 Q 和 K 上应用旋转矩阵，然后将 Q 和 K^T 做矩阵乘。拆分做的话：Q/K 旋转 -&gt; HBM 写 -&gt; QK GEMM 读。</p>
+<p><strong>融合方式：</strong></p>
+<pre><code># 融合 kernel: RoPE -&gt; QK 点积 (不写中间结果)
+
+1. 加载 Q tile 和 K tile 到 SRAM
+2. 在 SRAM 中计算旋转后的 Q&#x27;&#x27; 和 K&#x27;&#x27;
+   Q&#x27;&#x27;[i, :d/2] = Q[i, :d/2]*cos(theta_i) - Q[i, d/2:]*sin(theta_i)
+   Q&#x27;&#x27;[i, d/2:] = Q[i, :d/2]*sin(theta_i) + Q[i, d/2:]*cos(theta_i)
+3. 直接计算 S = Q&#x27;&#x27; @ K&#x27;&#x27;^T
+4. 继续 softmax -&gt; attn_out
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>RoPE 的 cos/sin 值可以预计算并缓存在 constant memory。</li>
+<li>融合后消除中间矩阵的 HBM 读写（2x B*d 个元素）。</li>
+<li>特别在 decode 阶段（batch=1），RoPE 占比显著，融合收益更大。</li>
+</ul>
+<h3 id="46-gemm--activation--bias-融合">4.6 GEMM + Activation + Bias 融合</h3>
+<p><strong>动机：</strong> FFN 中常见模式 <code>y = Act(x @ W^T) + bias</code>，拆分会导致中间结果写回 HBM。</p>
+<p><strong>典型模式：</strong></p>
+<pre><code># SwiGLU FFN:
+gate = x @ W_gate            # GEMM
+up = x @ W_up                # GEMM
+hidden = SiLU(gate) * up     # element-wise
+out = hidden @ W_down        # GEMM
+
+# 融合后 (Fused SwiGLU):
+# gate 和 up 的 GEMM 融合为一个，减少一次重读 x 的 HBM 带宽
+fused_result = x @ [W_gate | W_up]   # 单次 GEMM
+gate, up = split(fused_result)
+hidden = SiLU(gate) * up              # SRAM 中完成
+</code></pre>
+<p><strong>NVIDIA 的实现（FasterTransformer Gated FFN kernel）：</strong></p>
+<ul>
+<li>将 <code>W_gate</code> 和 <code>W_up</code> 拼接为 <code>[W_gate; W_up]</code>，单次 GEMM 计算。</li>
+<li>Activation（SiLU/GELU）在寄存器中计算，与 element-wise multiply 融合。</li>
+<li>Bias add 也融合到同一 kernel 中：<code>out += bias</code>。</li>
+</ul>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>融合后 GEMM 形状更大（d_model -&gt; 2* intermediate_size），Tensor Core 利用率更高。</li>
+<li>消除了 <code>x</code> 的第二次加载（原本 gate 和 up 各加载一次 x）。</li>
+<li>如果模型使用 FP8 推理，W8A8 GEMM + dequant + activation 也可以融合。</li>
+</ul>
+<hr>
+<h2 id="5-推测解码算子">5. 推测解码算子</h2>
+<h3 id="51-概述">5.1 概述</h3>
+<p>自回归解码的瓶颈：每步生成一个 token，需要串行执行完整模型前向。推测解码通过<strong>草稿 + 验证</strong>范式打破此瓶颈。</p>
+<p><strong>基本流程：</strong></p>
+<ol>
+<li><strong>Draft（提议）：</strong> 用一个轻量模型或头快速生成 K 个候选 token。</li>
+<li><strong>Verify（验证）：</strong> 目标模型并行 forward 这 K 个 token，一次前向验证整个序列。</li>
+<li><strong>Accept（接受）：</strong> 从验证结果中选择最长可接受前缀，丢弃其余。</li>
+</ol>
+<h3 id="52-speculative-decoding--标准草稿-验证框架">5.2 Speculative Decoding — 标准草稿-验证框架</h3>
+<p><strong>数学基础：</strong></p>
+<ul>
+<li>草稿模型 <code>M_q</code> 生成 K 个 token：<code>x_{t+1}, ..., x_{t+K} ~ M_q(*|x_{&lt;=t})</code></li>
+<li>目标模型 <code>M_p</code> 验证：一次 forward 计算所有位置的概率分布 <code>p(*|x_{&lt;=t}, x_{t+1}, ...)</code></li>
+<li><strong>拒绝采样</strong>保证输出分布与 <code>M_p</code> 完全一致（lossless）：<pre><code>for i in 1..K:
+  r ~ uniform(0, 1)
+  if r &lt; min(1, p(x_{t+i}) / q(x_{t+i})):
+    accept, continue
+  else:
+    # resample from adjusted distribution
+    break
+</code></pre>
+</li>
+</ul>
+<p><strong>算子实现要点：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 并行验证的核心：一次 forward 计算出所有 draft token 位置的 logits</span>
+<span class="hljs-comment"># 利用 causal mask 保证正确性</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">verify</span>(<span class="hljs-params">draft_tokens, kv_cache</span>):
+    <span class="hljs-comment"># draft_tokens: [K] --- 欲验证的 K 个 token</span>
+    <span class="hljs-comment"># 将 draft tokens 拼接到已有序列后</span>
+    all_tokens = concat(prev_tokens, draft_tokens)  <span class="hljs-comment"># [prompt_len + K]</span>
+
+    <span class="hljs-comment"># 一次 forward 计算所有 token 的 logits</span>
+    logits = model.forward(all_tokens, kv_cache)  <span class="hljs-comment"># [prompt_len + K, vocab]</span>
+
+    <span class="hljs-comment"># 取出每个 draft token 位置的目标分布和草稿分布</span>
+    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(K):
+        p_i = softmax(logits[prompt_len + i - <span class="hljs-number">1</span>])  <span class="hljs-comment"># 目标模型分布</span>
+        q_i = draft_probs[i]                        <span class="hljs-comment"># 草稿模型分布</span>
+        <span class="hljs-comment"># 拒绝采样检查</span>
+        <span class="hljs-keyword">if</span> accept(p_i, q_i, draft_tokens[i]):
+            accepted += <span class="hljs-number">1</span>
+        <span class="hljs-keyword">else</span>:
+            <span class="hljs-keyword">break</span>
+    <span class="hljs-keyword">return</span> accepted_count
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li><strong>加速比上限：</strong> <code>E[加速比] = (1 - gamma^K) / (1 - gamma) / (1 + K/verification_cost)</code>，其中 gamma 是每步接受率。</li>
+<li>实际部署中 <code>K</code> 通常取 3-7，过大会导致验证成本的边际收益递减。</li>
+<li>草稿模型和目标模型的分布差异过大时接受率低，建议分布对齐（distill）。</li>
+<li>N-gram 草稿（基于 prompt 中的模式匹配）不需要额外模型，在摘要等场景接受率可达 60-80%。</li>
+</ul>
+<h3 id="53-medusa--多解码头--tree-attention">5.3 Medusa — 多解码头 + Tree Attention</h3>
+<p><strong>核心创新：</strong> 在目标模型顶部分支多个<strong>轻量解码头</strong>（不依赖独立草稿模型），每个头预测一个未来位置的 token。</p>
+<pre><code># Medusa 架构
+Last Hidden State h_t  (d_model)
+         |
+    +----+----+----+
+    |    |    |    |
+Head 0  Head1 Head2 Head3  (每个头 = MLP + LayerNorm)
+    |    |    |    |
+  t+1   t+2  t+3  t+4     (预测位置)
+</code></pre>
+<p><strong>Tree Attention — 关键算子：</strong></p>
+<ul>
+<li>每个头产生 top-5 候选 token -&gt; 构建候选树的组合空间。</li>
+<li>例如 Head0 选 5 个候选，Head1 从每个候选再选 5 个 -&gt; 总共 5^3=125 个候选路径。</li>
+<li><strong>Tree Attention Mask</strong>：通过非平凡的 causal mask 允许树内并行计算注意力。</li>
+</ul>
+<pre><code># Tree Attention Mask 示例（简化）：
+# 根节点 r, 子节点 a, b (来自 r), 孙节点 c (来自 a), d (来自 b)
+# Mask:
+#   r  a  b  c  d
+# r 1  0  0  0  0
+# a 1  1  0  0  0
+# b 1  0  1  0  0   &lt;- b 看不到 a
+# c 1  1  0  1  0   &lt;- c 只能看到 a 路径
+# d 1  0  1  0  1   &lt;- d 只能看到 b 路径
+</code></pre>
+<p><strong>验证与接受：</strong></p>
+<ul>
+<li>单次 forward 计算出所有候选路径的 logits。</li>
+<li>标准的拒绝采样或者 <strong>typical acceptance</strong>（设定概率阈值，避免过度拒绝）。</li>
+<li><strong>贪婪解码</strong>下：选择 logits 与草稿一致的若干前缀中最长的那条。</li>
+</ul>
+<p><strong>性能数据：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>版本</th>
+<th>训练方式</th>
+<th>加速比</th>
+<th>精度损失</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Medusa-1</td>
+<td>只训练 head（冻结 backbone）</td>
+<td>2.2x</td>
+<td>无（lossless）</td>
+</tr>
+<tr>
+<td>Medusa-2</td>
+<td>联合训练 backbone + head</td>
+<td>2.3-3.6x</td>
+<td>可忽略</td>
+</tr>
+</tbody></table></div>
+<p><strong>实现要点：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Medusa 树状注意力 forward</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">medusa_tree_attention</span>(<span class="hljs-params">q, k, v, tree_mask</span>):
+    <span class="hljs-comment"># q: [B, total_candidates, h, d_k]</span>
+    <span class="hljs-comment"># tree_mask: [total_candidates, total_candidates]</span>
+
+    scores = torch.einsum(<span class="hljs-string">&quot;bthd,bshd-&gt;bhts&quot;</span>, q, k) / sqrt(d_k)
+    scores = scores.masked_fill(~tree_mask, <span class="hljs-built_in">float</span>(<span class="hljs-string">&#x27;-inf&#x27;</span>))
+    attn = torch.softmax(scores, dim=-<span class="hljs-number">1</span>)
+    out = torch.einsum(<span class="hljs-string">&quot;bhts,bshd-&gt;bthd&quot;</span>, attn, v)
+    <span class="hljs-keyword">return</span> out
+
+<span class="hljs-comment"># 路径验证</span>
+logits = model(input_ids)  <span class="hljs-comment"># [B, total_candidates, vocab]</span>
+<span class="hljs-keyword">for</span> path <span class="hljs-keyword">in</span> candidate_paths:
+    <span class="hljs-comment"># 检查路径上的每个 token 是否被接受</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-built_in">all</span>(verify_token(logits[:, pos, :], path_tokens[pos]) <span class="hljs-keyword">for</span> pos <span class="hljs-keyword">in</span> path):
+        longest_accepted = path
+</code></pre>
+<h3 id="54-并行验证算子（rejection-sampling--typical-acceptance）">5.4 并行验证算子（Rejection Sampling / Typical Acceptance）</h3>
+<p><strong>核心算子的 CUDA 实现思路：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 并行验证 kernel (伪代码)</span>
+<span class="hljs-meta">@cuda.jit</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">verify_kernel</span>(<span class="hljs-params">
+    draft_tokens,      <span class="hljs-comment"># [batch, K] --- 每个请求的草稿 token</span>
+    target_logits,     <span class="hljs-comment"># [batch, K+1, vocab] --- 目标模型 logits</span>
+    draft_probs,       <span class="hljs-comment"># [batch, K, vocab] --- 草稿模型概率</span>
+    accepted_count,    <span class="hljs-comment"># [batch] --- 输出：接受的 token 数</span>
+    rng_states,        <span class="hljs-comment"># 随机数状态</span>
+</span>):
+    bid = cuda.blockIdx.x  <span class="hljs-comment"># batch 维度并行</span>
+    <span class="hljs-keyword">for</span> pos <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(K):
+        token = draft_tokens[bid, pos]
+        p = softmax_one(target_logits[bid, pos])
+        q = draft_probs[bid, pos]
+
+        <span class="hljs-comment"># 拒绝采样判断</span>
+        r = rand(rng_states)
+        <span class="hljs-keyword">if</span> r &lt; <span class="hljs-built_in">min</span>(<span class="hljs-number">1.0</span>, p[token] / q[token]):
+            accepted_count[bid] += <span class="hljs-number">1</span>
+        <span class="hljs-keyword">else</span>:
+            <span class="hljs-comment"># 不接受的 token，从分布 max(0, p - q) 重新采样</span>
+            <span class="hljs-keyword">break</span>
+</code></pre>
+<p><strong>性能关键点：</strong></p>
+<ul>
+<li>验证是 <strong>embarrassingly parallel</strong>（每个 batch 位置独立），非常适合 GPU 并行。</li>
+<li>Batched verification：将多个请求的 draft tokens 拼在一起，共用一次目标模型 forward。</li>
+<li>在 batch size 较大时（&gt;16），推测解码的收益递减，因为目标模型已经充分利用 GPU 资源了。</li>
+</ul>
+<hr>
+<h2 id="场景化选择指南">场景化选择指南</h2>
+<h3 id="推荐方案速查">推荐方案速查</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>推荐量化方案</th>
+<th>推荐 Attention</th>
+<th>推荐 MoE 策略</th>
+<th>可考虑加速</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>高吞吐在线服务 (H100)</td>
+<td>FP8 W8A8 + FP8 KV Cache</td>
+<td>FlashAttention-3 + PagedAttention</td>
+<td>Megablocks + Expert Parallelism</td>
+<td>连续批处理</td>
+</tr>
+<tr>
+<td>低成本部署 (A100/RTX 4090)</td>
+<td>AWQ INT4 W4A16</td>
+<td>FlashAttention-2 + PagedAttention</td>
+<td>Tutel + Capacity Factor</td>
+<td>Medusa-1</td>
+</tr>
+<tr>
+<td>边缘端/CPU</td>
+<td>GGUF Q4_K_M</td>
+<td>滑动窗口 Attention</td>
+<td>---</td>
+<td>N-gram 推测</td>
+</tr>
+<tr>
+<td>超长上下文 (100K+)</td>
+<td>FP8 KV Cache 或 INT4 KV Cache (KIVI)</td>
+<td>FlashAttention-2/3 + Ring Attention</td>
+<td>---</td>
+<td>Prefix Caching</td>
+</tr>
+<tr>
+<td>大批量离线推理</td>
+<td>INT8 W8A8 (SmoothQuant)</td>
+<td>FlashAttention-2</td>
+<td>Megablocks block-sparse</td>
+<td>Speculative Decoding</td>
+</tr>
+</tbody></table></div>
+<h3 id="实现优先级">实现优先级</h3>
+<p>从工程实施角度，建议的算子实现优先级：</p>
+<ol>
+<li><strong>第一优先级（基座必须）：</strong> Fused QKV Projection → FlashAttention-2/3 → PagedAttention → INT8/FP8 量化</li>
+<li><strong>第二优先级（吞吐优化）：</strong> Fused SwiGLU (GEMM+Act+Bias) → KV Cache 量化 → Continuous Batching</li>
+<li><strong>第三优先级（高级优化）：</strong> LayerNorm+Quant 融合 → RoPE+QK 融合 → Medusa Tree Attention</li>
+<li><strong>第四优先级（分布式/极大规模）：</strong> Expert Parallelism → Megablocks/Tutel → Ring Attention → MLA</li>
+</ol>
+<hr>
+<h2 id="结语与下一步">结语与下一步</h2>
+<h3 id="五条核心经验">五条核心经验</h3>
+<ol>
+<li><strong>量化是最快见效的手段</strong>——INT4 在 decode 阶段直接给 ~2× 速度提升，F8 在 H100 上几乎零精度损失。优先从 KV Cache 量化开始，收益立竿见影。</li>
+<li><strong>FlashAttention 是长上下文的必选项</strong>——从 FA1 到 FA3 每一代翻倍的性能提升证明 IO-aware 算法的威力。如果你还在用 PyTorch 的 <code>scaled_dot_product_attention</code> 且序列超过 4K，切换到 FA2/FA3 是性价比最高的优化。</li>
+<li><strong>融合算子收益被低估了</strong>——LayerNorm+Quant 融合和 RoPE+QK 融合在 decode 阶段节省 30-50% 的 HBM 访存，而实现难度远低于写一个新的注意力 kernel。</li>
+<li><strong>MoE 的核心矛盾是通信 vs 计算</strong>——Megablocks 的 block-sparse 方案在单机多卡场景表现优异，但跨机部署时 all-to-all 通信依然是瓶颈。优先用 capacity factor + 通信重叠来缓解。</li>
+<li><strong>推测解码与量化有隐藏交互</strong>——KV Cache 量化会轻微改变 logit 分布，可能使 draft token 接受率下降 0.3-1.5 个百分点。如果同时启用，务必重新调优 num_speculative_tokens。</li>
+</ol>
+<h3 id="推荐的学习与实践路径">推荐的学习与实践路径</h3>
+<p>如果你希望进一步深入推理优化，以下路径可以参考：</p>
+<pre><code>1. 基础搭建（1-2 周）
+   ├── 用 vLLM 部署一个量化模型（AWQ INT4 或 FP8）
+   ├── 理解 PagedAttention 的内存管理
+   └── 用 Nsight Compute 分析 kernel 的 roofline
+
+2. 内核优化（2-4 周）
+   ├── 用 Triton 实现一个 fused Layernorm + RoPE kernel
+   ├── 对比未融合 vs 融合的 HBM 访存差异
+   └── 动手实现一个简单的 SmoothQuant
+
+3. 高级实战（4-8 周）
+   ├── 在 H100 上部署 FP8 FlashAttention-3
+   ├── 配置 MoE 模型并调优 capacity factor
+   └── 接入 Medusa 或自训练一个草稿模型做推测解码
+</code></pre>
+<h3 id="延伸阅读">延伸阅读</h3>
+<ul>
+<li>📖 <a href="https://arxiv.org/abs/2205.14135">FlashAttention 系列论文</a> — IO-aware 算法的开山之作，三篇连读理解演进</li>
+<li>📖 <a href="https://github.com/vllm-project/vllm">vLLM 源码</a> — 生产级推理引擎，看它如何混合 cuBLAS + Triton + 自研 kernel</li>
+<li>📖 <a href="https://arxiv.org/abs/2405.04434">DeepSeek-V2 技术报告</a> — MLA 的原型，理解低秩 KV cache 的精妙设计</li>
+<li>📖 <a href="https://arxiv.org/abs/2211.15841">Megablocks 论文</a> — Block-sparse MoE 的高效实现</li>
+<li>📖 <a href="https://arxiv.org/abs/2211.10438">SmoothQuant 论文</a> — W8A8 量化的实用指南</li>
+<li>🔧 <a href="https://github.com/deepseek-ai/FlashMLA">FlashMLA (DeepSeek 开源)</a> — Blackwell 上的高效 MLA kernel</li>
+<li>🔧 <a href="https://github.com/NVIDIA/TensorRT-LLM">TensorRT-LLM</a> — NVIDIA 官方推理优化套件，融合算子参考实现</li>
+</ul>
+<p>推理优化不是买一张更贵的 GPU 就能解决的问题。真正优雅的推理引擎，是量化精度与模型质量的精妙平衡，是 FlashAttention 里每一轮 tiling 与 online softmax 的数学等价变换，是融合算子中每一比特 HBM 访存的锱铢必较。<strong>从理解这些算子开始，你就有了驾驭大模型&quot;最后一公里&quot;的能力。</strong> 🚀</p>
+<hr>
+<p><em>文档生成日期：2026年6月</em>
+<em>参考来源：FlashAttention 系列论文、vLLM 源码、DeepSeek 技术报告、Megablocks/Tutel 论文、Medusa 论文、NVIDIA TensorRT-LLM 文档、SmoothQuant 论文、vLLM 文档等。</em></p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

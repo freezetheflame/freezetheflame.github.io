@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI算子测试与验证完全指南 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-29</p>
+        <h1>AI算子测试与验证完全指南</h1>
+        <div class="post-meta">
+          <span>2026-06-29</span>
+          <span class="tag">AI算子</span><span class="tag">算子测试</span><span class="tag">精度测试</span><span class="tag">差分测试</span><span class="tag">性能基准</span><span class="tag">CI</span><span class="tag">调试工具</span><span class="tag">CUDA</span>
+        </div>
+        <p>如果你写过 GPU kernel —— 不管是 CUDA 还是 Triton —— 一定经历过这样的场景：写了一个自以为完美的 fused kernel，一跑精度差了两个数量级；改了几行 shared memory 访问模式，性能翻倍但某个边界 case 崩了；提交 PR 后 CI 跑了一小时，结果 golden value 不匹配。<strong>算子开发中，测试和验证的精力投入往往不亚于实现本身。</strong></p>
+<p>这篇指南面向 AI Infra 测试工程师与算子开发者，系统梳理算子测试与验证的五大模块——<strong>精度测试、差分测试、性能基准测试、回归/CI、调试工具</strong>——提供可落地的方法论与完整工具链参考。</p>
+<!--more-->
+
+<hr>
+<h2 id="📖-缘起：算子为什么这么难测？">📖 缘起：算子为什么这么难测？</h2>
+<p>一个成熟的 AI 推理引擎（如 vLLM、TensorRT-LLM）中，一个算子的生命周期是这样的：</p>
+<pre><code>写 kernel → 单元测试（单 shape 精度） → 差分测试（多 shape + dtype 组合）
+   → 梯度检查（如果可微且需要反向） → 边界测试（NaN/Inf/zero/extreme）
+   → 性能基准（Roofline 分析，看是否接近硬件上限） → CI 回归（每次 PR 都跑）
+</code></pre>
+<p>这段流程里每一环都可能出问题：浮点运算的精度取舍、不同实现之间的语义等价、硬件利用率是否达标、回归测试是否覆盖全面。五个测试类别各有独立的工具和判定标准，缺少任何一个，线上的某个 corner case 就可能暴雷。</p>
+<p>本文从这五个维度逐一展开，每个模块都附带可直接复用的代码和最佳实践。</p>
+<hr>
+<h2 id="🎯-第一章：精度测试--算子的合格证">🎯 第一章：精度测试 — 算子的&quot;合格证&quot;</h2>
+<p>精度测试是算子验证的基石，核心目标是量化自定义 CUDA/Triton 实现与参考实现（如 PyTorch）之间的数值差异，并判定是否在可接受范围内。</p>
+<h3 id="11-核心度量指标">1.1 核心度量指标</h3>
+<h4 id="cosine-similarity（余弦相似度）">Cosine Similarity（余弦相似度）</h4>
+<p>衡量两个输出张量在方向上的相似度，对整体偏移不敏感，适合检测形状正确但局部数值偏差的场景。</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> torch
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">cosine_similarity</span>(<span class="hljs-params">a: torch.Tensor, b: torch.Tensor</span>) -&gt; <span class="hljs-built_in">float</span>:
+    a_flat = a.flatten().to(torch.float64)
+    b_flat = b.flatten().to(torch.float64)
+    dot = torch.dot(a_flat, b_flat)
+    norm = torch.norm(a_flat) * torch.norm(b_flat)
+    <span class="hljs-keyword">return</span> (dot / norm).item()
+</code></pre>
+<ul>
+<li><strong>判定标准</strong>：FP32 下 <code>cos &gt;= 0.9999</code> 通常可接受；BF16/FP16 下可放宽至 <code>0.999</code>。</li>
+<li><strong>局限</strong>：对整体幅度缩放不敏感（如 <code>out = 2 * ref</code> 仍可能有高余弦值），需配合其他指标使用。</li>
+</ul>
+<h4 id="psnr（peak-signal-to-noise-ratio）">PSNR（Peak Signal-to-Noise Ratio）</h4>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">psnr</span>(<span class="hljs-params">ref: torch.Tensor, out: torch.Tensor, max_val: <span class="hljs-built_in">float</span> = <span class="hljs-number">1.0</span></span>) -&gt; <span class="hljs-built_in">float</span>:
+    mse = torch.mean((ref.to(torch.float64) - out.to(torch.float64)) ** <span class="hljs-number">2</span>).item()
+    <span class="hljs-keyword">if</span> mse == <span class="hljs-number">0</span>:
+        <span class="hljs-keyword">return</span> <span class="hljs-built_in">float</span>(<span class="hljs-string">&#x27;inf&#x27;</span>)
+    <span class="hljs-keyword">return</span> <span class="hljs-number">10</span> * torch.log10(torch.tensor(max_val ** <span class="hljs-number">2</span> / mse)).item()
+</code></pre>
+<ul>
+<li><strong>经验阈值</strong>：&gt; 60 dB 优秀，40-60 dB 可接受，&lt; 40 dB 需排查。</li>
+</ul>
+<h4 id="mse（mean-squared-error）">MSE（Mean Squared Error）</h4>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">mse</span>(<span class="hljs-params">ref: torch.Tensor, out: torch.Tensor</span>) -&gt; <span class="hljs-built_in">float</span>:
+    <span class="hljs-keyword">return</span> torch.mean((ref.to(torch.float64) - out.to(torch.float64)) ** <span class="hljs-number">2</span>).item()
+</code></pre>
+<h4 id="max-relative-error（最大相对误差）">Max Relative Error（最大相对误差）</h4>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">max_relative_error</span>(<span class="hljs-params">ref: torch.Tensor, out: torch.Tensor</span>) -&gt; <span class="hljs-built_in">float</span>:
+    ref_f64 = ref.to(torch.float64)
+    out_f64 = out.to(torch.float64)
+    abs_err = torch.<span class="hljs-built_in">abs</span>(out_f64 - ref_f64)
+    abs_ref = torch.<span class="hljs-built_in">abs</span>(ref_f64)
+    mask = abs_ref &gt; <span class="hljs-number">1e-12</span>
+    <span class="hljs-keyword">if</span> mask.<span class="hljs-built_in">any</span>():
+        <span class="hljs-keyword">return</span> (abs_err[mask] / abs_ref[mask]).<span class="hljs-built_in">max</span>().item()
+    <span class="hljs-keyword">return</span> abs_err.<span class="hljs-built_in">max</span>().item()
+</code></pre>
+<h4 id="ulp-based-comparison（基于-ulp-的比较）">ULP-Based Comparison（基于 ULP 的比较）</h4>
+<p><strong>ULP（Unit in the Last Place）</strong> 是衡量浮点误差最精细的方式，表示两个浮点数之间相隔多少个可表示值。</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> struct, numpy <span class="hljs-keyword">as</span> np
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">float_to_bits</span>(<span class="hljs-params">f</span>):
+    <span class="hljs-keyword">return</span> struct.unpack(<span class="hljs-string">&#x27;I&#x27;</span>, struct.pack(<span class="hljs-string">&#x27;f&#x27;</span>, f))[<span class="hljs-number">0</span>]
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">ulp_distance</span>(<span class="hljs-params">a: np.float32, b: np.float32</span>) -&gt; <span class="hljs-built_in">int</span>:
+    a_bits = float_to_bits(a)
+    b_bits = float_to_bits(b)
+    <span class="hljs-keyword">if</span> a_bits &amp; <span class="hljs-number">0x80000000</span>:
+        a_bits = <span class="hljs-number">0x80000000</span> - (a_bits &amp; <span class="hljs-number">0x7FFFFFFF</span>)
+    <span class="hljs-keyword">if</span> b_bits &amp; <span class="hljs-number">0x80000000</span>:
+        b_bits = <span class="hljs-number">0x80000000</span> - (b_bits &amp; <span class="hljs-number">0x7FFFFFFF</span>)
+    <span class="hljs-keyword">return</span> <span class="hljs-built_in">abs</span>(<span class="hljs-built_in">int</span>(a_bits) - <span class="hljs-built_in">int</span>(b_bits))
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">ulp_check</span>(<span class="hljs-params">ref: torch.Tensor, out: torch.Tensor, max_ulp: <span class="hljs-built_in">int</span> = <span class="hljs-number">2</span></span>) -&gt; <span class="hljs-built_in">tuple</span>:
+    ref_np = ref.cpu().to(torch.float32).numpy().ravel()
+    out_np = out.cpu().to(torch.float32).numpy().ravel()
+    ulps = np.array([ulp_distance(np.float32(a), np.float32(b))
+                     <span class="hljs-keyword">for</span> a, b <span class="hljs-keyword">in</span> <span class="hljs-built_in">zip</span>(ref_np, out_np)])
+    max_ulp_val = <span class="hljs-built_in">int</span>(ulps.<span class="hljs-built_in">max</span>())
+    exceed_ratio = (ulps &gt; max_ulp).mean()
+    <span class="hljs-keyword">return</span> max_ulp_val &lt;= max_ulp, max_ulp_val, exceed_ratio
+</code></pre>
+<p><strong>ULP 判定经验法则</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>数据类型</th>
+<th>宽松</th>
+<th>适中</th>
+<th>严格</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FP32</td>
+<td>≤ 16 ULP</td>
+<td>≤ 4 ULP</td>
+<td>≤ 1 ULP</td>
+</tr>
+<tr>
+<td>FP16</td>
+<td>≤ 8 ULP</td>
+<td>≤ 2 ULP</td>
+<td>精确匹配</td>
+</tr>
+<tr>
+<td>BF16</td>
+<td>≤ 8 ULP</td>
+<td>≤ 2 ULP</td>
+<td>精确匹配</td>
+</tr>
+</tbody></table></div>
+<h3 id="12-随机输入生成策略">1.2 随机输入生成策略</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">generate_random_inputs</span>(<span class="hljs-params">shape, dtype=torch.float32, seed=<span class="hljs-number">42</span></span>):
+    torch.manual_seed(seed)
+    inputs = []
+    <span class="hljs-comment"># uniform [-1, 1]</span>
+    inputs.append(torch.rand(*shape, dtype=dtype, device=<span class="hljs-string">&#x27;cuda&#x27;</span>) * <span class="hljs-number">2</span> - <span class="hljs-number">1</span>)
+    <span class="hljs-comment"># normal</span>
+    inputs.append(torch.randn(*shape, dtype=dtype, device=<span class="hljs-string">&#x27;cuda&#x27;</span>))
+    <span class="hljs-comment"># extreme</span>
+    scale = <span class="hljs-number">1e3</span> <span class="hljs-keyword">if</span> dtype <span class="hljs-keyword">in</span> [torch.float32, torch.bfloat16] <span class="hljs-keyword">else</span> <span class="hljs-number">1e2</span>
+    inputs.append(torch.randn(*shape, dtype=dtype, device=<span class="hljs-string">&#x27;cuda&#x27;</span>) * scale)
+    <span class="hljs-comment"># subnormal</span>
+    inputs.append(torch.rand(*shape, dtype=dtype, device=<span class="hljs-string">&#x27;cuda&#x27;</span>) * <span class="hljs-number">1e-40</span>)
+    <span class="hljs-keyword">return</span> inputs
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">generate_input_pairs</span>(<span class="hljs-params">shape, n_pairs=<span class="hljs-number">10</span>, dtype=torch.float32</span>):
+    pairs = []
+    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_pairs):
+        a = torch.randn(*shape, dtype=dtype, device=<span class="hljs-string">&#x27;cuda&#x27;</span>)
+        b = torch.randn(*shape, dtype=dtype, device=<span class="hljs-string">&#x27;cuda&#x27;</span>)
+        pairs.append((a, b))
+    <span class="hljs-keyword">return</span> pairs
+</code></pre>
+<h3 id="13-边界值、nan-与-inf-测试">1.3 边界值、NaN 与 Inf 测试</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">generate_boundary_values</span>(<span class="hljs-params">dtype=torch.float32</span>):
+    finfo = torch.finfo(dtype)
+    <span class="hljs-keyword">return</span> {
+        <span class="hljs-string">&#x27;zero&#x27;</span>: torch.tensor(<span class="hljs-number">0.0</span>, dtype=dtype),
+        <span class="hljs-string">&#x27;one&#x27;</span>: torch.tensor(<span class="hljs-number">1.0</span>, dtype=dtype),
+        <span class="hljs-string">&#x27;max&#x27;</span>: torch.tensor(finfo.<span class="hljs-built_in">max</span>, dtype=dtype),
+        <span class="hljs-string">&#x27;min&#x27;</span>: torch.tensor(finfo.<span class="hljs-built_in">min</span>, dtype=dtype),
+        <span class="hljs-string">&#x27;eps&#x27;</span>: torch.tensor(finfo.eps, dtype=dtype),
+        <span class="hljs-string">&#x27;tiny&#x27;</span>: torch.tensor(finfo.tiny, dtype=dtype),
+        <span class="hljs-string">&#x27;nan&#x27;</span>: torch.tensor(<span class="hljs-built_in">float</span>(<span class="hljs-string">&#x27;nan&#x27;</span>), dtype=dtype),
+        <span class="hljs-string">&#x27;inf&#x27;</span>: torch.tensor(<span class="hljs-built_in">float</span>(<span class="hljs-string">&#x27;inf&#x27;</span>), dtype=dtype),
+        <span class="hljs-string">&#x27;neg_inf&#x27;</span>: torch.tensor(-<span class="hljs-built_in">float</span>(<span class="hljs-string">&#x27;inf&#x27;</span>), dtype=dtype),
+    }
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">test_boundary_values</span>(<span class="hljs-params">op, shape=(<span class="hljs-params"><span class="hljs-number">4</span>, <span class="hljs-number">4</span></span>), dtype=torch.float32</span>):
+    boundary = generate_boundary_values(dtype)
+    results = {}
+    <span class="hljs-keyword">for</span> name, val <span class="hljs-keyword">in</span> boundary.items():
+        <span class="hljs-keyword">try</span>:
+            inp = torch.full(shape, val.item(), dtype=dtype, device=<span class="hljs-string">&#x27;cuda&#x27;</span>)
+            out = op(inp)
+            has_nan = torch.isnan(out).<span class="hljs-built_in">any</span>().item()
+            has_inf = torch.isinf(out).<span class="hljs-built_in">any</span>().item()
+            results[name] = {<span class="hljs-string">&#x27;ok&#x27;</span>: <span class="hljs-literal">True</span>, <span class="hljs-string">&#x27;has_nan&#x27;</span>: has_nan, <span class="hljs-string">&#x27;has_inf&#x27;</span>: has_inf}
+        <span class="hljs-keyword">except</span> Exception <span class="hljs-keyword">as</span> e:
+            results[name] = {<span class="hljs-string">&#x27;ok&#x27;</span>: <span class="hljs-literal">False</span>, <span class="hljs-string">&#x27;error&#x27;</span>: <span class="hljs-built_in">str</span>(e)}
+    <span class="hljs-keyword">return</span> results
+</code></pre>
+<p><strong>测试清单</strong>：</p>
+<ul>
+<li>输入全部为 NaN → 输出是否全部为 NaN（或按约定处理）</li>
+<li>输入包含 Inf → 是否有意义（如加法 <code>inf + 1 = inf</code>）</li>
+<li>输入为零 → 是否存在除零</li>
+<li>输入为极其微小的次正规数 → 是否被 flush-to-zero</li>
+<li>输入为极大值 → 是否上溢到 Inf</li>
+</ul>
+<h3 id="14-gradcheck（梯度检查）">1.4 Gradcheck（梯度检查）</h3>
+<p>验证自定义算子的反向传播实现是否正确，通过有限差分法数值对比自动梯度。</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 基本用法</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">my_op</span>(<span class="hljs-params">x</span>): <span class="hljs-keyword">return</span> x ** <span class="hljs-number">2</span>
+
+x = torch.randn(<span class="hljs-number">4</span>, <span class="hljs-number">4</span>, dtype=torch.float64, device=<span class="hljs-string">&#x27;cuda&#x27;</span>, requires_grad=<span class="hljs-literal">True</span>)
+
+passed = torch.autograd.gradcheck(
+    my_op, (x,),
+    eps=<span class="hljs-number">1e-6</span>, atol=<span class="hljs-number">1e-5</span>, rtol=<span class="hljs-number">1e-3</span>,
+    raise_exception=<span class="hljs-literal">False</span>,
+)
+
+<span class="hljs-comment"># 自定义 Function</span>
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">MyReLU</span>(torch.autograd.Function):
+<span class="hljs-meta">    @staticmethod</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">ctx, x</span>):
+        ctx.save_for_backward(x)
+        <span class="hljs-keyword">return</span> x.clamp(<span class="hljs-built_in">min</span>=<span class="hljs-number">0</span>)
+<span class="hljs-meta">    @staticmethod</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">backward</span>(<span class="hljs-params">ctx, grad_output</span>):
+        x, = ctx.saved_tensors
+        grad_input = grad_output.clone()
+        grad_input[x &lt; <span class="hljs-number">0</span>] = <span class="hljs-number">0</span>
+        <span class="hljs-keyword">return</span> grad_input
+
+<span class="hljs-comment"># 二阶梯度检查</span>
+torch.autograd.gradgradcheck(my_op, (x,))
+
+<span class="hljs-comment"># Fast Mode（推荐用于 CI）</span>
+passed_fast = torch.autograd.gradcheck(
+    my_op, (x,), fast_mode=<span class="hljs-literal">True</span>, raise_exception=<span class="hljs-literal">False</span>
+)
+</code></pre>
+<p><strong>重要注意事项</strong>：</p>
+<ol>
+<li>**必须使用 <code>float64</code>**：gradcheck 默认要求双精度输入，低精度可能导致假阳性失败。</li>
+<li><strong>非可微点</strong>：在 ReLU 的 <code>x=0</code> 等非可微点，数值梯度与解析梯度天然不一致。</li>
+<li><strong><code>nondet_tol</code> 参数</strong>：若算子在确定性的浮动，设置 <code>nondet_tol=1e-5</code> 可放宽检查。</li>
+<li><strong>fast_mode</strong>：使用随机向量投影而非全 Jacobian 矩阵，速度快几个数量级。</li>
+</ol>
+<hr>
+<h2 id="🔬-第二章：差分测试--同一语义，不同实现">🔬 第二章：差分测试 — 同一语义，不同实现</h2>
+<p>差分测试（Differential Testing）的核心思想：同一计算语义的不同实现，对相同输入应产生（近似）相同的输出。</p>
+<h3 id="21-pytorch-vs-cuda-实现对比">2.1 PyTorch vs CUDA 实现对比</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> typing <span class="hljs-keyword">import</span> <span class="hljs-type">Callable</span>, <span class="hljs-type">Dict</span>, <span class="hljs-type">List</span>
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">diff_test</span>(<span class="hljs-params">ref_func, test_func, input_gen, n_trials=<span class="hljs-number">10</span>,
+              rtol=<span class="hljs-number">1e-3</span>, atol=<span class="hljs-number">1e-5</span>, verbose=<span class="hljs-literal">True</span></span>):
+    results = []
+    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_trials):
+        inputs = input_gen()
+        <span class="hljs-keyword">with</span> torch.no_grad():
+            ref_out = ref_func(*inputs)
+            test_out = test_func(*inputs)
+        
+        result = {<span class="hljs-string">&#x27;trial&#x27;</span>: i, <span class="hljs-string">&#x27;passed&#x27;</span>: <span class="hljs-literal">True</span>}
+        
+        <span class="hljs-keyword">if</span> ref_out.shape != test_out.shape:
+            result[<span class="hljs-string">&#x27;passed&#x27;</span>] = <span class="hljs-literal">False</span>
+            result[<span class="hljs-string">&#x27;shape_mismatch&#x27;</span>] = (ref_out.shape, test_out.shape)
+            results.append(result)
+            <span class="hljs-keyword">continue</span>
+        
+        ok = torch.allclose(ref_out, test_out, rtol=rtol, atol=atol)
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> ok:
+            result[<span class="hljs-string">&#x27;passed&#x27;</span>] = <span class="hljs-literal">False</span>
+            result[<span class="hljs-string">&#x27;max_diff&#x27;</span>] = (ref_out - test_out).<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>().item()
+        results.append(result)
+    
+    pass_rate = <span class="hljs-built_in">sum</span>(<span class="hljs-number">1</span> <span class="hljs-keyword">for</span> r <span class="hljs-keyword">in</span> results <span class="hljs-keyword">if</span> r[<span class="hljs-string">&#x27;passed&#x27;</span>]) / <span class="hljs-built_in">len</span>(results)
+    <span class="hljs-keyword">if</span> verbose:
+        <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;Diff test: <span class="hljs-subst">{pass_rate*<span class="hljs-number">100</span>:<span class="hljs-number">.1</span>f}</span>% passed &quot;</span>
+              <span class="hljs-string">f&quot;(<span class="hljs-subst">{<span class="hljs-built_in">sum</span>(<span class="hljs-number">1</span> <span class="hljs-keyword">for</span> r <span class="hljs-keyword">in</span> results <span class="hljs-keyword">if</span> r[<span class="hljs-string">&#x27;passed&#x27;</span>])}</span>/<span class="hljs-subst">{n_trials}</span>)&quot;</span>)
+    <span class="hljs-keyword">return</span> {<span class="hljs-string">&#x27;pass_rate&#x27;</span>: pass_rate, <span class="hljs-string">&#x27;n_trials&#x27;</span>: n_trials, <span class="hljs-string">&#x27;results&#x27;</span>: results}
+</code></pre>
+<h3 id="22-算子等价性验证">2.2 算子等价性验证</h3>
+<p><strong>VOLTA 等价性检查器</strong>（2025, Microsoft Research + Stanford）：</p>
+<ul>
+<li>首个针对 GPU kernel 的等价性检查器，支持卷积、矩阵乘法、注意力机制</li>
+<li>基于 PTX 中间表示，形式化验证两个 kernel 的语义等价</li>
+<li>参考：arXiv:2511.12638</li>
+</ul>
+<p><strong>统计等价性验证</strong>：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">statistical_equivalence_check</span>(<span class="hljs-params">ref_func, test_func, n_inputs=<span class="hljs-number">100</span>,
+                                  shapes=<span class="hljs-literal">None</span>, dtypes=<span class="hljs-literal">None</span>,
+                                  rtol=<span class="hljs-number">1e-3</span>, atol=<span class="hljs-number">1e-5</span></span>):
+    <span class="hljs-keyword">if</span> shapes <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+        shapes = [(<span class="hljs-number">1</span>, <span class="hljs-number">64</span>), (<span class="hljs-number">32</span>, <span class="hljs-number">128</span>), (<span class="hljs-number">256</span>, <span class="hljs-number">1024</span>)]
+    <span class="hljs-keyword">if</span> dtypes <span class="hljs-keyword">is</span> <span class="hljs-literal">None</span>:
+        dtypes = [torch.float32, torch.float16, torch.bfloat16]
+    
+    stats = {<span class="hljs-string">&#x27;total&#x27;</span>: <span class="hljs-number">0</span>, <span class="hljs-string">&#x27;passed&#x27;</span>: <span class="hljs-number">0</span>, <span class="hljs-string">&#x27;failures&#x27;</span>: []}
+    <span class="hljs-keyword">for</span> shape <span class="hljs-keyword">in</span> shapes:
+        <span class="hljs-keyword">for</span> dtype <span class="hljs-keyword">in</span> dtypes:
+            <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-built_in">max</span>(<span class="hljs-number">1</span>, n_inputs // (<span class="hljs-built_in">len</span>(shapes) * <span class="hljs-built_in">len</span>(dtypes)))):
+                stats[<span class="hljs-string">&#x27;total&#x27;</span>] += <span class="hljs-number">1</span>
+                a = torch.randn(*shape, device=<span class="hljs-string">&#x27;cuda&#x27;</span>, dtype=dtype)
+                b = torch.randn(*shape, device=<span class="hljs-string">&#x27;cuda&#x27;</span>, dtype=dtype)
+                <span class="hljs-keyword">try</span>:
+                    <span class="hljs-keyword">with</span> torch.no_grad():
+                        ref_out = ref_func(a, b)
+                        test_out = test_func(a, b)
+                    <span class="hljs-keyword">if</span> torch.allclose(ref_out, test_out, rtol=rtol, atol=atol):
+                        stats[<span class="hljs-string">&#x27;passed&#x27;</span>] += <span class="hljs-number">1</span>
+                    <span class="hljs-keyword">else</span>:
+                        stats[<span class="hljs-string">&#x27;failures&#x27;</span>].append({
+                            <span class="hljs-string">&#x27;shape&#x27;</span>: shape, <span class="hljs-string">&#x27;dtype&#x27;</span>: dtype,
+                            <span class="hljs-string">&#x27;max_diff&#x27;</span>: (ref_out - test_out).<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>().item()
+                        })
+                <span class="hljs-keyword">except</span> Exception <span class="hljs-keyword">as</span> e:
+                    stats[<span class="hljs-string">&#x27;failures&#x27;</span>].append({
+                        <span class="hljs-string">&#x27;shape&#x27;</span>: shape, <span class="hljs-string">&#x27;dtype&#x27;</span>: dtype, <span class="hljs-string">&#x27;error&#x27;</span>: <span class="hljs-built_in">str</span>(e)
+                    })
+    
+    stats[<span class="hljs-string">&#x27;pass_rate&#x27;</span>] = stats[<span class="hljs-string">&#x27;passed&#x27;</span>] / stats[<span class="hljs-string">&#x27;total&#x27;</span>]
+    <span class="hljs-keyword">return</span> stats
+</code></pre>
+<h3 id="23-批量差分框架设计">2.3 批量差分框架设计</h3>
+<pre><code>批量差分框架架构：
+┌─────────────────────────────────────────────┐
+│              Test Orchestrator              │
+├─────────────────────────────────────────────┤
+│           Operator Registry                 │
+│  op_name -&gt; {ref_impl, test_impl, shapes,   │
+│              dtypes, tolerances}            │
+├─────────────────────────────────────────────┤
+│         Input Generator Factory             │
+│  random / boundary / nan_inf / stress       │
+├─────────────────────────────────────────────┤
+│         Comparison Engine                   │
+│  cosine / MSE / ULP / allclose / gradcheck  │
+├─────────────────────────────────────────────┤
+│         Reporter &amp; Visualization            │
+│  JSON report / HTML dashboard / CI artifact │
+└─────────────────────────────────────────────┘
+</code></pre>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> dataclasses <span class="hljs-keyword">import</span> dataclass, field
+
+<span class="hljs-meta">@dataclass</span>
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">OperatorTestCase</span>:
+    name: <span class="hljs-built_in">str</span>
+    ref_impl: <span class="hljs-type">Callable</span>
+    test_impl: <span class="hljs-type">Callable</span>
+    shapes: <span class="hljs-type">List</span>[<span class="hljs-type">Tuple</span>] = field(default_factory=<span class="hljs-keyword">lambda</span>: [(<span class="hljs-number">256</span>, <span class="hljs-number">256</span>)])
+    dtypes: <span class="hljs-type">List</span>[torch.dtype] = field(default_factory=<span class="hljs-keyword">lambda</span>: [torch.float32])
+    tolerances: <span class="hljs-type">Dict</span> = field(default_factory=<span class="hljs-keyword">lambda</span>: {<span class="hljs-string">&#x27;atol&#x27;</span>: <span class="hljs-number">1e-5</span>, <span class="hljs-string">&#x27;rtol&#x27;</span>: <span class="hljs-number">1e-3</span>})
+
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">BatchDiffTestRunner</span>:
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self</span>):
+        <span class="hljs-variable language_">self</span>.cases = []
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">register</span>(<span class="hljs-params">self, <span class="hljs-keyword">case</span></span>):
+        <span class="hljs-variable language_">self</span>.cases.append(<span class="hljs-keyword">case</span>)
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">run_all</span>(<span class="hljs-params">self, verbose=<span class="hljs-literal">True</span></span>):
+        all_results = {}
+        <span class="hljs-keyword">for</span> <span class="hljs-keyword">case</span> <span class="hljs-keyword">in</span> <span class="hljs-variable language_">self</span>.cases:
+            case_results = []
+            <span class="hljs-keyword">for</span> shape <span class="hljs-keyword">in</span> <span class="hljs-keyword">case</span>.shapes:
+                <span class="hljs-keyword">for</span> dtype <span class="hljs-keyword">in</span> <span class="hljs-keyword">case</span>.dtypes:
+                    a = torch.randn(*shape, device=<span class="hljs-string">&#x27;cuda&#x27;</span>, dtype=dtype)
+                    b = torch.randn(*shape, device=<span class="hljs-string">&#x27;cuda&#x27;</span>, dtype=dtype)
+                    <span class="hljs-keyword">try</span>:
+                        ref_out = <span class="hljs-keyword">case</span>.ref_impl(a, b)
+                        test_out = <span class="hljs-keyword">case</span>.test_impl(a, b)
+                        ok = torch.allclose(ref_out, test_out,
+                            rtol=<span class="hljs-keyword">case</span>.tolerances[<span class="hljs-string">&#x27;rtol&#x27;</span>],
+                            atol=<span class="hljs-keyword">case</span>.tolerances[<span class="hljs-string">&#x27;atol&#x27;</span>])
+                        case_results.append({
+                            <span class="hljs-string">&#x27;shape&#x27;</span>: shape, <span class="hljs-string">&#x27;dtype&#x27;</span>: <span class="hljs-built_in">str</span>(dtype), <span class="hljs-string">&#x27;passed&#x27;</span>: ok
+                        })
+                    <span class="hljs-keyword">except</span> Exception <span class="hljs-keyword">as</span> e:
+                        case_results.append({
+                            <span class="hljs-string">&#x27;shape&#x27;</span>: shape, <span class="hljs-string">&#x27;dtype&#x27;</span>: <span class="hljs-built_in">str</span>(dtype),
+                            <span class="hljs-string">&#x27;passed&#x27;</span>: <span class="hljs-literal">False</span>, <span class="hljs-string">&#x27;error&#x27;</span>: <span class="hljs-built_in">str</span>(e)
+                        })
+            n_pass = <span class="hljs-built_in">sum</span>(<span class="hljs-number">1</span> <span class="hljs-keyword">for</span> r <span class="hljs-keyword">in</span> case_results <span class="hljs-keyword">if</span> r[<span class="hljs-string">&#x27;passed&#x27;</span>])
+            all_results[<span class="hljs-keyword">case</span>.name] = {
+                <span class="hljs-string">&#x27;status&#x27;</span>: <span class="hljs-string">&#x27;pass&#x27;</span> <span class="hljs-keyword">if</span> n_pass == <span class="hljs-built_in">len</span>(case_results) <span class="hljs-keyword">else</span> <span class="hljs-string">&#x27;fail&#x27;</span>,
+                <span class="hljs-string">&#x27;pass_rate&#x27;</span>: n_pass / <span class="hljs-built_in">len</span>(case_results),
+            }
+            <span class="hljs-keyword">if</span> verbose:
+                <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;[<span class="hljs-subst">{all_results[<span class="hljs-keyword">case</span>.name][<span class="hljs-string">&#x27;status&#x27;</span>].upper()}</span>] <span class="hljs-subst">{<span class="hljs-keyword">case</span>.name}</span>: &quot;</span>
+                      <span class="hljs-string">f&quot;<span class="hljs-subst">{n_pass}</span>/<span class="hljs-subst">{<span class="hljs-built_in">len</span>(case_results)}</span>&quot;</span>)
+        <span class="hljs-keyword">return</span> all_results
+</code></pre>
+<hr>
+<h2 id="⚡-第三章：性能基准测试--算子的速度计">⚡ 第三章：性能基准测试 — 算子的&quot;速度计&quot;</h2>
+<p>性能测试的目标是量化算子的速度、吞吐量、硬件利用率，并与理论极限（Roofline）对比。</p>
+<h3 id="31-warm-up-与延迟测量">3.1 Warm-Up 与延迟测量</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> time, numpy <span class="hljs-keyword">as</span> np
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">benchmark_kernel</span>(<span class="hljs-params">func, inputs, n_warmup=<span class="hljs-number">10</span>, n_iters=<span class="hljs-number">100</span></span>):
+    <span class="hljs-comment"># Warm-up</span>
+    <span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_warmup):
+        func(*inputs)
+    torch.cuda.synchronize()
+    
+    <span class="hljs-comment"># 计时（使用 CUDA Events）</span>
+    start_events = [torch.cuda.Event(enable_timing=<span class="hljs-literal">True</span>) <span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_iters)]
+    end_events = [torch.cuda.Event(enable_timing=<span class="hljs-literal">True</span>) <span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_iters)]
+    
+    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_iters):
+        start_events[i].record()
+        func(*inputs)
+        end_events[i].record()
+    
+    torch.cuda.synchronize()
+    
+    latencies = np.array([
+        start_events[i].elapsed_time(end_events[i]) <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(n_iters)
+    ])
+    
+    total_bytes = <span class="hljs-built_in">sum</span>(
+        inp.element_size() * inp.numel() <span class="hljs-keyword">for</span> inp <span class="hljs-keyword">in</span> inputs
+        <span class="hljs-keyword">if</span> <span class="hljs-built_in">isinstance</span>(inp, torch.Tensor)
+    )
+    avg_lat = <span class="hljs-built_in">float</span>(np.mean(latencies))
+    throughput_gbps = (total_bytes / <span class="hljs-number">1e9</span>) / (avg_lat / <span class="hljs-number">1e3</span>)
+    
+    <span class="hljs-keyword">return</span> {
+        <span class="hljs-string">&#x27;avg_ms&#x27;</span>: avg_lat,
+        <span class="hljs-string">&#x27;median_ms&#x27;</span>: <span class="hljs-built_in">float</span>(np.median(latencies)),
+        <span class="hljs-string">&#x27;p99_ms&#x27;</span>: <span class="hljs-built_in">float</span>(np.percentile(latencies, <span class="hljs-number">99</span>)),
+        <span class="hljs-string">&#x27;p999_ms&#x27;</span>: <span class="hljs-built_in">float</span>(np.percentile(latencies, <span class="hljs-number">99.9</span>)),
+        <span class="hljs-string">&#x27;min_ms&#x27;</span>: <span class="hljs-built_in">float</span>(latencies.<span class="hljs-built_in">min</span>()),
+        <span class="hljs-string">&#x27;max_ms&#x27;</span>: <span class="hljs-built_in">float</span>(latencies.<span class="hljs-built_in">max</span>()),
+        <span class="hljs-string">&#x27;std_ms&#x27;</span>: <span class="hljs-built_in">float</span>(latencies.std()),
+        <span class="hljs-string">&#x27;throughput_gbps&#x27;</span>: throughput_gbps,
+    }
+</code></pre>
+<h3 id="32-throughput-测量">3.2 Throughput 测量</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">measure_throughput</span>(<span class="hljs-params">func, input_generator,
+                       batch_sizes=[<span class="hljs-number">1</span>, <span class="hljs-number">4</span>, <span class="hljs-number">16</span>, <span class="hljs-number">64</span>, <span class="hljs-number">256</span>],
+                       duration_sec=<span class="hljs-number">1.0</span></span>):
+    results = {}
+    <span class="hljs-keyword">for</span> bs <span class="hljs-keyword">in</span> batch_sizes:
+        inputs = input_generator(bs)
+        <span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">10</span>):
+            func(*inputs)
+        torch.cuda.synchronize()
+        
+        start = time.perf_counter()
+        count = <span class="hljs-number">0</span>
+        <span class="hljs-keyword">while</span> time.perf_counter() - start &lt; duration_sec:
+            func(*inputs)
+            count += bs
+        torch.cuda.synchronize()
+        elapsed = time.perf_counter() - start
+        results[bs] = count / elapsed
+    <span class="hljs-keyword">return</span> results
+</code></pre>
+<h3 id="33-roofline-model（屋顶线模型）">3.3 Roofline Model（屋顶线模型）</h3>
+<p>Roofline 模型将 kernel 的计算强度映射到硬件性能上限。</p>
+<pre><code>Roofline 基本概念：
+  AI = FLOPs / Bytes
+  实际性能 &lt;= min(计算峰值, 内存带宽 x AI)
+  AI &lt; 转折点 -&gt; 内存受限，AI &gt;= 转折点 -&gt; 计算受限
+</code></pre>
+<p><strong>Nsight Compute Roofline 分析</strong>：</p>
+<pre><code class="hljs language-bash">ncu --<span class="hljs-built_in">set</span> full -o report --kernel-name regex:my_kernel python run.py
+ncu --section SpeedOfLight_RooflineChart --launch-skip 2 --launch-count 1 -o roofline_report python run.py
+</code></pre>
+<p><strong>关键指标</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>含义</th>
+<th>优化方向</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Duration</td>
+<td>kernel 执行时间</td>
+<td>总体目标</td>
+</tr>
+<tr>
+<td>Compute (SM) Throughput</td>
+<td>SM 计算利用率 (%)</td>
+<td>near 100%</td>
+</tr>
+<tr>
+<td>Memory Throughput</td>
+<td>内存带宽利用率 (%)</td>
+<td>near 100%</td>
+</tr>
+<tr>
+<td>Arithmetic Intensity</td>
+<td>FLOP/Byte</td>
+<td>&gt; 转折点则计算受限</td>
+</tr>
+</tbody></table></div>
+<p><strong>程序化估算</strong>：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">roofline_estimate</span>(<span class="hljs-params">flops, bytes_read, bytes_written,
+                      compute_peak_tflops, mem_bw_gbps</span>):
+    total_bytes = bytes_read + bytes_written
+    ai = flops / total_bytes <span class="hljs-keyword">if</span> total_bytes &gt; <span class="hljs-number">0</span> <span class="hljs-keyword">else</span> <span class="hljs-built_in">float</span>(<span class="hljs-string">&#x27;inf&#x27;</span>)
+    ridge_point = (compute_peak_tflops * <span class="hljs-number">1e12</span>) / (mem_bw_gbps * <span class="hljs-number">1e9</span>)
+    <span class="hljs-keyword">return</span> {
+        <span class="hljs-string">&#x27;arithmetic_intensity&#x27;</span>: ai,
+        <span class="hljs-string">&#x27;ridge_point&#x27;</span>: ridge_point,
+        <span class="hljs-string">&#x27;is_compute_bound&#x27;</span>: ai &gt;= ridge_point,
+        <span class="hljs-string">&#x27;is_memory_bound&#x27;</span>: ai &lt; ridge_point,
+        <span class="hljs-string">&#x27;roofline_ceiling_us&#x27;</span>: <span class="hljs-built_in">max</span>(
+            flops / (compute_peak_tflops * <span class="hljs-number">1e12</span>) * <span class="hljs-number">1e6</span>,  <span class="hljs-comment"># compute limit</span>
+            total_bytes / (mem_bw_gbps * <span class="hljs-number">1e9</span>) * <span class="hljs-number">1e6</span>      <span class="hljs-comment"># memory limit</span>
+        ),
+    }
+
+<span class="hljs-comment"># A100 SXM: FP16=312 TFLOPS, HBM2e=2 TB/s</span>
+</code></pre>
+<h3 id="34-nsight-compute-ncu-深入分析">3.4 Nsight Compute (ncu) 深入分析</h3>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 基本用法</span>
+ncu python run_kernel.py
+ncu -o kernel_report --<span class="hljs-built_in">set</span> full python run_kernel.py
+
+<span class="hljs-comment"># 特定 kernel 过滤</span>
+ncu --kernel-name <span class="hljs-string">&quot;::my_matmul_kernel&quot;</span> python run_kernel.py
+ncu --launch-skip 5 --launch-count 3 python run_kernel.py
+
+<span class="hljs-comment"># 自定义指标集</span>
+ncu --<span class="hljs-built_in">set</span> basic --<span class="hljs-built_in">set</span> memory --<span class="hljs-built_in">set</span> compute \
+    --section SpeedOfLight --section SpeedOfLight_RooflineChart \
+    python run_kernel.py
+
+<span class="hljs-comment"># 导出 CSV</span>
+ncu --csv --print-summary per-kernel -o report python run_kernel.py
+ncu --import report.ncu-rep --csv &gt; report.csv
+</code></pre>
+<p><strong>排查速查</strong>：</p>
+<ol>
+<li>Memory Throughput &lt; 60% → 访存模式差</li>
+<li>ALU Utilization &lt; 30% → 指令级并行度不足</li>
+<li>L1/TEX Hit Rate &lt; 50% → 数据局部性差</li>
+<li>Branch Efficiency &lt; 90% → warp 发散过多</li>
+<li>Occupancy &lt; 25% → 活跃 warp 太少</li>
+</ol>
+<h3 id="35-pytorch-profiler">3.5 PyTorch Profiler</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> torch.profiler <span class="hljs-keyword">as</span> profiler
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">profile_with_pytorch</span>(<span class="hljs-params">func, inputs, name=<span class="hljs-string">&quot;kernel_profile&quot;</span></span>):
+    <span class="hljs-keyword">with</span> profiler.profile(
+        activities=[
+            profiler.ProfilerActivity.CPU,
+            profiler.ProfilerActivity.CUDA,
+        ],
+        record_shapes=<span class="hljs-literal">True</span>,
+        profile_memory=<span class="hljs-literal">True</span>,
+    ) <span class="hljs-keyword">as</span> prof:
+        func(*inputs)
+    
+    <span class="hljs-built_in">print</span>(prof.key_averages().table(
+        sort_by=<span class="hljs-string">&quot;cuda_time_total&quot;</span>, row_limit=<span class="hljs-number">20</span>))
+    prof.export_chrome_trace(<span class="hljs-string">f&quot;<span class="hljs-subst">{name}</span>.trace.json&quot;</span>)
+    <span class="hljs-keyword">return</span> prof
+</code></pre>
+<hr>
+<h2 id="🔄-第四章：回归测试与-ci--守好每次改动">🔄 第四章：回归测试与 CI — 守好&quot;每次改动&quot;</h2>
+<h3 id="41-golden-value-测试">4.1 Golden Value 测试</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> numpy <span class="hljs-keyword">as</span> np
+<span class="hljs-keyword">from</span> pathlib <span class="hljs-keyword">import</span> Path
+
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">GoldenValueManager</span>:
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self, golden_dir=<span class="hljs-string">&quot;./golden&quot;</span></span>):
+        <span class="hljs-variable language_">self</span>.golden_dir = Path(golden_dir)
+        <span class="hljs-variable language_">self</span>.golden_dir.mkdir(parents=<span class="hljs-literal">True</span>, exist_ok=<span class="hljs-literal">True</span>)
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">_path</span>(<span class="hljs-params">self, op_name, dtype, shape</span>):
+        shape_str = <span class="hljs-string">&quot;x&quot;</span>.join(<span class="hljs-built_in">str</span>(s) <span class="hljs-keyword">for</span> s <span class="hljs-keyword">in</span> shape)
+        <span class="hljs-keyword">return</span> <span class="hljs-variable language_">self</span>.golden_dir / op_name / <span class="hljs-string">f&quot;<span class="hljs-subst">{dtype}</span>-shape_<span class="hljs-subst">{shape_str}</span>.npy&quot;</span>
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">save_golden</span>(<span class="hljs-params">self, op_name, output</span>):
+        path = <span class="hljs-variable language_">self</span>._path(op_name, output.dtype, output.shape)
+        path.parent.mkdir(parents=<span class="hljs-literal">True</span>, exist_ok=<span class="hljs-literal">True</span>)
+        np.save(path, output.cpu().numpy())
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">verify_golden</span>(<span class="hljs-params">self, op_name, output, rtol=<span class="hljs-number">1e-3</span>, atol=<span class="hljs-number">1e-5</span></span>):
+        path = <span class="hljs-variable language_">self</span>._path(op_name, output.dtype, output.shape)
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> path.exists():
+            <span class="hljs-keyword">raise</span> FileNotFoundError(<span class="hljs-string">f&quot;Golden not found: <span class="hljs-subst">{path}</span>&quot;</span>)
+        golden = torch.from_numpy(np.load(path)).to(output.device, output.dtype)
+        ok = torch.allclose(output, golden, rtol=rtol, atol=atol)
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">not</span> ok:
+            <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;[FAIL] <span class="hljs-subst">{op_name}</span>: max_diff=&quot;</span>
+                  <span class="hljs-string">f&quot;<span class="hljs-subst">{(output - golden).<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>().item():<span class="hljs-number">.6</span>e}</span>&quot;</span>)
+        <span class="hljs-keyword">return</span> ok
+</code></pre>
+<p><strong>最佳实践</strong>：</p>
+<ul>
+<li>按 <code>(算子名, 数据类型, 形状)</code> 三元组建立目录结构</li>
+<li>每个版本存一份，支持版本间 diff</li>
+<li>确定性算子用精确匹配，非确定性算子用统计比较</li>
+<li>大型 golden 文件用 Git LFS</li>
+</ul>
+<h3 id="42-覆盖率统计">4.2 覆盖率统计</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">class</span> <span class="hljs-title class_">OperatorCoverageTracker</span>:
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">__init__</span>(<span class="hljs-params">self</span>):
+        <span class="hljs-variable language_">self</span>.matrix = {}  <span class="hljs-comment"># op_name -&gt; {dtype -&gt; [shapes]}</span>
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">record</span>(<span class="hljs-params">self, op_name, dtype, shape</span>):
+        <span class="hljs-keyword">if</span> op_name <span class="hljs-keyword">not</span> <span class="hljs-keyword">in</span> <span class="hljs-variable language_">self</span>.matrix:
+            <span class="hljs-variable language_">self</span>.matrix[op_name] = {}
+        dtype_str = <span class="hljs-built_in">str</span>(dtype).split(<span class="hljs-string">&#x27;.&#x27;</span>)[-<span class="hljs-number">1</span>]
+        <span class="hljs-keyword">if</span> dtype_str <span class="hljs-keyword">not</span> <span class="hljs-keyword">in</span> <span class="hljs-variable language_">self</span>.matrix[op_name]:
+            <span class="hljs-variable language_">self</span>.matrix[op_name][dtype_str] = []
+        <span class="hljs-variable language_">self</span>.matrix[op_name][dtype_str].append(<span class="hljs-built_in">tuple</span>(shape))
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">print_matrix</span>(<span class="hljs-params">self</span>):
+        all_dtypes = [<span class="hljs-string">&#x27;float32&#x27;</span>, <span class="hljs-string">&#x27;float16&#x27;</span>, <span class="hljs-string">&#x27;bfloat16&#x27;</span>]
+        operators = <span class="hljs-built_in">sorted</span>(<span class="hljs-variable language_">self</span>.matrix.keys())
+        header = <span class="hljs-string">f&quot;<span class="hljs-subst">{<span class="hljs-string">&#x27;Operator&#x27;</span>:&lt;<span class="hljs-number">20</span>}</span>&quot;</span> + <span class="hljs-string">&quot;&quot;</span>.join(<span class="hljs-string">f&quot;<span class="hljs-subst">{dt:&gt;<span class="hljs-number">10</span>}</span>&quot;</span> <span class="hljs-keyword">for</span> dt <span class="hljs-keyword">in</span> all_dtypes)
+        <span class="hljs-built_in">print</span>(header)
+        <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;-&quot;</span> * <span class="hljs-built_in">len</span>(header))
+        <span class="hljs-keyword">for</span> op <span class="hljs-keyword">in</span> operators:
+            row = <span class="hljs-string">f&quot;<span class="hljs-subst">{op:&lt;<span class="hljs-number">20</span>}</span>&quot;</span>
+            <span class="hljs-keyword">for</span> dt <span class="hljs-keyword">in</span> all_dtypes:
+                <span class="hljs-keyword">if</span> dt <span class="hljs-keyword">in</span> <span class="hljs-variable language_">self</span>.matrix[op]:
+                    n = <span class="hljs-built_in">len</span>(<span class="hljs-variable language_">self</span>.matrix[op][dt])
+                    row += <span class="hljs-string">f&quot;<span class="hljs-subst">{<span class="hljs-string">&#x27;✓(&#x27;</span> + <span class="hljs-built_in">str</span>(n) + <span class="hljs-string">&#x27;)&#x27;</span>:&gt;<span class="hljs-number">10</span>}</span>&quot;</span>
+                <span class="hljs-keyword">else</span>:
+                    row += <span class="hljs-string">f&quot;<span class="hljs-subst">{<span class="hljs-string">&#x27;✗&#x27;</span>:&gt;<span class="hljs-number">10</span>}</span>&quot;</span>
+            <span class="hljs-built_in">print</span>(row)
+</code></pre>
+<h3 id="43-测试矩阵管理">4.3 测试矩阵管理</h3>
+<pre><code class="hljs language-yaml"><span class="hljs-comment"># test_matrix.yaml</span>
+<span class="hljs-attr">version:</span> <span class="hljs-string">&quot;1.0&quot;</span>
+<span class="hljs-attr">matrix:</span>
+  <span class="hljs-attr">operators:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">relu</span>
+      <span class="hljs-attr">shapes:</span> [<span class="hljs-string">&quot;(256, 256)&quot;</span>, <span class="hljs-string">&quot;(1024, 1024)&quot;</span>, <span class="hljs-string">&quot;(1, 1, 32, 32, 32)&quot;</span>]
+      <span class="hljs-attr">dtypes:</span> [<span class="hljs-string">&quot;float32&quot;</span>, <span class="hljs-string">&quot;float16&quot;</span>, <span class="hljs-string">&quot;bfloat16&quot;</span>]
+      <span class="hljs-attr">tests:</span> [<span class="hljs-string">&quot;precision&quot;</span>, <span class="hljs-string">&quot;boundary&quot;</span>, <span class="hljs-string">&quot;gradcheck&quot;</span>, <span class="hljs-string">&quot;performance&quot;</span>]
+    
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">layer_norm</span>
+      <span class="hljs-attr">shapes:</span> [<span class="hljs-string">&quot;(256, 1024)&quot;</span>, <span class="hljs-string">&quot;(32, 128, 768)&quot;</span>]
+      <span class="hljs-attr">dtypes:</span> [<span class="hljs-string">&quot;float32&quot;</span>, <span class="hljs-string">&quot;float16&quot;</span>]
+      <span class="hljs-attr">tests:</span> [<span class="hljs-string">&quot;precision&quot;</span>, <span class="hljs-string">&quot;gradcheck&quot;</span>]
+      <span class="hljs-attr">normalized_shape:</span> [<span class="hljs-string">&quot;[-1]&quot;</span>, <span class="hljs-string">&quot;[-1, -1]&quot;</span>]
+    
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">flash_attention</span>
+      <span class="hljs-attr">shapes:</span> [<span class="hljs-string">&quot;(2, 8, 128, 64)&quot;</span>, <span class="hljs-string">&quot;(1, 16, 512, 128)&quot;</span>]
+      <span class="hljs-attr">dtypes:</span> [<span class="hljs-string">&quot;float16&quot;</span>, <span class="hljs-string">&quot;bfloat16&quot;</span>]
+      <span class="hljs-attr">tests:</span> [<span class="hljs-string">&quot;precision&quot;</span>, <span class="hljs-string">&quot;performance&quot;</span>]
+      <span class="hljs-attr">causal:</span> [<span class="hljs-literal">true</span>, <span class="hljs-literal">false</span>]
+  
+  <span class="hljs-attr">skips:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">operator:</span> <span class="hljs-string">softmax</span>
+      <span class="hljs-attr">dtype:</span> <span class="hljs-string">int8</span>
+      <span class="hljs-attr">reason:</span> <span class="hljs-string">&quot;int8 not supported&quot;</span>
+</code></pre>
+<h3 id="44-ci-流水线设计（github-actions）">4.4 CI 流水线设计（GitHub Actions）</h3>
+<pre><code class="hljs language-yaml"><span class="hljs-comment"># .github/workflows/operator_test.yml</span>
+<span class="hljs-attr">name:</span> <span class="hljs-string">Operator</span> <span class="hljs-string">Tests</span>
+<span class="hljs-attr">on:</span>
+  <span class="hljs-attr">pull_request:</span>
+    <span class="hljs-attr">paths:</span> [<span class="hljs-string">&#x27;kernels/**&#x27;</span>, <span class="hljs-string">&#x27;tests/**&#x27;</span>, <span class="hljs-string">&#x27;**/*.cu&#x27;</span>]
+
+<span class="hljs-attr">jobs:</span>
+  <span class="hljs-attr">precision-tests:</span>
+    <span class="hljs-attr">runs-on:</span> [<span class="hljs-string">self-hosted</span>, <span class="hljs-string">gpu</span>]
+    <span class="hljs-attr">strategy:</span>
+      <span class="hljs-attr">matrix:</span>
+        <span class="hljs-attr">dtype:</span> [<span class="hljs-string">float32</span>, <span class="hljs-string">float16</span>, <span class="hljs-string">bfloat16</span>]
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">pip</span> <span class="hljs-string">install</span> <span class="hljs-string">torch</span> <span class="hljs-string">--index-url</span> <span class="hljs-string">https://download.pytorch.org/whl/cu124</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">python</span> <span class="hljs-string">-m</span> <span class="hljs-string">pytest</span> <span class="hljs-string">tests/test_precision.py</span> <span class="hljs-string">--dtype</span> <span class="hljs-string">${{</span> <span class="hljs-string">matrix.dtype</span> <span class="hljs-string">}}</span>
+
+  <span class="hljs-attr">gradcheck:</span>
+    <span class="hljs-attr">runs-on:</span> [<span class="hljs-string">self-hosted</span>, <span class="hljs-string">gpu</span>]
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">python</span> <span class="hljs-string">-m</span> <span class="hljs-string">pytest</span> <span class="hljs-string">tests/test_gradcheck.py</span> <span class="hljs-string">-x</span> <span class="hljs-string">--dtype</span> <span class="hljs-string">float64</span>
+
+  <span class="hljs-attr">performance-regression:</span>
+    <span class="hljs-attr">runs-on:</span> [<span class="hljs-string">self-hosted</span>, <span class="hljs-string">gpu</span>]
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">python</span> <span class="hljs-string">benchmarks/run_all.py</span> <span class="hljs-string">--output</span> <span class="hljs-string">perf_results.json</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">|
+          python scripts/compare_perf.py --current perf_results.json \
+            --baseline golden/perf_baseline.json --threshold 0.05
+</span>
+  <span class="hljs-attr">golden-value-test:</span>
+    <span class="hljs-attr">runs-on:</span> [<span class="hljs-string">self-hosted</span>, <span class="hljs-string">gpu</span>]
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">run:</span> <span class="hljs-string">python</span> <span class="hljs-string">tests/test_golden.py</span> <span class="hljs-string">--verify</span> <span class="hljs-string">--fail-fast</span>
+</code></pre>
+<hr>
+<h2 id="🛠️-第五章：调试工具--问题最后的定位神器">🛠️ 第五章：调试工具 — 问题最后的&quot;定位神器&quot;</h2>
+<h3 id="51-cuda-gdb（cuda-调试器）">5.1 cuda-gdb（CUDA 调试器）</h3>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 编译时添加调试符号</span>
+nvcc -G -g -Xcompiler -rdynamic -o my_kernel my_kernel.cu
+nvcc -lineinfo -o my_kernel_opt my_kernel.cu  <span class="hljs-comment"># 保留优化+行号</span>
+
+<span class="hljs-comment"># 启动</span>
+cuda-gdb --args ./my_kernel arg1 arg2
+
+<span class="hljs-comment"># 常用命令</span>
+(cuda-gdb) <span class="hljs-built_in">set</span> cuda break_on_error on
+(cuda-gdb) <span class="hljs-built_in">set</span> cuda memcheck on
+(cuda-gdb) <span class="hljs-built_in">break</span> kernel_name
+(cuda-gdb) <span class="hljs-built_in">break</span> my_kernel.cu:42
+(cuda-gdb) cuda block (0,0,0)
+(cuda-gdb) cuda thread (0,0,0)
+(cuda-gdb) cuda warp 0
+(cuda-gdb) <span class="hljs-built_in">print</span> variable
+(cuda-gdb) <span class="hljs-built_in">print</span> *array@10
+
+<span class="hljs-comment"># 条件断点</span>
+(cuda-gdb) <span class="hljs-built_in">break</span> kernel_func <span class="hljs-keyword">if</span> (threadIdx.x == 0 &amp;&amp; blockIdx.x == 0)
+
+<span class="hljs-comment"># 在 Python 中配合使用</span>
+import os
+os.environ[<span class="hljs-string">&#x27;CUDA_LAUNCH_BLOCKING&#x27;</span>] = <span class="hljs-string">&#x27;1&#x27;</span>  <span class="hljs-comment"># 使 kernel 同步执行</span>
+</code></pre>
+<h3 id="52-compute-sanitizer（cuda-正确性检查）">5.2 compute-sanitizer（CUDA 正确性检查）</h3>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 1. memcheck — 内存越界/未初始化检测</span>
+compute-sanitizer --tool memcheck ./my_kernel
+compute-sanitizer --tool memcheck \
+    --destroy-on-device-error kernel \
+    --leak-check full \
+    --report-api-errors all \
+    python test_my_kernel.py
+
+<span class="hljs-comment"># 2. racecheck — 共享内存数据竞争检测</span>
+compute-sanitizer --tool racecheck ./my_kernel
+
+<span class="hljs-comment"># 3. initcheck — 未初始化全局内存检测</span>
+compute-sanitizer --tool initcheck ./my_kernel
+
+<span class="hljs-comment"># 4. synccheck — 同步原语误用检测</span>
+compute-sanitizer --tool synccheck ./my_kernel
+
+<span class="hljs-comment"># 与 PyTorch 结合</span>
+<span class="hljs-built_in">export</span> CUDA_LAUNCH_BLOCKING=1
+compute-sanitizer --tool memcheck python -c <span class="hljs-string">&quot;
+import torch
+x = torch.randn(10, 10, device=&#x27;cuda&#x27;)
+# y = my_custom_op(x)
+&quot;</span>
+</code></pre>
+<p><strong>常见错误解释</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Sanitizer 输出</th>
+<th>含义</th>
+<th>常见原因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Invalid <strong>global</strong> write of size 4</td>
+<td>全局内存越界写入</td>
+<td>索引错误，未检查边界</td>
+</tr>
+<tr>
+<td>Misaligned address</td>
+<td>内存地址未对齐</td>
+<td>指针未按 16/32/128 字节对齐</td>
+</tr>
+<tr>
+<td>Race between Read/Write access</td>
+<td>共享内存数据竞争</td>
+<td>缺少 __syncthreads()</td>
+</tr>
+<tr>
+<td>Uninitialized <strong>global</strong> memory read</td>
+<td>读取未初始化全局内存</td>
+<td>cudaMalloc 后未 memset</td>
+</tr>
+</tbody></table></div>
+<h3 id="53-数值异常检测">5.3 数值异常检测</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">check_numerical_anomalies</span>(<span class="hljs-params">tensor, name=<span class="hljs-string">&quot;tensor&quot;</span>, report_nan=<span class="hljs-literal">True</span>,
+                               report_inf=<span class="hljs-literal">True</span>, report_zero=<span class="hljs-literal">False</span>,
+                               report_extreme=<span class="hljs-literal">False</span>, extreme_threshold=<span class="hljs-number">1e10</span></span>):
+    issues = []
+    <span class="hljs-keyword">if</span> report_nan:
+        n = torch.isnan(tensor).<span class="hljs-built_in">sum</span>().item()
+        <span class="hljs-keyword">if</span> n &gt; <span class="hljs-number">0</span>:
+            issues.append(<span class="hljs-string">f&quot;[NAN] <span class="hljs-subst">{name}</span>: <span class="hljs-subst">{n}</span> NaN values&quot;</span>)
+    <span class="hljs-keyword">if</span> report_inf:
+        n = torch.isinf(tensor).<span class="hljs-built_in">sum</span>().item()
+        <span class="hljs-keyword">if</span> n &gt; <span class="hljs-number">0</span>:
+            issues.append(<span class="hljs-string">f&quot;[INF] <span class="hljs-subst">{name}</span>: <span class="hljs-subst">{n}</span> Inf values&quot;</span>)
+    <span class="hljs-keyword">if</span> report_zero:
+        n = (tensor == <span class="hljs-number">0</span>).<span class="hljs-built_in">sum</span>().item()
+        <span class="hljs-keyword">if</span> n &gt; <span class="hljs-number">0</span>:
+            issues.append(<span class="hljs-string">f&quot;[ZERO] <span class="hljs-subst">{name}</span>: <span class="hljs-subst">{n}</span> zeros (<span class="hljs-subst">{n/tensor.numel()*<span class="hljs-number">100</span>:<span class="hljs-number">.1</span>f}</span>%)&quot;</span>)
+    <span class="hljs-keyword">if</span> report_extreme:
+        v = tensor.<span class="hljs-built_in">abs</span>().<span class="hljs-built_in">max</span>().item()
+        <span class="hljs-keyword">if</span> v &gt; extreme_threshold:
+            issues.append(<span class="hljs-string">f&quot;[EXTREME] <span class="hljs-subst">{name}</span>: max|value|=<span class="hljs-subst">{v:<span class="hljs-number">.2</span>e}</span>&quot;</span>)
+    <span class="hljs-keyword">return</span> issues
+
+<span class="hljs-comment"># 逐层 NaN/Inf 追踪（通过 hook）</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">anomaly_check_mid_kernel</span>(<span class="hljs-params">model</span>):
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">make_hook</span>(<span class="hljs-params">name</span>):
+        <span class="hljs-keyword">def</span> <span class="hljs-title function_">hook</span>(<span class="hljs-params">module, inp, out</span>):
+            issues = check_numerical_anomalies(out, <span class="hljs-string">f&quot;<span class="hljs-subst">{name}</span>.output&quot;</span>)
+            <span class="hljs-keyword">if</span> issues:
+                <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;[ANOMALY in <span class="hljs-subst">{name}</span>]&quot;</span>)
+                <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> issues:
+                    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  <span class="hljs-subst">{i}</span>&quot;</span>)
+        <span class="hljs-keyword">return</span> hook
+    <span class="hljs-keyword">for</span> name, module <span class="hljs-keyword">in</span> model.named_modules():
+        module.register_forward_hook(make_hook(name))
+    <span class="hljs-keyword">return</span> model
+
+<span class="hljs-comment"># PyTorch 全局检测</span>
+torch.autograd.set_detect_anomaly(<span class="hljs-literal">True</span>)
+</code></pre>
+<h3 id="54-compare-脚本设计">5.4 compare 脚本设计</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment">#!/usr/bin/env python3</span>
+<span class="hljs-string">&quot;&quot;&quot;compare_tensors.py — 张量比较与差异分析工具&quot;&quot;&quot;</span>
+
+<span class="hljs-keyword">import</span> argparse, numpy <span class="hljs-keyword">as</span> np
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">compare_tensors</span>(<span class="hljs-params">ref, out, rtol=<span class="hljs-number">1e-3</span>, atol=<span class="hljs-number">1e-5</span>, top_k=<span class="hljs-number">10</span></span>):
+    <span class="hljs-keyword">assert</span> ref.shape == out.shape, <span class="hljs-string">f&quot;Shape mismatch: <span class="hljs-subst">{ref.shape}</span> vs <span class="hljs-subst">{out.shape}</span>&quot;</span>
+    
+    ref_f64 = ref.to(torch.float64)
+    out_f64 = out.to(torch.float64)
+    diff = out_f64 - ref_f64
+    abs_diff = diff.<span class="hljs-built_in">abs</span>()
+    
+    result = {
+        <span class="hljs-string">&#x27;shape&#x27;</span>: <span class="hljs-built_in">list</span>(ref.shape),
+        <span class="hljs-string">&#x27;dtype&#x27;</span>: <span class="hljs-built_in">str</span>(ref.dtype),
+        <span class="hljs-string">&#x27;num_elements&#x27;</span>: ref.numel(),
+        <span class="hljs-string">&#x27;global_stats&#x27;</span>: {
+            <span class="hljs-string">&#x27;cosine_similarity&#x27;</span>: (
+                torch.dot(ref_f64.flatten(), out_f64.flatten()) /
+                (torch.norm(ref_f64.flatten()) * torch.norm(out_f64.flatten()))
+            ).item(),
+            <span class="hljs-string">&#x27;mse&#x27;</span>: torch.mean(diff ** <span class="hljs-number">2</span>).item(),
+            <span class="hljs-string">&#x27;mae&#x27;</span>: torch.mean(abs_diff).item(),
+            <span class="hljs-string">&#x27;max_abs_diff&#x27;</span>: abs_diff.<span class="hljs-built_in">max</span>().item(),
+            <span class="hljs-string">&#x27;max_relative_error&#x27;</span>: (
+                (abs_diff / (ref_f64.<span class="hljs-built_in">abs</span>() + <span class="hljs-number">1e-15</span>)).<span class="hljs-built_in">max</span>().item()
+            ),
+        },
+        <span class="hljs-string">&#x27;allclose&#x27;</span>: torch.allclose(ref_f64, out_f64, rtol=rtol, atol=atol),
+    }
+    
+    <span class="hljs-comment"># 分类统计</span>
+    within = (abs_diff &lt;= rtol * ref_f64.<span class="hljs-built_in">abs</span>() + atol)
+    result[<span class="hljs-string">&#x27;classification&#x27;</span>] = {
+        <span class="hljs-string">&#x27;exact_match&#x27;</span>: (abs_diff == <span class="hljs-number">0</span>).<span class="hljs-built_in">sum</span>().item(),
+        <span class="hljs-string">&#x27;within_tolerance&#x27;</span>: within.<span class="hljs-built_in">sum</span>().item(),
+        <span class="hljs-string">&#x27;outside_tolerance&#x27;</span>: (~within).<span class="hljs-built_in">sum</span>().item(),
+        <span class="hljs-string">&#x27;outside_pct&#x27;</span>: (~within).<span class="hljs-built_in">sum</span>().item() / ref.numel() * <span class="hljs-number">100</span>,
+    }
+    
+    <span class="hljs-comment"># Top-K</span>
+    <span class="hljs-keyword">if</span> top_k &gt; <span class="hljs-number">0</span>:
+        vals, idxs = torch.topk(abs_diff.flatten(), <span class="hljs-built_in">min</span>(top_k, abs_diff.numel()))
+        result[<span class="hljs-string">&#x27;top_k_diffs&#x27;</span>] = [
+            {
+                <span class="hljs-string">&#x27;index&#x27;</span>: <span class="hljs-built_in">int</span>(idx),
+                <span class="hljs-string">&#x27;index_nd&#x27;</span>: <span class="hljs-built_in">list</span>(np.unravel_index(<span class="hljs-built_in">int</span>(idx), ref.shape)),
+                <span class="hljs-string">&#x27;ref_val&#x27;</span>: ref_f64.flatten()[idx].item(),
+                <span class="hljs-string">&#x27;out_val&#x27;</span>: out_f64.flatten()[idx].item(),
+                <span class="hljs-string">&#x27;abs_diff&#x27;</span>: val.item(),
+            }
+            <span class="hljs-keyword">for</span> val, idx <span class="hljs-keyword">in</span> <span class="hljs-built_in">zip</span>(vals, idxs)
+        ]
+    
+    <span class="hljs-keyword">return</span> result
+
+
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">print_report</span>(<span class="hljs-params">r</span>):
+    gs = r[<span class="hljs-string">&#x27;global_stats&#x27;</span>]
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;=&quot;</span> * <span class="hljs-number">60</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  Shape: <span class="hljs-subst">{r[<span class="hljs-string">&#x27;shape&#x27;</span>]}</span>  Elements: <span class="hljs-subst">{r[<span class="hljs-string">&#x27;num_elements&#x27;</span>]:,}</span>&quot;</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">&quot;=&quot;</span> * <span class="hljs-number">60</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  AllClose: <span class="hljs-subst">{r[<span class="hljs-string">&#x27;allclose&#x27;</span>]}</span>&quot;</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  Cosine Sim : <span class="hljs-subst">{gs[<span class="hljs-string">&#x27;cosine_similarity&#x27;</span>]:<span class="hljs-number">.10</span>f}</span>&quot;</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  MSE        : <span class="hljs-subst">{gs[<span class="hljs-string">&#x27;mse&#x27;</span>]:<span class="hljs-number">.10</span>e}</span>&quot;</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  Max Abs    : <span class="hljs-subst">{gs[<span class="hljs-string">&#x27;max_abs_diff&#x27;</span>]:<span class="hljs-number">.10</span>e}</span>&quot;</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  Max Rel Err: <span class="hljs-subst">{gs[<span class="hljs-string">&#x27;max_relative_error&#x27;</span>]:<span class="hljs-number">.10</span>e}</span>&quot;</span>)
+    
+    c = r[<span class="hljs-string">&#x27;classification&#x27;</span>]
+    t = r[<span class="hljs-string">&#x27;num_elements&#x27;</span>]
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  Exact Match : <span class="hljs-subst">{c[<span class="hljs-string">&#x27;exact_match&#x27;</span>]:&gt;<span class="hljs-number">10</span>,}</span> (<span class="hljs-subst">{c[<span class="hljs-string">&#x27;exact_match&#x27;</span>]/t*<span class="hljs-number">100</span>:<span class="hljs-number">5.1</span>f}</span>%)&quot;</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  Within Tol  : <span class="hljs-subst">{c[<span class="hljs-string">&#x27;within_tolerance&#x27;</span>]:&gt;<span class="hljs-number">10</span>,}</span> (<span class="hljs-subst">{c[<span class="hljs-string">&#x27;within_tolerance&#x27;</span>]/t*<span class="hljs-number">100</span>:<span class="hljs-number">5.1</span>f}</span>%)&quot;</span>)
+    <span class="hljs-built_in">print</span>(<span class="hljs-string">f&quot;  Outside Tol : <span class="hljs-subst">{c[<span class="hljs-string">&#x27;outside_tolerance&#x27;</span>]:&gt;<span class="hljs-number">10</span>,}</span> (<span class="hljs-subst">{c[<span class="hljs-string">&#x27;outside_tolerance&#x27;</span>]/t*<span class="hljs-number">100</span>:<span class="hljs-number">5.1</span>f}</span>%)&quot;</span>)
+
+<span class="hljs-keyword">if</span> __name__ == <span class="hljs-string">&#x27;__main__&#x27;</span>:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(<span class="hljs-string">&#x27;ref&#x27;</span>)
+    parser.add_argument(<span class="hljs-string">&#x27;out&#x27;</span>)
+    parser.add_argument(<span class="hljs-string">&#x27;--rtol&#x27;</span>, <span class="hljs-built_in">type</span>=<span class="hljs-built_in">float</span>, default=<span class="hljs-number">1e-3</span>)
+    parser.add_argument(<span class="hljs-string">&#x27;--atol&#x27;</span>, <span class="hljs-built_in">type</span>=<span class="hljs-built_in">float</span>, default=<span class="hljs-number">1e-5</span>)
+    parser.add_argument(<span class="hljs-string">&#x27;--top-k&#x27;</span>, <span class="hljs-built_in">type</span>=<span class="hljs-built_in">int</span>, default=<span class="hljs-number">10</span>)
+    args = parser.parse_args()
+    
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">load</span>(<span class="hljs-params">p</span>):
+        <span class="hljs-keyword">if</span> p.endswith(<span class="hljs-string">&#x27;.npy&#x27;</span>):
+            <span class="hljs-keyword">return</span> torch.from_numpy(np.load(p)).cuda()
+        <span class="hljs-keyword">return</span> torch.load(p).cuda()
+    
+    r = compare_tensors(load(args.ref), load(args.out),
+                        rtol=args.rtol, atol=args.atol, top_k=args.top_k)
+    print_report(r)
+</code></pre>
+<hr>
+<h2 id="📋-附：工具链速查表">📋 附：工具链速查表</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>工具/方法</th>
+<th>用途</th>
+<th>关键命令/接口</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>精度测试</td>
+<td>torch.allclose</td>
+<td>张量级近似比较</td>
+<td><code>torch.allclose(a, b, rtol=1e-3, atol=1e-5)</code></td>
+</tr>
+<tr>
+<td></td>
+<td>Cosine Similarity</td>
+<td>方向相似度</td>
+<td>自定义实现</td>
+</tr>
+<tr>
+<td></td>
+<td>ULP Distance</td>
+<td>最小精度单位比较</td>
+<td>自定义实现</td>
+</tr>
+<tr>
+<td></td>
+<td>Gradcheck</td>
+<td>梯度正确性验证</td>
+<td><code>torch.autograd.gradcheck(func, inputs)</code></td>
+</tr>
+<tr>
+<td>差分测试</td>
+<td>diff_test()</td>
+<td>参考 vs 待测实现</td>
+<td>自定义框架</td>
+</tr>
+<tr>
+<td></td>
+<td>VOLTA</td>
+<td>形式化等价验证</td>
+<td>arXiv:2511.12638</td>
+</tr>
+<tr>
+<td>性能测试</td>
+<td>benchmark_kernel()</td>
+<td>延迟/吞吐量测量</td>
+<td>自定义框架</td>
+</tr>
+<tr>
+<td></td>
+<td>ncu</td>
+<td>硬件级性能分析</td>
+<td><code>ncu --set full python script.py</code></td>
+</tr>
+<tr>
+<td></td>
+<td>PyTorch Profiler</td>
+<td>算子级性能分析</td>
+<td><code>torch.profiler.profile(...)</code></td>
+</tr>
+<tr>
+<td></td>
+<td>Roofline</td>
+<td>性能瓶颈分类</td>
+<td><code>ncu --section SpeedOfLight_RooflineChart</code></td>
+</tr>
+<tr>
+<td>回归/CI</td>
+<td>Golden Value</td>
+<td>输出回归检测</td>
+<td>自定义管理</td>
+</tr>
+<tr>
+<td></td>
+<td>Test Matrix</td>
+<td>结构化测试覆盖</td>
+<td>YAML 驱动</td>
+</tr>
+<tr>
+<td></td>
+<td>Coverage Tracker</td>
+<td>覆盖矩阵统计</td>
+<td>自定义类</td>
+</tr>
+<tr>
+<td>调试工具</td>
+<td>cuda-gdb</td>
+<td>CUDA kernel 调试</td>
+<td><code>cuda-gdb --args ./app</code></td>
+</tr>
+<tr>
+<td></td>
+<td>compute-sanitizer</td>
+<td>内存/竞争/初始化检测</td>
+<td><code>compute-sanitizer --tool memcheck ./app</code></td>
+</tr>
+<tr>
+<td></td>
+<td>compare_tensors.py</td>
+<td>张量差异分析</td>
+<td>自定义脚本</td>
+</tr>
+<tr>
+<td></td>
+<td>NaN/Inf Hook</td>
+<td>逐层异常检测</td>
+<td><code>set_detect_anomaly(True)</code> + hook</td>
+</tr>
+<tr>
+<td>硬件规格</td>
+<td>A100 SXM</td>
+<td>FP16: 312 TFLOPS, HBM2e: 2 TB/s</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>H100 SXM</td>
+<td>FP16: 989 TFLOPS, HBM3: 3.35 TB/s</td>
+<td></td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="🚀-下一步">🚀 下一步</h2>
+<h3 id="核心速览">核心速览</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>一句话总结</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>精度测试</td>
+<td>用 Cosine / ULP / PSNR 等多个指标从不同角度衡量数值误差</td>
+</tr>
+<tr>
+<td>差分测试</td>
+<td>同一语义的不同实现，对相同输入应有近似相同的输出</td>
+</tr>
+<tr>
+<td>性能基准</td>
+<td>用 CUDA Events 计时 + Roofline 模型判断是计算受限还是内存受限</td>
+</tr>
+<tr>
+<td>回归/CI</td>
+<td>Golden Value 检测精度退化，测试矩阵确保覆盖率，CI 流水线自动化验证</td>
+</tr>
+<tr>
+<td>调试工具</td>
+<td>先 compute-sanitizer 排除内存/竞争问题，再 cuda-gdb 逐行调试</td>
+</tr>
+</tbody></table></div>
+<h3 id="关键原则">关键原则</h3>
+<ol>
+<li><strong>永远对比参考实现</strong>——PyTorch 原生是最可靠的 baseline</li>
+<li><strong>精度与性能不可偏废</strong>——先保证正确，再优化速度</li>
+<li><strong>测试需要矩阵化</strong>（算子 × 数据类型 × 形状 × 测试类型），不能凭感觉</li>
+<li><strong>调试从 compute-sanitizer 开始，而非 cuda-gdb</strong>——先排除内存/竞争问题</li>
+</ol>
+<h3 id="推荐阅读">推荐阅读</h3>
+<ul>
+<li>📖 <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/">CUDA Programming Guide</a> — 浮点运算的权威参考</li>
+<li>🔧 <a href="https://developer.nvidia.com/nsight-compute">Nsight Compute</a> — GPU kernel 性能分析必备工具</li>
+<li>📖 <a href="https://arxiv.org/abs/2511.12638">VOLTA 等价性检查器</a> — GPU kernel 形式化验证的前沿研究</li>
+<li>🔧 <a href="https://docs.nvidia.com/cuda/compute-sanitizer/">compute-sanitizer 文档</a> — 内存/竞争检测官方指南</li>
+<li>📖 <a href="https://crd.lbl.gov/assets/pubs_presos/parlab08-roofline-talk.pdf">Roofline Model 入门</a> — 性能分析的理论基础</li>
+</ul>
+<p>算子测试不是写完 kernel 之后的&quot;加个 pytest 就完事&quot;——它是一个从数值精度到硬件性能、从本地调试到 CI 回归的<strong>系统工程</strong>。希望这篇指南能帮你建立起完整的测试体系，让每个算子都能安心上线 🚀</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

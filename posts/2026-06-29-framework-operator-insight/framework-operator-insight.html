@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>深度学习框架算子体系深度解析 —— PyTorch / TensorFlow / ONNX / MLIR / TVM 全面对比 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-29</p>
+        <h1>深度学习框架算子体系深度解析 —— PyTorch / TensorFlow / ONNX / MLIR / TVM 全面对比</h1>
+        <div class="post-meta">
+          <span>2026-06-29</span>
+          <span class="tag">PyTorch</span><span class="tag">TensorFlow</span><span class="tag">ONNX</span><span class="tag">MLIR</span><span class="tag">TVM</span><span class="tag">AI Infra</span><span class="tag">算子</span><span class="tag">编译器</span>
+        </div>
+        <p>如果你写过一行 <code>torch.add(a, b)</code>，你已经在和&quot;算子&quot;打交道了。但同一个算子，在 PyTorch 的 ATen 里是一段 YAML 声明加上 C++ kernel；在 TensorFlow 里是一个 <code>REGISTER_OP</code> 宏加一个 OpKernel 类；在 ONNX 里是一个 protobuf Node 定义；在 MLIR 里是一段 Dialect 的 ODS 描述；在 TVM 里又是 TensorIR 中的一段 <code>T.block</code>。</p>
+<p>同一个名字，五个完全不同的世界。</p>
+<p>这篇博客的目标很简单：<strong>帮你建立起算子体系的全局视野</strong>。读完你将理解每个框架的算子设计哲学、注册机制、调度方式、自动微分方案、编译优化策略以及自定义算子扩展路径。我们还会在最后给出一个全面的横向对比，让你在选技术路线时心里有数。</p>
+<!--more-->
+
+<hr>
+<h2 id="🌍-缘起：为什么算子体系如此重要？">🌍 缘起：为什么算子体系如此重要？</h2>
+<p>AI Infra 界有一个广泛认可的趋势：<strong>算子是连接算法直觉和硬件极限的桥梁</strong>。向上，你要理解 attention、moe、quantization 的数学语义；向下，你要理解 Tensor Core、shared memory、HBM 带宽的物理限制。</p>
+<p>而中间层——<strong>框架的算子体系</strong>——决定了：</p>
+<ul>
+<li>你写一个新的计算模式要花多少功夫（有没有友好的自定义算子 API？）</li>
+<li>你的模型能不能跨平台部署（导出的中间表示是否标准化？）</li>
+<li>编译器能帮你做多少优化（有没有层次化 IR 做 progressive lowering？）</li>
+<li>新硬件接入的成本有多高（要重新实现多少个算子？）</li>
+</ul>
+<p>PyTorch、TensorFlow、ONNX、MLIR、TVM 这五个项目，代表了学界和工业界对上述问题的五种不同回答。本文逐一拆解它们的算子设计，最后给出一个全景对比。</p>
+<hr>
+<h2 id="1-pytorch-算子体系">1. PyTorch 算子体系</h2>
+<h3 id="11-整体架构概览">1.1 整体架构概览</h3>
+<p>PyTorch 的算子体系从下到上分为四个核心层级：</p>
+<pre><code>+-----------------------------------------+
+|  Python API (torch.*, torch.nn.*)       |  &lt;- 用户接口
++-----------------------------------------+
+|  torch/csrc/ (pybind11 胶水代码)         |  &lt;- Python &lt;-&gt; C++ 绑定
++-----------------------------------------+
+|  ATen (A Tensor Library)                |  &lt;- C++ Tensor 库 + 算子定义
++-----------------------------------------+
+|  c10 (Caffe Ten)                        |  &lt;- 核心基础设施 (DispatchKey, TensorImpl)
++-----------------------------------------+
+</code></pre>
+<ul>
+<li><strong>c10</strong>：最底层的基础设施，定义了 <code>TensorImpl</code>、<code>DispatchKey</code>、<code>ScalarType</code> 等核心类型和 <strong>Dispatcher</strong> 调度器。</li>
+<li><strong>ATen</strong>：C++ Tensor 库，包含所有原生算子的声明和实现，通过 <code>native_functions.yaml</code> 驱动代码生成。</li>
+<li>**torch/csrc/**：Python 与 C++ 的桥接层，使用 pybind11 包装 ATen 接口暴露给 Python。</li>
+</ul>
+<h3 id="12-aten-注册机制">1.2 ATen 注册机制</h3>
+<h4 id="native_functionsyaml--声明式算子注册"><code>native_functions.yaml</code> — 声明式算子注册</h4>
+<p>PyTorch 原生算子的<strong>声明</strong>集中在一个 YAML 文件中：<code>aten/src/ATen/native/native_functions.yaml</code>。每个算子条目的基本结构如下：</p>
+<pre><code class="hljs language-yaml"><span class="hljs-bullet">-</span> <span class="hljs-attr">func:</span> <span class="hljs-string">relu(Tensor</span> <span class="hljs-string">self)</span> <span class="hljs-string">-&gt;</span> <span class="hljs-string">Tensor</span>
+  <span class="hljs-attr">variants:</span> <span class="hljs-string">function,</span> <span class="hljs-string">method</span>
+  <span class="hljs-attr">dispatch:</span>
+    <span class="hljs-attr">CPU:</span> <span class="hljs-string">relu_cpu</span>
+    <span class="hljs-attr">CUDA:</span> <span class="hljs-string">relu_cuda</span>
+</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>字段</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>func</code></td>
+<td>算子名称和类型签名</td>
+</tr>
+<tr>
+<td><code>variants</code></td>
+<td>访问方式。<code>function</code> 表示可通过 <code>torch.relu()</code> 调用；<code>method</code> 表示可通过 <code>tensor.relu()</code> 调用</td>
+</tr>
+<tr>
+<td><code>dispatch</code></td>
+<td><strong>多设备分发表</strong>，指定不同后端（CPU、CUDA、MPS 等）对应的 kernel 函数</td>
+</tr>
+<tr>
+<td><code>python_module</code></td>
+<td>将算子自动注册到指定 Python 模块（如 <code>nn</code>）</td>
+</tr>
+<tr>
+<td><code>autogen</code></td>
+<td>自动生成反向函数声明</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>标签系统，如 <code>core</code>, <code>view</code>, <code>inplace_view</code> 等</td>
+</tr>
+</tbody></table></div>
+<p><strong>代码生成</strong>：<code>torchgen</code> 工具解析该 YAML 文件，自动生成 Python 绑定、C++ 头文件、Dispatcher 注册表和 Autograd 包装代码。</p>
+<h4 id="dispatcher-调度机制">Dispatcher 调度机制</h4>
+<p>PyTorch Dispatcher 是算子的核心路由引擎。其工作流程：</p>
+<pre><code>用户调用 torch.add(a, b)
+  |
+  v
+at::add(a, b)                          &lt;- C++ API 入口
+  |
+  v
+Dispatcher::call()                     &lt;- 提取 DispatchKeySet
+  |           +--------------------------+
+  |           | Tensor a: CUDA           |
+  |           | Tensor b: CUDA           |
+  |           | Autograd 启用            |
+  |           +--------------------------+
+  v
+查找 DispatchTable                     &lt;- 多键组合查找
+  |
+  v
+AutogradCUDA kernel                    &lt;- 先走 Autograd 记录计算图
+  |
+  v
+CUDA kernel (add_cuda)                 &lt;- 实际设备执行
+</code></pre>
+<p><strong>DispatchKey 的关键层级</strong>（优先级从高到低）：</p>
+<ol>
+<li><code>Autograd*</code> — 自动微分相关</li>
+<li><code>CompositeImplicitAutograd</code> / <code>CompositeExplicitAutograd</code> — 复合算子</li>
+<li><code>CPU</code>, <code>CUDA</code>, <code>MPS</code>, <code>XLA</code>, <code>PrivateUse1</code> 等 — 后端设备</li>
+<li><code>FPGA</code>, <code>ORT</code>, <code>Tracer</code> — 扩展/追踪</li>
+</ol>
+<p><strong><code>CompositeImplicitAutograd</code></strong> 是一个非常巧妙的设计：表示该算子可以由其他已注册自动微分的算子组合实现，因此框架可自动推断其反向传播逻辑，无需手动注册 backward kernel。</p>
+<h4 id="torch_library-宏注册"><code>TORCH_LIBRARY</code> 宏注册</h4>
+<p><code>TORCH_LIBRARY</code> 引入使得在不修改 <code>native_functions.yaml</code> 的情况下也能注册算子（如第三方扩展）。</p>
+<pre><code class="hljs language-cpp"><span class="hljs-comment">// 注册自定义算子库</span>
+<span class="hljs-built_in">TORCH_LIBRARY</span>(my_ops, m) {
+  m.<span class="hljs-built_in">def</span>(<span class="hljs-string">&quot;warp_perspective(Tensor image, Tensor warp) -&gt; Tensor&quot;</span>);
+}
+
+<span class="hljs-comment">// 为特定后端提供实现</span>
+<span class="hljs-built_in">TORCH_LIBRARY_IMPL</span>(my_ops, CPU, m) {
+  m.<span class="hljs-built_in">impl</span>(<span class="hljs-string">&quot;warp_perspective&quot;</span>, warp_perspective_cpu);
+}
+</code></pre>
+<h3 id="13-autograd-反向传播机制">1.3 Autograd 反向传播机制</h3>
+<p>PyTorch 的自动微分基于<strong>动态计算图</strong>——在每次前向传播时实时构建有向无环图 (DAG)。</p>
+<p><strong>核心组件</strong>：</p>
+<pre><code>Tensor
+  +-- .data           &lt;- 张量数据
+  +-- .grad           &lt;- 梯度累积
+  +-- .requires_grad  &lt;- 是否需要梯度
+  +-- .grad_fn        &lt;- 指向生成该 Tensor 的 Function 节点
+</code></pre>
+<p><strong>Autograd 图构建流程</strong>：</p>
+<pre><code>前向传播:
+z = w * x + b
+        |
+        v
+multiply 节点 (MulBackward)       &lt;- grad_fn = MulBackward0
+  |
+  +-- w.requires_grad = True
+  +-- x.requires_grad = True
+        |
+        v
+add 节点 (AddBackward)            &lt;- grad_fn = AddBackward0
+  |
+  +-- 来自 Mul 的输出
+  +-- b.requires_grad = True
+        |
+        v
+loss = (z - y)^2                 &lt;- grad_fn = MseLossBackward0
+
+反向传播:
+loss.backward()
+  |
+  v
+MseLossBackward -&gt; AddBackward -&gt; MulBackward
+  |                  |              |
+  v                  v              v
+dz                dw, dx          db
+</code></pre>
+<h4 id="自定义-torchautogradfunction">自定义 <code>torch.autograd.Function</code></h4>
+<pre><code class="hljs language-python"><span class="hljs-keyword">class</span> <span class="hljs-title class_">MyReLU</span>(torch.autograd.Function):
+<span class="hljs-meta">    @staticmethod</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">forward</span>(<span class="hljs-params">ctx, <span class="hljs-built_in">input</span></span>):
+        ctx.save_for_backward(<span class="hljs-built_in">input</span>)
+        <span class="hljs-keyword">return</span> <span class="hljs-built_in">input</span>.clamp(<span class="hljs-built_in">min</span>=<span class="hljs-number">0</span>)
+
+<span class="hljs-meta">    @staticmethod</span>
+    <span class="hljs-keyword">def</span> <span class="hljs-title function_">backward</span>(<span class="hljs-params">ctx, grad_output</span>):
+        <span class="hljs-built_in">input</span>, = ctx.saved_tensors
+        grad_input = grad_output.clone()
+        grad_input[<span class="hljs-built_in">input</span> &lt; <span class="hljs-number">0</span>] = <span class="hljs-number">0</span>
+        <span class="hljs-keyword">return</span> grad_input
+</code></pre>
+<h3 id="14-torchcompile--dynamo-图捕获">1.4 torch.compile / Dynamo 图捕获</h3>
+<p>PyTorch 2.0 引入的编译栈从根本上改变了算子执行方式：</p>
+<pre><code>torch.compile(model)
+  |
+  v
+TorchDynamo                    &lt;- Python 字节码级别的图捕获
+  |
+  v
+FX Graph                       &lt;- 中间表示 (torch.fx.Graph)
+  |
+  v
+AOTAutograd                    &lt;- 联合前向+反向图生成
+  |
+  v
+PrimTorch Decomposition        &lt;- 将高层算子分解为约250个原始算子
+  |
+  v
+TorchInductor                  &lt;- 代码生成 (Triton GPU / C++ CPU)
+</code></pre>
+<p><strong>TorchDynamo</strong> 在 Python 字节码层面拦截执行，使用 <strong>PEP 523 (Frame Evaluation API)</strong> 插入 CPython 的 frame 执行钩子，通过 <strong>Guards 机制</strong>缓存已编译图，遇到非 PyTorch 代码时自动进行 <strong>Graph Break</strong>。</p>
+<p><strong>AOTAutograd</strong> 使用 <code>torch.fx</code> 的 <code>__torch_dispatch__</code> 协议捕获前向 + 反向的完整图，比 Dynamo 更底层——能捕获 C++ Autograd 引擎中执行的 ATen 操作。</p>
+<h3 id="15-primtorch-decomposition">1.5 PrimTorch Decomposition</h3>
+<p><strong>PrimTorch</strong> 定义了约250个 <strong>prim</strong> 算子（原始算子），将所有高层算子（约2000+）分解到这一小集合：</p>
+<pre><code>高层算子: torch.conv2d, torch.layer_norm, torch.scaled_dot_product_attention
+    |
+    v  PrimTorch Decomposition
+    |
+prim 算子: prims.add, prims.mul, prims.conv, prims.sum, prims.broadcast_in_dim...
+    |
+    v  target-specific lowering
+    |
+设备后端 kernel (CUDA/CPU/MPS/XLA)
+</code></pre>
+<p>这意味着新设备只需实现约250个 prim 算子即可支持几乎所有 PyTorch 功能——接入成本大幅降低。</p>
+<h3 id="16-自定义算子注册">1.6 自定义算子注册</h3>
+<h4 id="c-extension-方式（传统）">C++ Extension 方式（传统）</h4>
+<pre><code class="hljs language-cpp"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&lt;torch/extension.h&gt;</span></span>
+
+<span class="hljs-function">torch::Tensor <span class="hljs-title">my_add</span><span class="hljs-params">(torch::Tensor a, torch::Tensor b)</span> </span>{
+    <span class="hljs-keyword">return</span> a + b;
+}
+
+<span class="hljs-built_in">PYBIND11_MODULE</span>(TORCH_EXTENSION_NAME, m) {
+    m.<span class="hljs-built_in">def</span>(<span class="hljs-string">&quot;my_add&quot;</span>, &amp;my_add, <span class="hljs-string">&quot;Custom add&quot;</span>);
+}
+</code></pre>
+<h4 id="torchlibrary-api（推荐方式，pytorch-24）"><code>torch.library</code> API（推荐方式，PyTorch 2.4+）</h4>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> torch.library <span class="hljs-keyword">import</span> Library, impl
+
+lib = Library(<span class="hljs-string">&quot;mylib&quot;</span>, <span class="hljs-string">&quot;DEF&quot;</span>)
+lib.define(<span class="hljs-string">&quot;my_muladd(Tensor a, Tensor b, float c) -&gt; Tensor&quot;</span>)
+
+<span class="hljs-meta">@impl(<span class="hljs-params">lib, <span class="hljs-string">&quot;my_muladd&quot;</span>, <span class="hljs-string">&quot;CompositeImplicitAutograd&quot;</span></span>)</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">my_muladd</span>(<span class="hljs-params">a, b, c</span>):
+    <span class="hljs-keyword">return</span> a * b + c  <span class="hljs-comment"># 自动获得 backward 支持</span>
+</code></pre>
+<p><strong>关键 API</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>API</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Library(namespace, kind)</code></td>
+<td>创建算子库对象。<code>kind</code> 可为 <code>&quot;DEF&quot;</code> 或 <code>&quot;IMPL&quot;</code></td>
+</tr>
+<tr>
+<td><code>lib.define(schema)</code></td>
+<td>定义算子签名</td>
+</tr>
+<tr>
+<td><code>lib.impl(op_name, backend)</code></td>
+<td>为算子注册某后端的实现</td>
+</tr>
+<tr>
+<td><code>@impl(lib, name, ...)</code></td>
+<td>装饰器形式注册</td>
+</tr>
+<tr>
+<td><code>torch.library.opcheck(op, args)</code></td>
+<td>验证自定义算子正确性</td>
+</tr>
+</tbody></table></div>
+<h3 id="17-pytorch-算子设计哲学">1.7 PyTorch 算子设计哲学</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>特点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>由数据驱动的调度</strong></td>
+<td>Dispatcher 根据 Tensor 的 DispatchKey 自动路由到正确后端</td>
+</tr>
+<tr>
+<td><strong>声明式注册</strong></td>
+<td><code>native_functions.yaml</code> 统一描述算子签名和分发规则，代码生成器自动产生绑定</td>
+</tr>
+<tr>
+<td><strong>动态计算图</strong></td>
+<td>每次前向传播实时构建 Autograd Graph，支持动态控制流</td>
+</tr>
+<tr>
+<td><strong>编译与分解</strong></td>
+<td>PrimTorch 将2000+算子归约为250个 prim，大幅降低接入成本</td>
+</tr>
+<tr>
+<td><strong>开放扩展</strong></td>
+<td><code>TORCH_LIBRARY</code> + <code>torch.library</code> 支持第三方算子无缝集成</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="2-tensorflow-算子体系">2. TensorFlow 算子体系</h2>
+<h3 id="21-整体架构">2.1 整体架构</h3>
+<pre><code>+-----------------------------------------+
+|  Python API (tf.*, tf.raw_ops.*)        |  &lt;- 用户接口
++-----------------------------------------+
+|  Graph / MLIR Module                    |  &lt;- 计算图表示
++-----------------------------------------+
+|  Op Registry + OpKernel                 |  &lt;- 算子注册 + 核实现
++-----------------------------------------+
+|  Runtime (CPU/GPU/TPU/XLA)              |  &lt;- 执行引擎
++-----------------------------------------+
+</code></pre>
+<p>与 PyTorch 最大的不同在于：TensorFlow 采用 <strong>静态计算图</strong>（Eager 模式是后来的补充），算子首先注册到全局注册表，构建计算图后再执行。</p>
+<h3 id="22-register_op--算子定义">2.2 REGISTER_OP — 算子定义</h3>
+<p>TensorFlow 使用 <code>REGISTER_OP</code> 宏在 C++ 中声明算子的<strong>接口</strong>（输入、输出、属性）：</p>
+<pre><code class="hljs language-cpp"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&quot;tensorflow/core/framework/op.h&quot;</span></span>
+
+<span class="hljs-built_in">REGISTER_OP</span>(<span class="hljs-string">&quot;ZeroOut&quot;</span>)
+    .<span class="hljs-built_in">Input</span>(<span class="hljs-string">&quot;to_zero: int32&quot;</span>)
+    .<span class="hljs-built_in">Output</span>(<span class="hljs-string">&quot;zeroed: int32&quot;</span>)
+    .<span class="hljs-built_in">Attr</span>(<span class="hljs-string">&quot;preserve_index: int = 0&quot;</span>);
+</code></pre>
+<p><code>REGISTER_OP</code> 是宏展开的静态初始化代码，在加载动态库时自动执行，将算子定义注册到全局 <code>OpRegistry</code>。</p>
+<p><strong>OpDef 关键字段</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>字段</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>name</code></td>
+<td>算子名称</td>
+</tr>
+<tr>
+<td><code>input_arg</code></td>
+<td>输入张量列表，指定名称和类型</td>
+</tr>
+<tr>
+<td><code>output_arg</code></td>
+<td>输出张量列表</td>
+</tr>
+<tr>
+<td><code>attr</code></td>
+<td>属性参数，编译时确定</td>
+</tr>
+<tr>
+<td><code>type_constraints</code></td>
+<td>类型约束，确保输入输出类型一致性</td>
+</tr>
+</tbody></table></div>
+<p><strong>类型多态</strong>通过 <code>Attr</code> + <code>type_constraint</code> 实现：</p>
+<pre><code class="hljs language-cpp"><span class="hljs-built_in">REGISTER_OP</span>(<span class="hljs-string">&quot;MyAdd&quot;</span>)
+    .<span class="hljs-built_in">Input</span>(<span class="hljs-string">&quot;a: T&quot;</span>)
+    .<span class="hljs-built_in">Input</span>(<span class="hljs-string">&quot;b: T&quot;</span>)
+    .<span class="hljs-built_in">Output</span>(<span class="hljs-string">&quot;c: T&quot;</span>)
+    .<span class="hljs-built_in">Attr</span>(<span class="hljs-string">&quot;T: {float, double, int32, int64}&quot;</span>);
+</code></pre>
+<h3 id="23-opkernel--核实现与注册">2.3 OpKernel — 核实现与注册</h3>
+<p><strong>OpKernel</strong> 是算子在特定硬件上的实际执行代码。</p>
+<pre><code class="hljs language-cpp"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&quot;tensorflow/core/framework/op_kernel.h&quot;</span></span>
+
+<span class="hljs-keyword">class</span> <span class="hljs-title class_">ZeroOutOp</span> : <span class="hljs-keyword">public</span> OpKernel {
+ <span class="hljs-keyword">public</span>:
+  <span class="hljs-function"><span class="hljs-keyword">explicit</span> <span class="hljs-title">ZeroOutOp</span><span class="hljs-params">(OpKernelConstruction* context)</span> : OpKernel(context) {</span>
+    <span class="hljs-built_in">OP_REQUIRES_OK</span>(context,
+        context-&gt;<span class="hljs-built_in">GetAttr</span>(<span class="hljs-string">&quot;preserve_index&quot;</span>, &amp;preserve_index_));
+  }
+
+  <span class="hljs-function"><span class="hljs-type">void</span> <span class="hljs-title">Compute</span><span class="hljs-params">(OpKernelContext* context)</span> <span class="hljs-keyword">override</span> </span>{
+    <span class="hljs-type">const</span> Tensor&amp; input = context-&gt;<span class="hljs-built_in">input</span>(<span class="hljs-number">0</span>);
+    Tensor* output = <span class="hljs-literal">nullptr</span>;
+    <span class="hljs-built_in">OP_REQUIRES_OK</span>(context,
+        context-&gt;<span class="hljs-built_in">allocate_output</span>(<span class="hljs-number">0</span>, input.<span class="hljs-built_in">shape</span>(), &amp;output));
+    <span class="hljs-comment">// ... 计算逻辑</span>
+  }
+ <span class="hljs-keyword">private</span>:
+  <span class="hljs-type">int</span> preserve_index_;
+};
+
+<span class="hljs-built_in">REGISTER_KERNEL_BUILDER</span>(<span class="hljs-built_in">Name</span>(<span class="hljs-string">&quot;ZeroOut&quot;</span>).<span class="hljs-built_in">Device</span>(DEVICE_CPU), ZeroOutOp);
+</code></pre>
+<p><strong>多设备多类型注册</strong>：</p>
+<pre><code class="hljs language-cpp"><span class="hljs-built_in">REGISTER_KERNEL_BUILDER</span>(<span class="hljs-built_in">Name</span>(<span class="hljs-string">&quot;MyAdd&quot;</span>).<span class="hljs-built_in">Device</span>(DEVICE_CPU)
+                            .<span class="hljs-built_in">TypeConstraint</span>&lt;<span class="hljs-type">float</span>&gt;(<span class="hljs-string">&quot;T&quot;</span>), MyAddOp&lt;<span class="hljs-type">float</span>&gt;);
+<span class="hljs-built_in">REGISTER_KERNEL_BUILDER</span>(<span class="hljs-built_in">Name</span>(<span class="hljs-string">&quot;MyAdd&quot;</span>).<span class="hljs-built_in">Device</span>(DEVICE_GPU)
+                            .<span class="hljs-built_in">TypeConstraint</span>&lt;<span class="hljs-type">float</span>&gt;(<span class="hljs-string">&quot;T&quot;</span>), MyAddGPUOp&lt;<span class="hljs-type">float</span>&gt;);
+</code></pre>
+<h3 id="24-xla-算子融合与编译">2.4 XLA 算子融合与编译</h3>
+<p>XLA (Accelerated Linear Algebra) 是 TensorFlow 的 JIT 编译器：</p>
+<pre><code>TensorFlow Graph
+      |
+      v
+XLA Client (tf2xla bridge)         &lt;- TensorFlow 算子 -&gt; HLO 算子映射
+      |
+      v
+HLO (High-Level Optimizer)         &lt;- 中间表示
+      |
+      +-- HLO 级优化:
+      |     +-- 常量折叠、死代码消除
+      |     +-- 算子融合 (kernel fusion) -- 核心！
+      |     +-- Layout 优化
+      |
+      v
+XLA Backend (LLVM/CUDA/TPU)        &lt;- 代码生成
+</code></pre>
+<p><strong>XLA 算子融合</strong>将多个小算子合并为一个 GPU kernel：</p>
+<pre><code>融合前:                         融合后:
+  a = mul(x, w)                   fused_kernel(x, w, b):
+  b = add(a, b)        -&gt;             return relu(add(mul(x, w), b))
+  c = relu(b)
+</code></pre>
+<p>研究表明 XLA 的算子融合可带来最高 <strong>10.56x</strong> 的加速（特定场景）。自 OpenXLA 项目成立（2023），XLA 已独立于 TensorFlow 成为跨框架编译器，支持 PyTorch、JAX 等前端。</p>
+<h3 id="25-tf-自定义算子">2.5 TF 自定义算子</h3>
+<p><strong>动态加载方式</strong>（推荐）：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">import</span> tensorflow <span class="hljs-keyword">as</span> tf
+custom_op_module = tf.load_op_library(<span class="hljs-string">&#x27;./custom_ops.so&#x27;</span>)
+result = custom_op_module.my_add([<span class="hljs-number">1</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>], [<span class="hljs-number">4</span>, <span class="hljs-number">5</span>, <span class="hljs-number">6</span>])
+</code></pre>
+<p>完整的自定义算子流程：编写 C++ OpKernel → 编译为 <code>.so</code> → <code>tf.load_op_library()</code> 加载 → Python 包装（可选）。</p>
+<h3 id="26-tensorflow-算子设计哲学">2.6 TensorFlow 算子设计哲学</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>特点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>静态声明</strong></td>
+<td><code>REGISTER_OP</code> 集中声明接口，与实现解耦</td>
+</tr>
+<tr>
+<td><strong>OpKernel 模式</strong></td>
+<td>算子接口与设备实现严格分离，同一 Op 可注册多个 Kernel</td>
+</tr>
+<tr>
+<td><strong>属性驱动多态</strong></td>
+<td>通过 <code>Attr</code> 实现参数化类型，编译期确定</td>
+</tr>
+<tr>
+<td><strong>图编译优化</strong></td>
+<td>XLA 编译器将 TF 算子降级为 HLO 进行融合优化</td>
+</tr>
+<tr>
+<td><strong>强类型系统</strong></td>
+<td>编译期类型检查，执行时按类型选择合适的 Kernel</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="3-onnx-算子标准">3. ONNX 算子标准</h2>
+<h3 id="31-onnx-概述">3.1 ONNX 概述</h3>
+<p>ONNX (Open Neural Network eXchange) 是微软和 Meta 于 2017 年联合推出的<strong>开放神经网络交换格式</strong>，现由 Linux Foundation AI &amp; Data 管理。它定义了一套<strong>与框架无关的算子标准</strong>，使模型可以在不同框架和运行时之间互操作。</p>
+<h3 id="32-算子集（opset）与版本演进">3.2 算子集（OpSet）与版本演进</h3>
+<p>ONNX 使用 <strong>opset（算子集）</strong> 来管理算子的版本演进。每个 opset 版本是一个<strong>不可变</strong>的算子集合契约。</p>
+<p><strong>核心概念</strong>：</p>
+<pre><code>算子 = (domain, op_type, since_version)
+    如: (&quot;ai.onnx&quot;, &quot;Conv&quot;, 1)
+</code></pre>
+<ul>
+<li><strong>domain</strong>：域名。<code>&quot;&quot;</code>（或 <code>&quot;ai.onnx&quot;</code>）表示 ONNX 标准算子</li>
+<li><strong>op_type</strong>：算子名称</li>
+<li><strong>since_version</strong>：该算子在哪个 opset 版本被引入</li>
+</ul>
+<p><strong>OpSet 演进示例</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>OpSet</th>
+<th>新增/变更</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>基础算子集</td>
+<td>Conv, Relu, Gemm, Softmax...</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Add, Mul 支持多向广播</td>
+<td>统一广播语义</td>
+</tr>
+<tr>
+<td>9</td>
+<td>新增 Upsample, Compress</td>
+<td>上采样支持</td>
+</tr>
+<tr>
+<td>11</td>
+<td>新增 Unique, ConcatFromSequence</td>
+<td>序列操作</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Clip min/max 从属性变为输入</td>
+<td>灵活动态约束</td>
+</tr>
+<tr>
+<td>15</td>
+<td>BatchNormalization 训练模式</td>
+<td>训练支持</td>
+</tr>
+<tr>
+<td>20</td>
+<td>AffineGrid</td>
+<td>网格采样</td>
+</tr>
+<tr>
+<td>24</td>
+<td>Attention 算子</td>
+<td>Transformer 支持</td>
+</tr>
+<tr>
+<td>27</td>
+<td>CausalConvWithState</td>
+<td>因果卷积</td>
+</tr>
+</tbody></table></div>
+<p><strong>当前最新 opset 版本</strong>：<strong>28</strong>（截至 ONNX 1.23.0）</p>
+<h3 id="33-算子规范定义">3.3 算子规范定义</h3>
+<p>ONNX 算子规范包含完整的输入、输出、属性、类型约束定义。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>示例算子</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>激活</td>
+<td>Relu, Sigmoid, Tanh, Softmax, Clip</td>
+</tr>
+<tr>
+<td>算术</td>
+<td>Add, Sub, Mul, Div, Pow, Exp, Log</td>
+</tr>
+<tr>
+<td>张量操作</td>
+<td>Reshape, Transpose, Concat, Split, Slice, Gather</td>
+</tr>
+<tr>
+<td>卷积池化</td>
+<td>Conv, ConvTranspose, MaxPool, AveragePool</td>
+</tr>
+<tr>
+<td>归一化</td>
+<td>BatchNormalization, InstanceNormalization, LayerNormalization</td>
+</tr>
+<tr>
+<td>循环/控制流</td>
+<td>Loop, Scan, If</td>
+</tr>
+<tr>
+<td>量化</td>
+<td>QuantizeLinear, DequantizeLinear, QLinearConv</td>
+</tr>
+<tr>
+<td>LLM 相关</td>
+<td>Attention (ops 24), GroupQueryAttention (ops 27)</td>
+</tr>
+</tbody></table></div>
+<h3 id="34-onnx-runtime-执行引擎">3.4 ONNX Runtime 执行引擎</h3>
+<p><strong>ONNX Runtime (ORT)</strong> 是 ONNX 的参考实现运行时：</p>
+<pre><code>ONNX Model (.onnx)
+      |
+      v
+Model Loader          &lt;- Protobuf 反序列化
+      |
+      v
+Graph Optimizer       &lt;- 图优化流水线
+  +-- Basic: 常量折叠、冗余节点消除
+  +-- Extended: 复杂融合 (GEMM+Activation)
+  +-- Layout: 内存布局优化
+      |
+      v
+Graph Partitioner     &lt;- 根据 Execution Provider 划分子图
+  +-- CPU EP / CUDA EP / TensorRT EP / OpenVINO EP / CoreML EP
+      |
+      v
+Session Execution     &lt;- 按拓扑序执行子图
+</code></pre>
+<p><strong>Execution Provider (EP)</strong> 机制是 ORT 的核心抽象，通过 Graph Partitioner 将计算图分割为不同 EP 负责的子图，支持混合执行。</p>
+<h3 id="35-onnx-算子设计哲学">3.5 ONNX 算子设计哲学</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>特点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>框架无关契约</strong></td>
+<td>定义一套统一、完备的算子接口，独立于任何训练框架</td>
+</tr>
+<tr>
+<td><strong>严格版本化</strong></td>
+<td>OpSet 不可变契约，保证向后兼容性</td>
+</tr>
+<tr>
+<td><strong>属性 vs 输入</strong></td>
+<td>编译期确定的参数设为属性（Attribute），运行时变化的设为输入（Input）</td>
+</tr>
+<tr>
+<td><strong>类型约束</strong></td>
+<td>精确描述算子支持的数据类型组合</td>
+</tr>
+<tr>
+<td><strong>运行时无关</strong></td>
+<td>ONNX 规范不限定实现方式，ORT 是参考实现而非唯一实现</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="4-mlir--torch-mlir">4. MLIR / Torch-MLIR</h2>
+<h3 id="41-mlir-简介">4.1 MLIR 简介</h3>
+<p><strong>MLIR (Multi-Level Intermediate Representation)</strong> 是 LLVM 项目下的多层级 IR 编译器框架。在深度学习领域，MLIR 的核心价值在于<strong>定义不同抽象层次的 dialect（方言）</strong>，并在这些 dialect 之间进行渐进式 lowering（降级）。</p>
+<pre><code>框架前端 (PyTorch/TF/JAX)
+      |
+      v  +------------------+
+      |  | Torch Dialect    | &lt;- 框架特定高层操作
+      |  +------------------+
+      |          v lowering
+      |  +------------------+
+      |  | TOSA / StableHLO | &lt;- 硬件无关张量操作集
+      |  +------------------+
+      |          v lowering
+      |  +------------------+
+      |  | Linalg Dialect   | &lt;- 结构化线性代数
+      |  +------------------+
+      |          v lowering
+      |  +------------------+
+      |  | SCF / Affine     | &lt;- 循环和仿射变换
+      |  +------------------+
+      |          v lowering
+      |  +------------------+
+      |  | LLVM Dialect     | &lt;- LLVM IR
+      |  +------------------+
+      |          v
+      |   目标机器码
+</code></pre>
+<h3 id="42-tosa-tensor-operator-set-architecture">4.2 TOSA (Tensor Operator Set Architecture)</h3>
+<p><strong>TOSA</strong> 是由 MLIR 社区定义的一套<strong>硬件无关的张量算子集 dialect</strong>，遵循三个设计原则：</p>
+<ul>
+<li><strong>完备性（Complete）</strong>：基于对数十个主流框架网络的算子频率分析，覆盖计算、归约、逐元素变换、比较、控制流等所有主要类别。</li>
+<li><strong>最小性（Minimal）</strong>：避免创建复合算子，将融合决策交给编译器后端。限制算子数量以降低硬件实现复杂度。</li>
+<li><strong>数值精度（Numerical Precision）</strong>：每种算子内嵌量化信息，算子的伪代码精确描述数值计算步骤（包括舍入、溢出），保证不同硬件平台间的数值一致性。</li>
+</ul>
+<h3 id="43-stablehlo">4.3 StableHLO</h3>
+<p><strong>StableHLO</strong> 是 OpenXLA 项目的一部分，定位为 ML 框架和 ML 编译器之间的<strong>可移植层</strong>：</p>
+<pre><code>TensorFlow / JAX / PyTorch
+      |
+      v  (框架侧导出)
+StableHLO
+      |
+      v  (编译器侧消费)
+XLA / IREE / 其他编译器
+</code></pre>
+<p><strong>核心特征</strong>：</p>
+<ul>
+<li>约 100 个操作：<code>stablehlo.add</code>, <code>stablehlo.dot</code>, <code>stablehlo.convolution</code> 等</li>
+<li>SSA 形式（函数式 IR）</li>
+<li>支持动态维度：<code>tensor&lt;?x?xf32&gt;</code></li>
+<li>通过 VHLO 版本化机制保证前向兼容性</li>
+</ul>
+<h3 id="44-linalg-dialect">4.4 Linalg Dialect</h3>
+<p><strong>Linalg</strong> 的核心抽象是 <code>linalg.generic</code>——用一种结构化的方式描述任意张量运算：</p>
+<pre><code class="hljs language-mlir">linalg.generic {
+  indexing_maps = [
+    affine_map&lt;(i, j, k) -&gt; (i, k)&gt;,   // 输入 A
+    affine_map&lt;(i, j, k) -&gt; (k, j)&gt;,   // 输入 B
+    affine_map&lt;(i, j, k) -&gt; (i, j)&gt;    // 输出 C
+  ],
+  iterator_types = [&quot;parallel&quot;, &quot;parallel&quot;, &quot;reduction&quot;]
+} ins(%A, %B : tensor&lt;32x16xf32&gt;, tensor&lt;16x64xf32&gt;)
+  outs(%C : tensor&lt;32x64xf32&gt;) {
+  ^bb0(%a: f32, %b: f32, %c: f32):
+    %mul = arith.mulf %a, %b : f32
+    %add = arith.addf %c, %mul : f32
+    linalg.yield %add : f32
+} -&gt; tensor&lt;32x64xf32&gt;
+</code></pre>
+<p>此外还有大量语义化的命名算子：<code>linalg.matmul</code>, <code>linalg.conv_2d_nhwc_hwcf</code>, <code>linalg.add</code> 等。</p>
+<p><strong>Linalg 的设计优势</strong>：</p>
+<ol>
+<li><strong>结构化信息完整</strong>：计算结构不会在降低循环时丢失</li>
+<li><strong>可逆映射</strong>：迭代空间和数据空间之间的映射可逆</li>
+<li><strong>渐进降低</strong>：先 tiling + fusion 优化，再降低到 SCF/Affine loops</li>
+</ol>
+<h3 id="45-torch-mlir">4.5 Torch-MLIR</h3>
+<p><strong>Torch-MLIR</strong> 实现了 PyTorch 到 MLIR 的编译路径：</p>
+<pre><code>PyTorch Model -&gt; ExportedProgram/FX Graph -&gt; Torch Dialect -&gt; TOSA/Linalg/StableHLO -&gt; 后端编译器
+</code></pre>
+<p>Torch Dialect 保留了 PyTorch 算子的完整语义，包括动态形状（symbolic shapes）、自定义 autograd Function 等。</p>
+<hr>
+<h2 id="5-tvm--relax-算子">5. TVM / Relax 算子</h2>
+<h3 id="51-tvm-整体架构">5.1 TVM 整体架构</h3>
+<p>Apache TVM 是一个开源深度学习编译器栈，其算子贯穿多个 IR 层次：</p>
+<pre><code>+-----------------------------------------+
+|  Frontends (PyTorch/TF/ONNX/Relay)      |  &lt;- 模型导入
++-----------------------------------------+
+|  Relax IR (图级 IR)                      |  &lt;- 新一代图 IR
++-----------------------------------------+
+|  TensorIR (张量级 IR)                    |  &lt;- 循环级算子实现
++-----------------------------------------+
+|  AutoTVM / AutoScheduler                 |  &lt;- 自动调优
++-----------------------------------------+
+|  Backend (LLVM/CUDA/OpenCL/BYOC)        |  &lt;- 代码生成
++-----------------------------------------+
+</code></pre>
+<h3 id="52-relay-ir-→-relax-ir">5.2 Relay IR → Relax IR</h3>
+<p><strong>Relax</strong> 是 TVM Unity 中的新一代图级 IR，解决 Relay 在动态形状和异质计算方面的不足。</p>
+<p><strong>Relax 的关键创新</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>符号形状</strong></td>
+<td>支持动态维度，通过 shape function 推导</td>
+</tr>
+<tr>
+<td><strong>Dataflow 块</strong></td>
+<td>显式标记纯数据流区域，便于编译器优化</td>
+</tr>
+<tr>
+<td><strong>显式 binding</strong></td>
+<td>变量绑定而非嵌套表达式，易于图变换</td>
+</tr>
+<tr>
+<td><strong>跨 IR 互操作</strong></td>
+<td>可与 TensorIR 无缝混合（同一 IRModule 内含图级和循环级代码）</td>
+</tr>
+</tbody></table></div>
+<h3 id="53-tensorir--张量级算子表达">5.3 TensorIR — 张量级算子表达</h3>
+<p><strong>TensorIR</strong> 是 TVM 的循环级 IR，用于描述算子的具体计算过程：</p>
+<pre><code class="hljs language-python"><span class="hljs-meta">@T.prim_func</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">matmul</span>(<span class="hljs-params">
+    A: T.Buffer(<span class="hljs-params">(<span class="hljs-params">M, K</span>), <span class="hljs-string">&quot;float32&quot;</span></span>),
+    B: T.Buffer(<span class="hljs-params">(<span class="hljs-params">K, N</span>), <span class="hljs-string">&quot;float32&quot;</span></span>),
+    C: T.Buffer(<span class="hljs-params">(<span class="hljs-params">M, N</span>), <span class="hljs-string">&quot;float32&quot;</span></span>),
+</span>):
+    T.func_attr({<span class="hljs-string">&quot;global_symbol&quot;</span>: <span class="hljs-string">&quot;matmul&quot;</span>, <span class="hljs-string">&quot;tir.noalias&quot;</span>: <span class="hljs-literal">True</span>})
+    <span class="hljs-keyword">for</span> i, j, k <span class="hljs-keyword">in</span> T.grid(M, N, K):
+        <span class="hljs-keyword">with</span> T.block(<span class="hljs-string">&quot;update&quot;</span>):
+            vi, vj, vk = T.axis.remap(<span class="hljs-string">&quot;SSR&quot;</span>, [i, j, k])
+            <span class="hljs-keyword">with</span> T.init():
+                C[vi, vj] = T.float32(<span class="hljs-number">0</span>)
+            C[vi, vj] = C[vi, vj] + A[vi, vk] * B[vk, vj]
+</code></pre>
+<p><strong>关键概念</strong>：</p>
+<ul>
+<li><code>T.Buffer</code>：多维数组的抽象</li>
+<li><code>T.block</code>：计算块，显式标注循环迭代类型（S=spatial, R=reduction）</li>
+<li><code>T.axis.remap</code>：将循环变量映射为 block axis</li>
+</ul>
+<p>这种显式的结构化使编译器能够安全地进行 tiling、fusing、向量化等变换。</p>
+<h3 id="54-autotvm-自动调优">5.4 AutoTVM 自动调优</h3>
+<p><strong>AutoTVM</strong> 是 TVM 的算子自动调优框架，核心思想是<strong>在目标硬件上通过搜索找到最优的算子实现</strong>。</p>
+<pre><code>1. 定义搜索空间 (Template)
+2. 搜索最优配置 (XGBTuner)
+3. 应用最优配置到算子的 TIR 模板
+4. 生成高度优化的 kernel 代码
+</code></pre>
+<p>可调优参数包括：tile 大小、循环展开步长、向量化宽度、共享内存使用、线程数配置等。</p>
+<p><strong>AutoScheduler (Ansor)</strong> 是 AutoTVM 的继任者，不需要手动编写模板——它自动从算子的 TIR 定义中提取搜索空间并进行进化搜索。</p>
+<h3 id="55-byoc-bring-your-own-codegen-框架">5.5 BYOC (Bring Your Own Codegen) 框架</h3>
+<p><strong>BYOC</strong> 允许硬件厂商轻松集成自定义后端：</p>
+<pre><code>1. 注册 Pattern: 定义哪些算子/子图可以被加速器执行
+2. 图分割: FuseOpsByPattern + MergeCompositeFunctions
+3. 代码生成: 将 composite function 转换为后端中间表示
+4. 运行时调度: composite function 被转发给加速器执行
+</code></pre>
+<p><strong>Pattern 注册示例</strong>：</p>
+<pre><code class="hljs language-python"><span class="hljs-meta">@tvm.ir.register_op_attr(<span class="hljs-params"><span class="hljs-string">&quot;nn.conv2d&quot;</span>, <span class="hljs-string">&quot;target.my_backend&quot;</span></span>)</span>
+<span class="hljs-keyword">def</span> <span class="hljs-title function_">_is_supported</span>(<span class="hljs-params">attrs, args</span>):
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">True</span>
+
+<span class="hljs-comment"># 融合模式</span>
+register_pattern(<span class="hljs-string">&quot;my_backend.conv2d_relu&quot;</span>, [(<span class="hljs-string">&quot;relax.nn.conv2d&quot;</span>), (<span class="hljs-string">&quot;relax.nn.relu&quot;</span>)])
+</code></pre>
+<p>BYOC 的核心优势：所有相关代码自包含，对 TVM 核心无侵入，支持混合执行（不支持的部分走 CPU/GPU fallback）。</p>
+<h3 id="56-tvmrelax-算子设计哲学">5.6 TVM/Relax 算子设计哲学</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>特点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>多级 IR</strong></td>
+<td>图级 (Relax) + 张量级 (TensorIR) + 后端级 (LLVM/CUDA)</td>
+</tr>
+<tr>
+<td><strong>结构化计算块</strong></td>
+<td>T.block + axis remap 显式表达循环语义，保证变换安全性</td>
+</tr>
+<tr>
+<td><strong>自动调优驱动</strong></td>
+<td>AutoTVM/AutoScheduler 通过搜索找到最优实现</td>
+</tr>
+<tr>
+<td><strong>可扩展后端</strong></td>
+<td>BYOC 框架使硬件厂商可插拔式集成自定义算子库</td>
+</tr>
+<tr>
+<td><strong>计算与调度分离</strong></td>
+<td>算子的计算逻辑和调度策略解耦</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="6-跨框架对比总结">6. 跨框架对比总结</h2>
+<h3 id="61-算子设计哲学对比">6.1 算子设计哲学对比</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>PyTorch</th>
+<th>TensorFlow</th>
+<th>ONNX</th>
+<th>MLIR</th>
+<th>TVM</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>注册方式</strong></td>
+<td>YAML + TORCH_LIBRARY</td>
+<td>REGISTER_OP 宏</td>
+<td>Protobuf schema</td>
+<td>MLIR ODS</td>
+<td>Python + C++ Op</td>
+</tr>
+<tr>
+<td><strong>调度机制</strong></td>
+<td>DispatchKey 多键查找</td>
+<td>OpKernel 设备/类型匹配</td>
+<td>无调度（契约）</td>
+<td>Dialect lowering</td>
+<td>Relax→TIR→backend</td>
+</tr>
+<tr>
+<td><strong>自动微分</strong></td>
+<td>Autograd 动态图 + AOTAutograd</td>
+<td>tf.GradientTape + XLA</td>
+<td>框架层处理</td>
+<td>Enzyme / 框架侧</td>
+<td>relay gradient pass</td>
+</tr>
+<tr>
+<td><strong>编译优化</strong></td>
+<td>torch.compile (Dynamo+Inductor)</td>
+<td>XLA (HLO fusion)</td>
+<td>ORT Graph Optimizer</td>
+<td>Progressive lowering</td>
+<td>AutoTVM 搜索</td>
+</tr>
+<tr>
+<td><strong>自定义算子</strong></td>
+<td>torch.library / TORCH_LIBRARY</td>
+<td>tf.load_op_library</td>
+<td>自定义 domain</td>
+<td>Custom dialect</td>
+<td>BYOC / TE</td>
+</tr>
+<tr>
+<td><strong>IR 层次</strong></td>
+<td>ATen ops → PrimTorch prims</td>
+<td>TF ops → HLO</td>
+<td>单一层次</td>
+<td>多级 (Torch→TOSA→Linalg→...)</td>
+<td>Relax→TensorIR→目标</td>
+</tr>
+<tr>
+<td><strong>动态形状</strong></td>
+<td>原生支持</td>
+<td>有限支持</td>
+<td>有限支持</td>
+<td>符号形状</td>
+<td>Relax 符号形状</td>
+</tr>
+</tbody></table></div>
+<h3 id="62-算子数量对比">6.2 算子数量对比</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>框架</th>
+<th>算子规模</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>PyTorch</td>
+<td>~2000+</td>
+<td>ATen 算子（含全部重载）</td>
+</tr>
+<tr>
+<td>TensorFlow</td>
+<td>~2000+</td>
+<td>含全部变体</td>
+</tr>
+<tr>
+<td>ONNX (ai.onnx)</td>
+<td>~210+</td>
+<td>标准算子集（opset 28）</td>
+</tr>
+<tr>
+<td>TOSA</td>
+<td>~60+</td>
+<td>精简化算子集</td>
+</tr>
+<tr>
+<td>StableHLO</td>
+<td>~100+</td>
+<td>HLO 算子集</td>
+</tr>
+<tr>
+<td>Linalg</td>
+<td>~40+命名 + generic</td>
+<td>结构化算子</td>
+</tr>
+</tbody></table></div>
+<h3 id="63-各自适用场景">6.3 各自适用场景</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>框架</th>
+<th>优势场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>PyTorch</strong></td>
+<td>研究、原型开发、动态模型、Pythonic 体验</td>
+</tr>
+<tr>
+<td><strong>TensorFlow</strong></td>
+<td>生产部署、TPU/大规模分布式训练</td>
+</tr>
+<tr>
+<td><strong>ONNX</strong></td>
+<td>模型互操作、跨框架推理、多硬件部署</td>
+</tr>
+<tr>
+<td><strong>MLIR</strong></td>
+<td>编译器开发、新硬件接入、多级优化基础设施</td>
+</tr>
+<tr>
+<td><strong>TVM</strong></td>
+<td>多硬件后端优化、异质计算、边缘设备部署</td>
+</tr>
+</tbody></table></div>
+<h3 id="64-算子体系设计趋势">6.4 算子体系设计趋势</h3>
+<ol>
+<li><strong>层次化分解</strong>：单一大算子集 → 多级分解（高层算子 → 原始算子），PrimTorch 和多层 dialect 是代表。</li>
+<li><strong>编译融合</strong>：算子融合从手工优化移入编译器（XLA fusion、TorchInductor、TVM tensorize）。</li>
+<li><strong>标准化 IR</strong>：ONNX、StableHLO、TOSA 作为框架间互操作的桥梁。</li>
+<li><strong>符号动态形状</strong>：从纯静态图走向符号化动态形状（Relax symbolic var、PyTorch SymInt）。</li>
+<li><strong>硬件可插拔</strong>：<code>PrivateUse1</code>、BYOC、EP 机制体现对非主流硬件的友好接入。</li>
+<li><strong>自动微分分离</strong>：反向逻辑从算子定义中分离（CompositeImplicitAutograd、gradient pass）。</li>
+</ol>
+<hr>
+<h2 id="🔮-下一步：如何选择与深入？">🔮 下一步：如何选择与深入？</h2>
+<h3 id="你的路线图取决于你的角色">你的路线图取决于你的角色</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>角色</th>
+<th>建议路径</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>AI 框架开发者</strong></td>
+<td>深入 PyTorch ATen / Dispatcher / torch.compile 源码，理解 PrimTorch 的 decompositions</td>
+</tr>
+<tr>
+<td><strong>编译器工程师</strong></td>
+<td>从 MLIR Toy Tutorial 入手，理解 Dialect 定义和 progressive lowering，再关注 StableHLO 和 Linalg</td>
+</tr>
+<tr>
+<td><strong>推理引擎开发者</strong></td>
+<td>看 ONNX Runtime 的 EP 机制、TVM 的 AutoTVM + BYOC、以及 XLA 的算子融合</td>
+</tr>
+<tr>
+<td><strong>新硬件适配者</strong></td>
+<td>关注 PyTorch <code>PrivateUse1</code>、TVM BYOC、TOSA 的精简算子集——哪个路径最短就选哪个</td>
+</tr>
+<tr>
+<td><strong>AI Infra 总体架构师</strong></td>
+<td>需要理解所有五个体系的核心哲学，才能在做技术选型和架构决策时心中有数</td>
+</tr>
+</tbody></table></div>
+<h3 id="推荐学习资源">推荐学习资源</h3>
+<ul>
+<li>📖 <strong>PyTorch Dispatcher</strong> — ezyang&#39;s blog 系列，深入理解 <code>DispatchKey</code> 和 <code>TORCH_LIBRARY</code></li>
+<li>📖 <strong>MLIR Toy Tutorial</strong> — mlir.llvm.org，理解 Dialect 定义的最佳起点</li>
+<li>📖 <strong>ONNX Operator Spec</strong> — onnx.ai，查看每个算子的完整输入输出定义</li>
+<li>📖 <strong>TVM Book</strong> — tvm.apache.org 官方文档，从 Relay 到 TIR 的完整教程</li>
+<li>📖 <strong>StableHLO Specification</strong> — openxla.org，理解跨框架 IR 的标准</li>
+<li>🔧 <strong>Nsight Compute</strong> — GPU kernel 性能分析必备</li>
+<li>🔧 <strong>TorchBench / ONNX Runtime Perf</strong> — 框架级别的算子性能测试</li>
+</ul>
+<h3 id="一句话总结">一句话总结</h3>
+<blockquote>
+<p><strong>PyTorch 让写算子像写 Python 一样简单，TensorFlow 让算子的调度像配置一样严谨，ONNX 让算子像协议一样标准化，MLIR 让算子像乐高一样层次化，TVM 让算子像搜索问题一样自动化。</strong></p>
+</blockquote>
+<p>五个体系各有侧重，但它们都在做同一件事：<strong>让从算法到硬件的距离再短一点</strong>。理解它们的共性和差异，就是你在 AI Infra 领域最好的投资。</p>
+<hr>
+<h2 id="参考资料">参考资料</h2>
+<ul>
+<li>PyTorch ATen Native Functions README (github.com/pytorch/pytorch)</li>
+<li>PyTorch Dispatcher — ezyang&#39;s blog</li>
+<li>PyTorch Custom Operators Tutorial (pytorch.org)</li>
+<li>TensorFlow Adding an Op Guide (tensorflow.org)</li>
+<li>OpenXLA / StableHLO Specification (openxla.org)</li>
+<li>MLIR TOSA / Linalg Dialect Docs (mlir.llvm.org)</li>
+<li>ONNX Operator Specification (onnx.ai)</li>
+<li>ONNX Runtime Graph Optimizations (onnxruntime.ai)</li>
+<li>Apache TVM Documentation (tvm.apache.org)</li>
+<li>TVM BYOC Tutorial (tvm.apache.org)</li>
+<li>XLA Operator Fusion Analysis (arxiv.org/abs/2301.13062)</li>
+<li>Relax: TVM Unity Graph IR RFC</li>
+</ul>
+<hr>
+<blockquote>
+<p><strong>文档版本</strong>：v1.0 | <strong>最后更新</strong>：2026-06-29 | <strong>作者</strong>：Hermes Agent (Nous Research)</p>
+</blockquote>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
