@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>多头注意力完全图解：MHA/MQA/GQA/MLA的头部关系与数量约束 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-06-29</p>
+        <h1>多头注意力完全图解：MHA/MQA/GQA/MLA的头部关系与数量约束</h1>
+        <div class="post-meta">
+          <span>2026-06-29</span>
+          <span class="tag">注意力机制</span><span class="tag">Transformer</span><span class="tag">MHA</span><span class="tag">GQA</span><span class="tag">MLA</span><span class="tag">推理优化</span><span class="tag">KV Cache</span>
+        </div>
+        <p>如果你用过 LLaMA、Mistral、Qwen 或者 DeepSeek-V2，肯定在它们的 config.json 里见过 <code>num_attention_heads</code> 和 <code>num_key_value_heads</code> 这两个参数。前者等于 32 或 64，后者可能是 8、16 或者跟前者一样——这<strong>不是随便选的数字</strong>，这两者的关系直接决定了推理时的 KV Cache 大小和加速比。</p>
+<p>本文用三张 Excalidraw 图解，把 MHA（标准多头注意力）、MQA（多查询注意力）、GQA（分组查询注意力）和 MLA（多头潜在注意力）的<strong>头部数量关系、整除约束和数值例子</strong>讲清楚。</p>
+<!--more-->
+
+<hr>
+<h2 id="📐-引子：注意力「头」到底是什么？">📐 引子：注意力「头」到底是什么？</h2>
+<p>在 Transformer 中，每个 attention head 是一个独立的&quot;视角&quot;：</p>
+<p>$$
+\text{Head}_i = \text{Attention}(Q_i, K_i, V_i) = \text{softmax}\left(\frac{Q_i K_i^T}{\sqrt{d_k}}\right) V_i
+$$</p>
+<p>其中：</p>
+<ul>
+<li>**Q (Query)**：当前 token 发出的&quot;我关注谁&quot;</li>
+<li>**K (Key)**：所有 token 的&quot;我是谁&quot;</li>
+<li>**V (Value)**：所有 token 的&quot;我有什么&quot;</li>
+</ul>
+<p>多个 attention head 的结果拼接后通过输出投影融合：</p>
+<p>$$
+\text{MultiHead}(Q,K,V) = \text{Concat}(\text{Head}_1, \text{Head}_2, ..., \text{Head}_H) W_O
+$$</p>
+<p>所有变体（MHA/MQA/GQA/MLA）的区别，本质上是 <strong>Q、K、V 的头数关系不同</strong>。</p>
+<hr>
+<h2 id="🧩-第一章：标准多头注意力-mha">🧩 第一章：标准多头注意力 (MHA)</h2>
+<h3 id="基本概念">基本概念</h3>
+<p>MHA（Multi-Head Attention）是 Transformer 原始论文中提出的方案。每个 attention head 拥有<strong>独立的 Q、K、V 投影矩阵</strong>。</p>
+<h3 id="数量关系">数量关系</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>变量</th>
+<th>符号</th>
+<th>MHA 中的值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Q 头数</td>
+<td>$H_q$</td>
+<td>$H$</td>
+</tr>
+<tr>
+<td>K 头数</td>
+<td>$H_k$</td>
+<td>$H$</td>
+</tr>
+<tr>
+<td>V 头数</td>
+<td>$H_v$</td>
+<td>$H$</td>
+</tr>
+<tr>
+<td>总注意力头数</td>
+<td>$H$</td>
+<td>模型配置参数</td>
+</tr>
+</tbody></table></div>
+<p>核心关系：$H_q = H_k = H_v = H$</p>
+<h3 id="参数规模">参数规模</h3>
+<p>每个 head 的维度 $d_h = d_{model} / H$，投影矩阵：</p>
+<p>$$
+W_Q \in \mathbb{R}^{d_{model} \times d_{model}}, \quad
+W_K \in \mathbb{R}^{d_{model} \times d_{model}}, \quad
+W_V \in \mathbb{R}^{d_{model} \times d_{model}}
+$$</p>
+<p><strong>一个数值例子</strong>：d_model=4096, H=32, d_h=128</p>
+<ul>
+<li>每个 head 的 Q/K/V 维度：128</li>
+<li>总参数：3 × (4096 × 4096) ≈ 50M 参数（仅注意力投影层）</li>
+<li>KV Cache 大小（每层）：2 × H × d_h × seq_len × 精度字节 = 2 × 32 × 128 × seq_len × 2 = 16,384 × seq_len 字节</li>
+</ul>
+<h3 id="推理瓶颈">推理瓶颈</h3>
+<p>MHA 每生成一个 token 都需要缓存<strong>所有 H 个头的 K 和 V 矩阵</strong>。当 batch size 和序列长度增加时，KV Cache 占用线性增长，成为推理时的主要显存瓶颈。</p>
+<hr>
+<h2 id="🔗-第二章：多查询注意力-mqa">🔗 第二章：多查询注意力 (MQA)</h2>
+<h3 id="动机">动机</h3>
+<p>MQA（Multi-Query Attention）由 Shazeer 在 2019 年提出，核心观察是：<strong>解码时 K/V 缓存的带宽压力远大于计算压力</strong>。如果能减少 K/V 头数，KV Cache 就能大幅缩减。</p>
+<h3 id="数量关系-1">数量关系</h3>
+<p>MQA 将所有 Q head 映射到<strong>同一个 K head 和同一个 V head</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>变量</th>
+<th>MQA 中的值</th>
+<th>与 MHA 对比</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>$H_q$</td>
+<td>$H$</td>
+<td>不变</td>
+</tr>
+<tr>
+<td>$H_k$</td>
+<td>1</td>
+<td>减少到 1/H</td>
+</tr>
+<tr>
+<td>$H_v$</td>
+<td>1</td>
+<td>减少到 1/H</td>
+</tr>
+</tbody></table></div>
+<h3 id="kv-cache-节省">KV Cache 节省</h3>
+<p>MQA 的 KV Cache 大小只相当于 MHA 的 <strong>1/H</strong>：</p>
+<pre><code>MHA KV Cache / 层 = 2 × H × d_h × seq_len × 2 bytes (FP16)
+MQA KV Cache / 层 = 2 × 1 × d_h × seq_len × 2 bytes
+</code></pre>
+<p>以 H=32 为例，MQA 的 KV Cache 仅为 MHA 的 **3.125%**。</p>
+<h3 id="代价">代价</h3>
+<p>共享 K/V 会降低模型的表达能力。在大模型场景下，MQA 的质量损失显著——尤其在不同 head 需要关注不同语义特征时，强制所有 head 共享同一个 K/V 过于激进。</p>
+<hr>
+<h2 id="👥-第三章：分组查询注意力-gqa">👥 第三章：分组查询注意力 (GQA)</h2>
+<h3 id="gqa-的折中方案">GQA 的折中方案</h3>
+<p>GQA（Grouped Query Attention）由 Ainslie 等人 2023 年提出，是 MHA 和 MQA 的<strong>中间地带</strong>。</p>
+<h3 id="数量关系-2">数量关系</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>变量</th>
+<th>GQA 中的值</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>$H_q$</td>
+<td>$H$</td>
+<td>不变</td>
+</tr>
+<tr>
+<td>$H_k$</td>
+<td>$G$</td>
+<td>分组数 (1 ≤ G ≤ H)</td>
+</tr>
+<tr>
+<td>$H_v$</td>
+<td>$G$</td>
+<td>与 K 相同</td>
+</tr>
+</tbody></table></div>
+<p><strong>核心约束</strong>：$H_q \bmod G = 0$，即 Q 头数必须能被分组数整除。</p>
+<p><strong>每组的 Q 头数</strong>：</p>
+<p>$$
+\frac{H_q}{G} = \text{每个 K/V head 服务的 Q 头数量}
+$$</p>
+<h3 id="边界情况">边界情况</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>G 的值</th>
+<th>等价于</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>G = 1</td>
+<td>MQA</td>
+<td>所有 Q 共享 1 个 K/V</td>
+</tr>
+<tr>
+<td>G = H</td>
+<td>MHA</td>
+<td>每个 Q 有独立的 K/V</td>
+</tr>
+<tr>
+<td>G = 2, 4, 8</td>
+<td>GQA</td>
+<td>折中方案，主流选择</td>
+</tr>
+</tbody></table></div>
+<h3 id="工业界实践">工业界实践</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>模型</th>
+<th>d_model</th>
+<th>$H_q$</th>
+<th>$H_k$ (G)</th>
+<th>每组 Q 头数</th>
+<th>KV Cache 节省</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LLaMA 1 65B</td>
+<td>8192</td>
+<td>64</td>
+<td>64</td>
+<td>1 (MHA)</td>
+<td>1×</td>
+</tr>
+<tr>
+<td>LLaMA 2 7B</td>
+<td>4096</td>
+<td>32</td>
+<td>32</td>
+<td>1 (MHA)</td>
+<td>1×</td>
+</tr>
+<tr>
+<td>LLaMA 2 70B</td>
+<td>8192</td>
+<td>64</td>
+<td>8</td>
+<td>8</td>
+<td><strong>8×</strong></td>
+</tr>
+<tr>
+<td>LLaMA 3 8B</td>
+<td>4096</td>
+<td>32</td>
+<td>8</td>
+<td>4</td>
+<td><strong>4×</strong></td>
+</tr>
+<tr>
+<td>LLaMA 3 70B</td>
+<td>8192</td>
+<td>64</td>
+<td>8</td>
+<td>8</td>
+<td><strong>8×</strong></td>
+</tr>
+<tr>
+<td>LLaMA 3.1 405B</td>
+<td>16384</td>
+<td>128</td>
+<td>8</td>
+<td>16</td>
+<td><strong>16×</strong></td>
+</tr>
+<tr>
+<td>Mistral 7B</td>
+<td>4096</td>
+<td>32</td>
+<td>8</td>
+<td>4</td>
+<td><strong>4×</strong></td>
+</tr>
+<tr>
+<td>Mistral Large (2)</td>
+<td>12288</td>
+<td>96</td>
+<td>8</td>
+<td>12</td>
+<td><strong>12×</strong></td>
+</tr>
+<tr>
+<td>Mixtral 8×7B</td>
+<td>4096</td>
+<td>32</td>
+<td>8</td>
+<td>4</td>
+<td><strong>4×</strong></td>
+</tr>
+<tr>
+<td>Qwen2 72B</td>
+<td>8192</td>
+<td>64</td>
+<td>16</td>
+<td>4</td>
+<td><strong>4×</strong></td>
+</tr>
+<tr>
+<td>Gemma 2 9B</td>
+<td>3584</td>
+<td>16</td>
+<td>8</td>
+<td>2</td>
+<td><strong>2×</strong></td>
+</tr>
+<tr>
+<td>Gemma 2 27B</td>
+<td>4608</td>
+<td>32</td>
+<td>16</td>
+<td>2</td>
+<td><strong>2×</strong></td>
+</tr>
+</tbody></table></div>
+<p>可以看到，<strong>G=8 是目前最流行的配置</strong>——LLaMA 70B、Mistral、Mixtral 都选了它。LLaMA 3.1 405B 进一步把 G 降到 8（H=128→每组 16 个 Q 头），以照顾超大规模推理的 KV Cache 开销。</p>
+<h3 id="为什么是-g8-最流行？">为什么是 G=8 最流行？</h3>
+<p>这是一个经验权衡：</p>
+<pre><code>G 越小 → KV Cache 越小 → 推理越快 → 但质量越差
+G 越大 → 质量越好 → 但 KV Cache 越大 → 推理越慢
+</code></pre>
+<p>G=8 在质量和速度之间找到了一个较好的平衡点。</p>
+<hr>
+<h2 id="🔢-第四章：数值约束详解">🔢 第四章：数值约束详解</h2>
+<h3 id="41-整除约束">4.1 整除约束</h3>
+<p><strong>硬性要求</strong>：$H_q \bmod H_{kv} = 0$</p>
+<p>为什么？因为注意力计算中，Q 需要按组与 K 做带 batch 维度的矩阵乘法：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">gqa_attention</span>(<span class="hljs-params">Q, K, V, H_q, H_kv</span>):
+    <span class="hljs-comment"># Q shape: [batch, seq, H_q * d_h]</span>
+    <span class="hljs-comment"># K shape: [batch, seq, H_kv * d_h]</span>
+
+    <span class="hljs-comment"># 将 Q 重新排列成 [batch, seq, G, h_per_group, d_h]</span>
+    <span class="hljs-comment"># 其中 G = H_kv, h_per_group = H_q / H_kv</span>
+    Q = Q.view(batch, seq, H_kv, H_q // H_kv, d_h)
+    K = K.view(batch, seq, H_kv, <span class="hljs-number">1</span>, d_h)  <span class="hljs-comment"># 广播</span>
+
+    <span class="hljs-comment"># batched matmul:</span>
+    scores = torch.matmul(Q, K.transpose(-<span class="hljs-number">2</span>, -<span class="hljs-number">1</span>))
+    <span class="hljs-comment"># 这里要求 H_q // H_kv 是整数</span>
+</code></pre>
+<p>如果 $H_q / H_kv$ 不是整数，就会产生&quot;不均匀分组&quot;——有些组多一个 Q head，有些组少一个。这会破坏计算图的规则性，导致无法用统一的 batch matmul 实现。</p>
+<h3 id="42-head-维度约束">4.2 Head 维度约束</h3>
+<p>每个 attention head 的维度：</p>
+<p>$$
+d_h = \frac{d_{model}}{H_q}
+$$</p>
+<p>常见取值：64、96、128。</p>
+<p>对 GQA 来说，K/V head 的维度也是 $d_h$，只是数量减少到 $H_kv$：</p>
+<ul>
+<li>K 的总维度：$H_kv \times d_h = H_kv \times d_{model} / H_q$</li>
+<li>V 的总维度：同上</li>
+</ul>
+<h3 id="43-kv-cache-大小的精确公式">4.3 KV Cache 大小的精确公式</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">kv_cache_size</span>(<span class="hljs-params">
+    num_layers: <span class="hljs-built_in">int</span>,
+    batch_size: <span class="hljs-built_in">int</span>,
+    seq_len: <span class="hljs-built_in">int</span>,
+    d_model: <span class="hljs-built_in">int</span>,
+    H_q: <span class="hljs-built_in">int</span>,
+    H_kv: <span class="hljs-built_in">int</span>,
+    precision_bytes: <span class="hljs-built_in">int</span> = <span class="hljs-number">2</span>,  <span class="hljs-comment"># FP16</span>
+</span>) -&gt; <span class="hljs-built_in">int</span>:
+    <span class="hljs-string">&quot;&quot;&quot;返回 KV Cache 总大小（字节）&quot;&quot;&quot;</span>
+    d_h = d_model // H_q
+    kv_size_per_layer = <span class="hljs-number">2</span> * H_kv * d_h * seq_len * precision_bytes  <span class="hljs-comment"># K + V</span>
+    <span class="hljs-keyword">return</span> num_layers * batch_size * kv_size_per_layer
+</code></pre>
+<p><strong>一个具体例子</strong>：LLaMA 3 8B 推理，batch=4, seq=8192</p>
+<pre><code>d_model = 4096, H_q = 32, H_kv = 8
+d_h = 4096 / 32 = 128
+num_layers = 32
+
+每层 KV Cache = 2 × 8 × 128 × 8192 × 2 = 33,554,432 字节 ≈ 32 MB
+总 KV Cache = 32 × 4 × 32 MB ≈ 4 GB
+</code></pre>
+<p>如果换成 MHA（H_kv=32），总 KV Cache 将变成 16 GB——4 倍差距。</p>
+<h3 id="44-节省率公式">4.4 节省率公式</h3>
+<p>$$
+\text{KV Cache 节省倍数} = \frac{H_q}{H_kv}
+$$</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>机制</th>
+<th>$H_q$</th>
+<th>$H_kv$</th>
+<th>节省倍数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>MHA</td>
+<td>32</td>
+<td>32</td>
+<td>1× (基准)</td>
+</tr>
+<tr>
+<td>GQA (G=8)</td>
+<td>32</td>
+<td>8</td>
+<td>4×</td>
+</tr>
+<tr>
+<td>GQA (G=4)</td>
+<td>32</td>
+<td>4</td>
+<td>8×</td>
+</tr>
+<tr>
+<td>MQA</td>
+<td>32</td>
+<td>1</td>
+<td>32×</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="🧪-第五章：多头潜在注意力-mla">🧪 第五章：多头潜在注意力 (MLA)</h2>
+<h3 id="deepseek-的创新">DeepSeek 的创新</h3>
+<p>MLA（Multi-head Latent Attention）是 DeepSeek-V2 提出的 KV Cache 压缩方案。它的核心思想是：<strong>对 KV 进行低秩压缩，只缓存压缩后的 latent 表示，在计算时再展开</strong>。</p>
+<h3 id="与传统-gqa-的关键区别">与传统 GQA 的关键区别</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>维度</th>
+<th>传统 GQA</th>
+<th>MLA</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>KV Cache 存储</td>
+<td>完整的 $H_kv \times d_h$</td>
+<td>压缩后 $d_l$ 维 latent</td>
+</tr>
+<tr>
+<td>共享方式</td>
+<td>Q 头分组共享 K/V</td>
+<td>所有 Q 头共享 latent KV</td>
+</tr>
+<tr>
+<td>展开方式</td>
+<td>无需展开</td>
+<td>通过 up-projection 展开</td>
+</tr>
+<tr>
+<td>额外操作</td>
+<td>无</td>
+<td>Matrix Absorption</td>
+</tr>
+</tbody></table></div>
+<h3 id="数学原理">数学原理</h3>
+<p>MLA 将 K 和 V 的投影矩阵分解为两个低秩矩阵：</p>
+<p>$$
+W_K = W_{UK} \circ W_{DK}, \quad W_V = W_{UV} \circ W_{DV}
+$$</p>
+<p>其中：</p>
+<ul>
+<li>$W_{DK} \in \mathbb{R}^{d_l \times d_{model}}$（down-projection，压缩）</li>
+<li>$W_{UK} \in \mathbb{R}^{d_{model} \times d_l}$（up-projection，展开）</li>
+<li>$d_l \ll d_{model}$（latent 维度）</li>
+</ul>
+<p>推理时，KV Cache 仅存储 latent 表示：</p>
+<p>$$
+C_{KV} = W_{DK} \cdot [h_1, h_2, ..., h_t] \quad \text{(shape: [seq_len, d_l])}
+$$</p>
+<h3 id="matrix-absorption">Matrix Absorption</h3>
+<p>这是 MLA 最关键也最精妙的优化。传统 naive 做法是先展开 latent KV 再算注意力：</p>
+<pre><code>K = C_KV @ W_UK     # [seq, d_model] — 展开，浪费带宽
+A = Q @ K^T          # 注意力计算
+</code></pre>
+<p>Matrix Absorption 将 up-projection 吸收进 Q：</p>
+<pre><code>Q_absorbed = Q @ W_UK^T    # 先吸收：Q [d_model] → Q [d_l]
+A = Q_absorbed @ C_KV^T     # 在 latent space 计算
+</code></pre>
+<p>这样<strong>无需显式展开 latent KV</strong>——计算的中间状态在更低的 $d_l$ 维空间中就完成了。这需要自定义 CUDA kernel 来实现，但能带来显著的带宽节省。</p>
+<h3 id="kv-cache-对比（deepseek-v2-参数）">KV Cache 对比（DeepSeek-V2 参数）</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>方法</th>
+<th>每层 KV Cache 大小</th>
+<th>节省</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GQA (H=128, G=16, d_h=128)</td>
+<td>2 × 16 × 128 = 4096 个元素</td>
+<td>基准</td>
+</tr>
+<tr>
+<td>MLA (d_l=512)</td>
+<td>2 × 512 = 1024 个元素</td>
+<td><strong>4×</strong></td>
+</tr>
+<tr>
+<td>MHA (H=128)</td>
+<td>2 × 128 × 128 = 32768 个元素</td>
+<td>8× (vs GQA)</td>
+</tr>
+</tbody></table></div>
+<p>DeepSeek-V2 实测 MLA 可减少约 <strong>75%</strong> 的 KV Cache 占用，同时保持与全注意力相当的质量。</p>
+<hr>
+<h2 id="📊-第六章：总结与速查">📊 第六章：总结与速查</h2>
+<h3 id="核心公式速查">核心公式速查</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>概念</th>
+<th>公式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Head 维度</td>
+<td>$d_h = d_{model} / H_q$</td>
+</tr>
+<tr>
+<td>GQA 分组数</td>
+<td>$G = H_kv$</td>
+</tr>
+<tr>
+<td>每组 Q 头数</td>
+<td>$H_q / H_kv$</td>
+</tr>
+<tr>
+<td>整除约束</td>
+<td>$H_q \bmod H_kv = 0$</td>
+</tr>
+<tr>
+<td>KV Cache 节省倍率</td>
+<td>$H_q / H_kv$</td>
+</tr>
+<tr>
+<td>MLA latent 维度</td>
+<td>$d_l \ll H_kv \times d_h$</td>
+</tr>
+</tbody></table></div>
+<h3 id="选择指南">选择指南</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>推荐方案</th>
+<th>理由</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>小模型 (1B-7B)</td>
+<td>MHA</td>
+<td>KV Cache 压力小，质量优先</td>
+</tr>
+<tr>
+<td>大模型 (7B-70B) 推理</td>
+<td>GQA (G=8)</td>
+<td>质量和速度的最佳平衡</td>
+</tr>
+<tr>
+<td>超大模型 (70B+) 推理</td>
+<td>GQA (G=4~8)</td>
+<td>更大模型需更多 KV Cache 优化</td>
+</tr>
+<tr>
+<td>极致推理吞吐</td>
+<td>MQA</td>
+<td>质量可牺牲时</td>
+</tr>
+<tr>
+<td>长上下文 (128K+)</td>
+<td>MLA 或 KV 量化</td>
+<td>KV Cache 成为主要瓶颈</td>
+</tr>
+<tr>
+<td>显存受限部署</td>
+<td>GQA (G=4) + KV Cache 量化</td>
+<td>双重压缩</td>
+</tr>
+</tbody></table></div>
+<h3 id="推荐阅读">推荐阅读</h3>
+<ul>
+<li>📖 <a href="https://arxiv.org/abs/1706.03762">Attention Is All You Need</a>（Vaswani et al., 2017）— Transformer 原始论文，MHA 的起源</li>
+<li>📖 <a href="https://arxiv.org/abs/1911.02150">Fast Transformer Decoding: One Write-Head is All You Need</a>（Shazeer, 2019）— MQA 论文</li>
+<li>📖 <a href="https://arxiv.org/abs/2305.13245">GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints</a>（Ainslie et al., 2023）— GQA 论文</li>
+<li>📖 <a href="https://arxiv.org/abs/2405.04434">DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model</a> — MLA 论文</li>
+<li>📖 <a href="https://arxiv.org/abs/2205.14135">FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness</a> — IO-aware 注意力计算的基础</li>
+</ul>
+<hr>
+<h2 id="🚀-下一步">🚀 下一步</h2>
+<p>理解头部关系后，你可以：</p>
+<ol>
+<li><strong>动手改 config</strong>：试试把一个 MHA 模型改为 GQA（通过平均池化合并 K/V head），感受质量损失和速度提升</li>
+<li><strong>算你的 KV Cache</strong>：用上面的公式算算自己的模型在目标序列长度和 batch size 下需要多大显存</li>
+<li><strong>用代码验证</strong>：在推理引擎（vLLM / llama.cpp）中比较 MHA/GQA/MQA 的实际吞吐差异</li>
+</ol>
+<p>理解了&quot;头&quot;的关系，你就能在模型配置层面做出明智的推理优化决策——而不是只知道&quot;跑起来&quot;。</p>
+<h3 id="📊-本文配套图解">📊 本文配套图解</h3>
+<blockquote>
+<p><strong>图1：MHA vs MQA vs GQA 对比图</strong> — Q/K/V 头数和映射关系
+在线查看：<a href="https://excalidraw.com/#json=0osGQ_FXYcqF7-T9nZMRR,Ys0w7R8wGVTctOOLQnh00A">https://excalidraw.com/#json=0osGQ_FXYcqF7-T9nZMRR,Ys0w7R8wGVTctOOLQnh00A</a>
+文件位置：<code>images/mha-vs-mqa-vs-gqa.excalidraw</code></p>
+</blockquote>
+<blockquote>
+<p><strong>图2：注意力头数量约束图解</strong> — 整除约束、GQA 连续谱、实战示例
+在线查看：<a href="https://excalidraw.com/#json=sQYUP3nTQ51NTjdq70GV0,HvWn_12aT6iLzRzHVE_bsQ">https://excalidraw.com/#json=sQYUP3nTQ51NTjdq70GV0,HvWn_12aT6iLzRzHVE_bsQ</a>
+文件位置：<code>images/head-count-constraints.excalidraw</code></p>
+</blockquote>
+<blockquote>
+<p><strong>图3：MLA — Multi-head Latent Attention 原理</strong>
+在线查看：<a href="https://excalidraw.com/#json=91-QXaL8Ll0TjoKy6fuUy,PLJ4c6oIEyb7uNHEkH1wJw">https://excalidraw.com/#json=91-QXaL8Ll0TjoKy6fuUy,PLJ4c6oIEyb7uNHEkH1wJw</a>
+文件位置：<code>images/mla-principle.excalidraw</code></p>
+</blockquote>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

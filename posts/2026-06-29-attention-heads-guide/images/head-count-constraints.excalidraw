@@ -1,0 +1,100 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "hermes-agent",
+  "elements": [
+    {"type":"text","id":"title","x":250,"y":15,"text":"注意力头数量约束图解","fontSize":28,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"注意力头数量约束图解","autoResize":true},
+
+    {"type":"text","id":"s1_title","x":50,"y":80,"text":"① 整除约束：H_q % H_kv == 0 是硬性要求","fontSize":20,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"① 整除约束：H_q % H_kv == 0 是硬性要求","autoResize":true},
+
+    {"type":"rectangle","id":"bg_zone1","x":40,"y":115,"width":920,"height":155,"backgroundColor":"#e5dbff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#d0bfff","strokeWidth":1,"opacity":25},
+
+    {"type":"rectangle","id":"hq_example","x":60,"y":130,"width":140,"height":50,"backgroundColor":"#a5d8ff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#4a9eed","boundElements":[{"id":"t_hq_example","type":"text"},{"id":"a_hq_div1","type":"arrow"},{"id":"a_hq_div2","type":"arrow"}]},
+    {"type":"text","id":"t_hq_example","x":65,"y":140,"width":130,"height":25,"text":"H_q = 32","fontSize":18,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"hq_example","originalText":"H_q = 32","autoResize":true},
+
+    {"type":"rectangle","id":"hkv_example1","x":380,"y":130,"width":140,"height":50,"backgroundColor":"#d0bfff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#8b5cf6","boundElements":[{"id":"t_hkv_example1","type":"text"},{"id":"a_hq_div1","type":"arrow"}]},
+    {"type":"text","id":"t_hkv_example1","x":385,"y":140,"width":130,"height":25,"text":"H_kv = 8 → ✅","fontSize":18,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"hkv_example1","originalText":"H_kv = 8 → ✅","autoResize":true},
+
+    {"type":"rectangle","id":"hkv_example2","x":380,"y":200,"width":140,"height":50,"backgroundColor":"#ffc9c9","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#ef4444","boundElements":[{"id":"t_hkv_example2","type":"text"},{"id":"a_hq_div2","type":"arrow"}]},
+    {"type":"text","id":"t_hkv_example2","x":385,"y":210,"width":130,"height":25,"text":"H_kv = 7 → ❌","fontSize":18,"fontFamily":1,"strokeColor":"#ef4444","textAlign":"center","verticalAlign":"middle","containerId":"hkv_example2","originalText":"H_kv = 7 → ❌","autoResize":true},
+
+    {"type":"arrow","id":"a_hq_div1","x":200,"y":155,"width":180,"height":0,"points":[[0,0],[180,0]],"endArrowhead":"arrow","startBinding":{"elementId":"hq_example","fixedPoint":[1,0.5]},"endBinding":{"elementId":"hkv_example1","fixedPoint":[0,0.5]},"strokeColor":"#22c55e","strokeWidth":2},
+    {"type":"text","id":"t_hq_div1_label","x":260,"y":135,"width":60,"height":20,"text":"32÷8=4 ✓","fontSize":14,"fontFamily":1,"strokeColor":"#22c55e","textAlign":"center","verticalAlign":"middle","originalText":"32÷8=4 ✓","autoResize":true},
+
+    {"type":"arrow","id":"a_hq_div2","x":200,"y":175,"width":180,"height":35,"points":[[0,0],[180,35]],"endArrowhead":"arrow","startBinding":{"elementId":"hq_example","fixedPoint":[1,0.8]},"endBinding":{"elementId":"hkv_example2","fixedPoint":[0,0.3]},"strokeColor":"#ef4444","strokeWidth":2,"strokeStyle":"dashed"},
+    {"type":"text","id":"t_hq_div2_label","x":260,"y":200,"width":100,"height":20,"text":"32÷7=4.57 ✗","fontSize":14,"fontFamily":1,"strokeColor":"#ef4444","textAlign":"center","verticalAlign":"middle","originalText":"32÷7=4.57 ✗","autoResize":true},
+
+    {"type":"text","id":"div_explain","x":560,"y":135,"width":380,"height":60,"text":"整除约束的原因是注意力计算中 Q 需要按组与 K 做 batch matmul。\n不均匀分组会导致计算图中出现无法有效向量化的碎片操作。","fontSize":14,"fontFamily":1,"strokeColor":"#757575","originalText":"整除约束的原因是注意力计算中 Q 需要按组与 K 做 batch matmul。\n不均匀分组会导致计算图中出现无法有效向量化的碎片操作。","autoResize":true,
+
+    "lineHeight": 1.4},
+
+    {"type":"text","id":"s2_title","x":50,"y":290,"text":"② GQA 的连续谱：从 MQA 到 MHA","fontSize":20,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"② GQA 的连续谱：从 MQA 到 MHA","autoResize":true},
+
+    {"type":"rectangle","id":"bg_zone2","x":40,"y":320,"width":920,"height":220,"backgroundColor":"#dbe4ff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#a5d8ff","strokeWidth":1,"opacity":25},
+
+    {"type":"text","id":"spectrum_label","x":60,"y":335,"text":"G=1 (MQA)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"G=1 (MQA)","autoResize":true},
+    {"type":"text","id":"spectrum_label2","x":690,"y":335,"text":"G=H (MHA)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"G=H (MHA)","autoResize":true},
+
+    {"type":"rectangle","id":"spec_mqa","x":60,"y":360,"width":80,"height":40,"backgroundColor":"#ffc9c9","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#ef4444","boundElements":[{"id":"t_spec_mqa","type":"text"}]},
+    {"type":"text","id":"t_spec_mqa","x":65,"y":367,"width":70,"height":22,"text":"G=1","fontSize":18,"fontFamily":1,"strokeColor":"#ef4444","textAlign":"center","verticalAlign":"middle","containerId":"spec_mqa","originalText":"G=1","autoResize":true},
+
+    {"type":"arrow","id":"spec_arrow","x":140,"y":380,"width":690,"height":0,"points":[[0,0],[690,0]],"strokeColor":"#1e1e1e","strokeWidth":3,"endArrowhead":"arrow"},
+
+    {"type":"rectangle","id":"spec_gqa2","x":260,"y":360,"width":80,"height":40,"backgroundColor":"#ffd8a8","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#f59e0b","boundElements":[{"id":"t_spec_gqa2","type":"text"}]},
+    {"type":"text","id":"t_spec_gqa2","x":265,"y":367,"width":70,"height":22,"text":"G=2","fontSize":18,"fontFamily":1,"strokeColor":"#f59e0b","textAlign":"center","verticalAlign":"middle","containerId":"spec_gqa2","originalText":"G=2","autoResize":true},
+
+    {"type":"rectangle","id":"spec_gqa4","x":400,"y":360,"width":80,"height":40,"backgroundColor":"#fff3bf","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#f59e0b","boundElements":[{"id":"t_spec_gqa4","type":"text"}]},
+    {"type":"text","id":"t_spec_gqa4","x":405,"y":367,"width":70,"height":22,"text":"G=4","fontSize":18,"fontFamily":1,"strokeColor":"#f59e0b","textAlign":"center","verticalAlign":"middle","containerId":"spec_gqa4","originalText":"G=4","autoResize":true},
+
+    {"type":"rectangle","id":"spec_gqa8","x":540,"y":360,"width":80,"height":40,"backgroundColor":"#fff3bf","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#f59e0b","boundElements":[{"id":"t_spec_gqa8","type":"text"}]},
+    {"type":"text","id":"t_spec_gqa8","x":545,"y":367,"width":70,"height":22,"text":"G=8","fontSize":18,"fontFamily":1,"strokeColor":"#f59e0b","textAlign":"center","verticalAlign":"middle","containerId":"spec_gqa8","originalText":"G=8","autoResize":true},
+
+    {"type":"rectangle","id":"spec_mha","x":730,"y":360,"width":80,"height":40,"backgroundColor":"#b2f2bb","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#22c55e","boundElements":[{"id":"t_spec_mha","type":"text"}]},
+    {"type":"text","id":"t_spec_mha","x":735,"y":367,"width":70,"height":22,"text":"G=H","fontSize":18,"fontFamily":1,"strokeColor":"#22c55e","textAlign":"center","verticalAlign":"middle","containerId":"spec_mha","originalText":"G=H","autoResize":true},
+
+    {"type":"text","id":"spec_note1","x":140,"y":415,"text":"← 最少 KV Cache","fontSize":14,"fontFamily":1,"strokeColor":"#ef4444","originalText":"← 最少 KV Cache","autoResize":true},
+    {"type":"text","id":"spec_note2","x":710,"y":415,"text":"最多 KV Cache →","fontSize":14,"fontFamily":1,"strokeColor":"#22c55e","originalText":"最多 KV Cache →","autoResize":true},
+    {"type":"text","id":"spec_note3","x":350,"y":440,"text":"G 越大 → 每组 Q 头数越少 → 共享程度越低 → KV Cache 越大","fontSize":14,"fontFamily":1,"strokeColor":"#757575","originalText":"G 越大 → 每组 Q 头数越少 → 共享程度越低 → KV Cache 越大","autoResize":true},
+
+    {"type":"text","id":"s3_title","x":50,"y":560,"text":"③ 实战示例：H_q=32, G=8 → 每4个Q头共享1个K/V头","fontSize":20,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"③ 实战示例：H_q=32, G=8 → 每4个Q头共享1个K/V头","autoResize":true},
+
+    {"type":"rectangle","id":"bg_zone3","x":40,"y":595,"width":920,"height":180,"backgroundColor":"#d3f9d8","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#b2f2bb","strokeWidth":1,"opacity":30},
+
+    {"type":"rectangle","id":"exam_q_grp1","x":60,"y":620,"width":180,"height":40,"backgroundColor":"#a5d8ff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#4a9eed","boundElements":[{"id":"t_exam_q_grp1","type":"text"},{"id":"a_exam_q_k1","type":"arrow"}]},
+    {"type":"text","id":"t_exam_q_grp1","x":65,"y":627,"width":170,"height":22,"text":"Q0-Q3 (4 heads)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"exam_q_grp1","originalText":"Q0-Q3 (4 heads)","autoResize":true},
+
+    {"type":"rectangle","id":"exam_q_grp2","x":270,"y":620,"width":180,"height":40,"backgroundColor":"#a5d8ff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#4a9eed","boundElements":[{"id":"t_exam_q_grp2","type":"text"},{"id":"a_exam_q_k2","type":"arrow"}]},
+    {"type":"text","id":"t_exam_q_grp2","x":275,"y":627,"width":170,"height":22,"text":"Q4-Q7 (4 heads)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"exam_q_grp2","originalText":"Q4-Q7 (4 heads)","autoResize":true},
+
+    {"type":"rectangle","id":"exam_q_grp3","x":480,"y":620,"width":180,"height":40,"backgroundColor":"#a5d8ff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#4a9eed","boundElements":[{"id":"t_exam_q_grp3","type":"text"},{"id":"a_exam_q_k3","type":"arrow"}]},
+    {"type":"text","id":"t_exam_q_grp3","x":485,"y":627,"width":170,"height":22,"text":"Q8-Q11 (4 heads)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"exam_q_grp3","originalText":"Q8-Q11 (4 heads)","autoResize":true},
+
+    {"type":"rectangle","id":"exam_q_grp4","x":690,"y":620,"width":180,"height":40,"backgroundColor":"#a5d8ff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#4a9eed","boundElements":[{"id":"t_exam_q_grp4","type":"text"},{"id":"a_exam_q_k4","type":"arrow"}]},
+    {"type":"text","id":"t_exam_q_grp4","x":695,"y":627,"width":170,"height":22,"text":"Q12-15 (4 heads)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"exam_q_grp4","originalText":"Q12-15 (4 heads)","autoResize":true},
+
+    {"type":"text","id":"exam_ellipsis","x":890,"y":627,"width":40,"height":22,"text":"...","fontSize":20,"fontFamily":1,"strokeColor":"#757575","originalText":"...","autoResize":true},
+
+    {"type":"arrow","id":"a_exam_q_k1","x":150,"y":660,"width":0,"height":40,"points":[[0,0],[0,40]],"endArrowhead":"arrow","strokeColor":"#4a9eed","strokeWidth":2},
+    {"type":"arrow","id":"a_exam_q_k2","x":360,"y":660,"width":0,"height":40,"points":[[0,0],[0,40]],"endArrowhead":"arrow","strokeColor":"#4a9eed","strokeWidth":2},
+    {"type":"arrow","id":"a_exam_q_k3","x":570,"y":660,"width":0,"height":40,"points":[[0,0],[0,40]],"endArrowhead":"arrow","strokeColor":"#4a9eed","strokeWidth":2},
+    {"type":"arrow","id":"a_exam_q_k4","x":780,"y":660,"width":0,"height":40,"points":[[0,0],[0,40]],"endArrowhead":"arrow","strokeColor":"#4a9eed","strokeWidth":2},
+
+    {"type":"rectangle","id":"exam_k1","x":110,"y":700,"width":80,"height":35,"backgroundColor":"#d0bfff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#8b5cf6","boundElements":[{"id":"t_exam_k1","type":"text"}]},
+    {"type":"text","id":"t_exam_k1","x":115,"y":706,"width":70,"height":22,"text":"K0 (G1)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"exam_k1","originalText":"K0 (G1)","autoResize":true},
+
+    {"type":"rectangle","id":"exam_k2","x":320,"y":700,"width":80,"height":35,"backgroundColor":"#d0bfff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#8b5cf6","boundElements":[{"id":"t_exam_k2","type":"text"}]},
+    {"type":"text","id":"t_exam_k2","x":325,"y":706,"width":70,"height":22,"text":"K1 (G2)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"exam_k2","originalText":"K1 (G2)","autoResize":true},
+
+    {"type":"rectangle","id":"exam_k3","x":530,"y":700,"width":80,"height":35,"backgroundColor":"#d0bfff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#8b5cf6","boundElements":[{"id":"t_exam_k3","type":"text"}]},
+    {"type":"text","id":"t_exam_k3","x":535,"y":706,"width":70,"height":22,"text":"K2 (G3)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"exam_k3","originalText":"K2 (G3)","autoResize":true},
+
+    {"type":"rectangle","id":"exam_k4","x":740,"y":700,"width":80,"height":35,"backgroundColor":"#d0bfff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#8b5cf6","boundElements":[{"id":"t_exam_k4","type":"text"}]},
+    {"type":"text","id":"t_exam_k4","x":745,"y":706,"width":70,"height":22,"text":"K3 (G4)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"exam_k4","originalText":"K3 (G4)","autoResize":true},
+
+    {"type":"text","id":"exam_formula","x":60,"y":750,"text":"每组 Q 头数 = H_q ÷ G = 32 ÷ 8 = 4","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"每组 Q 头数 = H_q ÷ G = 32 ÷ 8 = 4","autoResize":true},
+    {"type":"text","id":"exam_cache","x":400,"y":750,"text":"KV Cache 节省 = H_q/H_kv = 32/8 = 4×","fontSize":16,"fontFamily":1,"strokeColor":"#757575","originalText":"KV Cache 节省 = H_q/H_kv = 32/8 = 4×","autoResize":true}
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  }
+}

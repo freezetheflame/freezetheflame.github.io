@@ -1,0 +1,68 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "hermes-agent",
+  "elements": [
+    {"type":"text","id":"title","x":250,"y":15,"text":"Multi-head Latent Attention (MLA) — DeepSeek KV压缩原理","fontSize":28,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"Multi-head Latent Attention (MLA) — DeepSeek KV压缩原理","autoResize":true},
+
+    {"type":"text","id":"s1_title","x":50,"y":80,"text":"传统 GQA vs MLA 的 KV Cache 对比","fontSize":20,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"传统 GQA vs MLA 的 KV Cache 对比","autoResize":true},
+
+    {"type":"rectangle","id":"bg_gqa","x":40,"y":110,"width":480,"height":300,"backgroundColor":"#dbe4ff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#a5d8ff","strokeWidth":1,"opacity":25},
+    {"type":"text","id":"bg_gqa_label","x":60,"y":115,"text":"传统 GQA (H_q=128, H_kv=16)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"传统 GQA (H_q=128, H_kv=16)","autoResize":true},
+
+    {"type":"text","id":"gqa_items","x":60,"y":145,"text":"每层 KV Cache = 2 × H_kv × d_head × seq_len × precision","fontSize":14,"fontFamily":1,"strokeColor":"#757575","originalText":"每层 KV Cache = 2 × H_kv × d_head × seq_len × precision","autoResize":true},
+    {"type":"text","id":"gqa_example","x":60,"y":170,"text":"例: d_head=128, seq_len=4096, FP16→ 2×16×128×4096×2 = 32 MB/层","fontSize":14,"fontFamily":1,"strokeColor":"#757575","originalText":"例: d_head=128, seq_len=4096, FP16→ 2×16×128×4096×2 = 32 MB/层","autoResize":true},
+
+    {"type":"rectangle","id":"gqa_kv_show","x":80,"y":220,"width":120,"height":50,"backgroundColor":"#d0bfff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#8b5cf6","boundElements":[{"id":"t_gqa_kv_show","type":"text"}]},
+    {"type":"text","id":"t_gqa_kv_show","x":85,"y":235,"width":110,"height":22,"text":"K[16×128]","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"gqa_kv_show","originalText":"K[16×128]","autoResize":true},
+
+    {"type":"rectangle","id":"gqa_v_show","x":250,"y":220,"width":120,"height":50,"backgroundColor":"#b2f2bb","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#22c55e","boundElements":[{"id":"t_gqa_v_show","type":"text"}]},
+    {"type":"text","id":"t_gqa_v_show","x":255,"y":235,"width":110,"height":22,"text":"V[16×128]","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"gqa_v_show","originalText":"V[16×128]","autoResize":true},
+
+    {"type":"text","id":"gqa_cache_size","x":100,"y":330,"text":"KV Cache 大小: 2 × 16 × 128 = 4096 个元素/头/层","fontSize":14,"fontFamily":1,"strokeColor":"#ef4444","originalText":"KV Cache 大小: 2 × 16 × 128 = 4096 个元素/头/层","autoResize":true},
+
+    {"type":"rectangle","id":"bg_mla","x":540,"y":110,"width":480,"height":300,"backgroundColor":"#d3f9d8","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#b2f2bb","strokeWidth":1,"opacity":25},
+    {"type":"text","id":"bg_mla_label","x":560,"y":115,"text":"MLA — Latent KV (d_l=512)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"MLA — Latent KV (d_l=512)","autoResize":true},
+
+    {"type":"text","id":"mla_items","x":560,"y":145,"text":"每层 KV Cache = 2 × d_l × seq_len × precision","fontSize":14,"fontFamily":1,"strokeColor":"#757575","originalText":"每层 KV Cache = 2 × d_l × seq_len × precision","autoResize":true},
+    {"type":"text","id":"mla_example","x":560,"y":170,"text":"例: d_l=512, seq_len=4096, FP16→ 2×512×4096×2 = 8 MB/层","fontSize":14,"fontFamily":1,"strokeColor":"#757575","originalText":"例: d_l=512, seq_len=4096, FP16→ 2×512×4096×2 = 8 MB/层","autoResize":true},
+
+    {"type":"rectangle","id":"mla_latent","x":580,"y":220,"width":160,"height":50,"backgroundColor":"#c3fae8","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#22c55e","boundElements":[{"id":"t_mla_latent","type":"text"}]},
+    {"type":"text","id":"t_mla_latent","x":585,"y":235,"width":150,"height":22,"text":"Latent KV [512]","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"mla_latent","originalText":"Latent KV [512]","autoResize":true},
+
+    {"type":"rectangle","id":"mla_uk","x":800,"y":190,"width":80,"height":40,"backgroundColor":"#fff3bf","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#f59e0b","boundElements":[{"id":"t_mla_uk","type":"text"}]},
+    {"type":"text","id":"t_mla_uk","x":805,"y":197,"width":70,"height":22,"text":"W_UK↑","fontSize":14,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"mla_uk","originalText":"W_UK↑","autoResize":true},
+
+    {"type":"rectangle","id":"mla_uv","x":800,"y":250,"width":80,"height":40,"backgroundColor":"#fff3bf","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#f59e0b","boundElements":[{"id":"t_mla_uv","type":"text"}]},
+    {"type":"text","id":"t_mla_uv","x":805,"y":257,"width":70,"height":22,"text":"W_UV↑","fontSize":14,"fontFamily":1,"strokeColor":"#1e1e1e","textAlign":"center","verticalAlign":"middle","containerId":"mla_uv","originalText":"W_UV↑","autoResize":true},
+
+    {"type":"arrow","id":"a_mla_uk","x":740,"y":215,"width":60,"height":0,"points":[[0,0],[60,0]],"endArrowhead":"arrow","startBinding":{"elementId":"mla_latent","fixedPoint":[1,0.35]},"endBinding":{"elementId":"mla_uk","fixedPoint":[0,0.5]},"strokeColor":"#f59e0b","strokeWidth":2},
+    {"type":"arrow","id":"a_mla_uv","x":740,"y":270,"width":60,"height":0,"points":[[0,0],[60,0]],"endArrowhead":"arrow","startBinding":{"elementId":"mla_latent","fixedPoint":[1,0.65]},"endBinding":{"elementId":"mla_uv","fixedPoint":[0,0.5]},"strokeColor":"#22c55e","strokeWidth":2},
+
+    {"type":"text","id":"mla_cache_size","x":580,"y":330,"text":"KV Cache 大小: 2 × 512 = 1024 个元素/层","fontSize":14,"fontFamily":1,"strokeColor":"#22c55e","originalText":"KV Cache 大小: 2 × 512 = 1024 个元素/层","autoResize":true},
+
+    {"type":"text","id":"saving_compare","x":400,"y":430,"text":"MLA 节省: 4096 → 1024 = 4× 压缩 (DeepSeek-V2 实测约 75% KV Cache 减少)","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"MLA 节省: 4096 → 1024 = 4× 压缩 (DeepSeek-V2 实测约 75% KV Cache 减少)","autoResize":true},
+
+    {"type":"text","id":"s2_title","x":50,"y":480,"text":"Matrix Absorption 算子级优化","fontSize":20,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"Matrix Absorption 算子级优化","autoResize":true},
+
+    {"type":"rectangle","id":"bg_abs","x":40,"y":510,"width":980,"height":180,"backgroundColor":"#e5dbff","fillStyle":"solid","roundness":{"type":3},"strokeColor":"#d0bfff","strokeWidth":1,"opacity":30},
+
+    {"type":"text","id":"abs_explain1","x":60,"y":525,"text":"常规计算（低效）:","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"常规计算（低效）:","autoResize":true},
+    {"type":"text","id":"abs_formula1","x":60,"y":550,"text":"K_proj = Latent_KV @ W_UK    (展开 latent 到全 K)","fontSize":14,"fontFamily":1,"strokeColor":"#757575","originalText":"K_proj = Latent_KV @ W_UK    (展开 latent 到全 K)","autoResize":true},
+    {"type":"text","id":"abs_formula1b","x":60,"y":572,"text":"A = Q @ K_proj^T              (注意力计算)","fontSize":14,"fontFamily":1,"strokeColor":"#757575","originalText":"A = Q @ K_proj^T              (注意力计算)","autoResize":true},
+
+    {"type":"text","id":"abs_explain2","x":60,"y":610,"text":"Matrix Absorption（高效）:","fontSize":16,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"Matrix Absorption（高效）:","autoResize":true},
+    {"type":"text","id":"abs_formula2","x":60,"y":635,"text":"Q_absorbed = Q @ W_UK^T       (将 W_UK 吸收进 Q)","fontSize":14,"fontFamily":1,"strokeColor":"#22c55e","originalText":"Q_absorbed = Q @ W_UK^T       (将 W_UK 吸收进 Q)","autoResize":true},
+    {"type":"text","id":"abs_formula2b","x":60,"y":655,"text":"A = Q_absorbed @ Latent_KV^T  (直接在 latent space 计算，无需展开)","fontSize":14,"fontFamily":1,"strokeColor":"#22c55e","originalText":"A = Q_absorbed @ Latent_KV^T  (直接在 latent space 计算，无需展开)","autoResize":true},
+
+    {"type":"text","id":"abs_note","x":560,"y":525,"text":"关键洞察:","fontSize":18,"fontFamily":1,"strokeColor":"#8b5cf6","originalText":"关键洞察:","autoResize":true},
+    {"type":"text","id":"abs_note1","x":560,"y":555,"text":"将 KV 的 up-projection (W_UK, W_UV)","fontSize":14,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"将 KV 的 up-projection (W_UK, W_UV)","autoResize":true},
+    {"type":"text","id":"abs_note2","x":560,"y":575,"text":"吸收进 Q 的计算中","fontSize":14,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"吸收进 Q 的计算中","autoResize":true},
+    {"type":"text","id":"abs_note3","x":560,"y":600,"text":"计算过程中无需显式展开 latent KV","fontSize":14,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"计算过程中无需显式展开 latent KV","autoResize":true},
+    {"type":"text","id":"abs_note4","x":560,"y":625,"text":"等价于在更低维的空间做注意力计算","fontSize":14,"fontFamily":1,"strokeColor":"#1e1e1e","originalText":"等价于在更低维的空间做注意力计算","autoResize":true},
+    {"type":"text","id":"abs_note5","x":560,"y":650,"text":"需自定义 CUDA kernel 实现此吸收操作","fontSize":14,"fontFamily":1,"strokeColor":"#f59e0b","originalText":"需自定义 CUDA kernel 实现此吸收操作","autoResize":true}
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff"
+  }
+}

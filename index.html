@@ -479,8 +479,8 @@
           <button class="tag-pill" data-tag="gpu">gpu<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="python">python<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="triton">triton<span class="tag-count">6</span></button>
+          <button class="tag-pill" data-tag="推理优化">推理优化<span class="tag-count">6</span></button>
           <button class="tag-pill" data-tag="算法与数据结构">算法与数据结构<span class="tag-count">6</span></button>
-          <button class="tag-pill" data-tag="推理优化">推理优化<span class="tag-count">5</span></button>
           <button class="tag-pill" data-tag="性能优化">性能优化<span class="tag-count">4</span></button>
           <button class="tag-pill" data-tag="软件工程理论">软件工程理论<span class="tag-count">4</span></button>
           <button class="tag-pill" data-tag="AI算子">AI算子<span class="tag-count">3</span></button>
@@ -527,6 +527,7 @@
           <button class="tag-pill" data-tag="GIS">GIS<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="GPTQ">GPTQ<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="GPU算子">GPU算子<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="GQA">GQA<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Hermes">Hermes<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="INT4">INT4<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="INT8">INT8<span class="tag-count">1</span></button>
@@ -534,12 +535,15 @@
           <button class="tag-pill" data-tag="internship">internship<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="java垃圾回收">java垃圾回收<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Kernel生成">Kernel生成<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="KV Cache">KV Cache<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="layernorm">layernorm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Lean">Lean<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="LLM4Code">LLM4Code<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="memory">memory<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="MHA">MHA<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MindSpeed">MindSpeed<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="MLA">MLA<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="mlp">mlp<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MySQL">MySQL<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="npu">npu<span class="tag-count">1</span></button>
@@ -557,6 +561,7 @@
           <button class="tag-pill" data-tag="Thrust">Thrust<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TileLang">TileLang<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="tools">tools<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="Transformer">Transformer<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TTT">TTT<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TVM">TVM<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TypeScript/JavaScript">TypeScript/JavaScript<span class="tag-count">1</span></button>
@@ -580,6 +585,7 @@
           <button class="tag-pill" data-tag="数据增强">数据增强<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据库">数据库<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据结构">数据结构<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="注意力机制">注意力机制<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="测试生成">测试生成<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="研究综述">研究综述<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="硬件适配">硬件适配<span class="tag-count">1</span></button>
@@ -603,7 +609,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 152 篇文章
+      共 153 篇文章
     </div>
   </aside>
 
@@ -627,7 +633,7 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 152</span>
+        <span class="section-count" id="visibleCount">15 / 153</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
@@ -643,6 +649,17 @@
               </div>
             </div>
             <a href="posts/2026-06-29-ai-operator-guide/ai-operator-guide.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
+          <li class="post-card" data-tags="注意力机制,Transformer,MHA,GQA,MLA,推理优化,KV Cache">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-29-attention-heads-guide/attention-heads-guide.html">多头注意力完全图解：MHA/MQA/GQA/MLA的头部关系与数量约束</a></h3>
+              <p class="post-preview">如果你用过 LLaMA、Mistral、Qwen 或者 DeepSeekV2，肯定在它们的 config.json 里见过 和 这两个参数。前者等于 32 或 64，后者可能是 8、16 或者跟前者一样——这不是随便选的数字，这两者的...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-29</span>
+                <span class="post-card-tags"><span class="post-tag">注意力机制</span><span class="post-tag">Transformer</span><span class="post-tag">MHA</span><span class="post-tag">GQA</span><span class="post-tag">MLA</span><span class="post-tag">推理优化</span><span class="post-tag">KV Cache</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-29-attention-heads-guide/attention-heads-guide.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="FlashAttention,CUDA,Triton,推理优化,深度学习">
             <div class="post-card-body">
@@ -787,20 +804,9 @@
             </div>
             <a href="posts/2026-06-19-geohash-explained/geohash-explained.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="论文解读,定理证明,形式化验证,Lean,小模型,数据增强,课程学习">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-14-pythagoras-prover/pythagoras-prover.html">Pythagoras-Prover 深度解读：4B 小模型如何在定理证明上击败 671B 巨兽</a></h3>
-              <p class="post-preview">一句话 用 4B 参数的小模型在形式化定理证明上击败了 DeepSeekProverV2671B（参数少 167 倍），核心武器不是更大的算力，而是更聪明的数据策略</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-14</span>
-                <span class="post-card-tags"><span class="post-tag">论文解读</span><span class="post-tag">定理证明</span><span class="post-tag">形式化验证</span><span class="post-tag">Lean</span><span class="post-tag">小模型</span><span class="post-tag">数据增强</span><span class="post-tag">课程学习</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-14-pythagoras-prover/pythagoras-prover.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 152 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 153 篇文章 →</a>
     </section>
   </main>
 
