@@ -2,6 +2,38 @@ const fs = require('fs');
 const path = require('path');
 const marked = require('marked');
 const hljs = require('highlight.js');
+const katex = require('katex');
+
+// Render display math ($$...$$) and inline math ($...$) with KaTeX
+function renderMath(content) {
+  // Display math: $$...$$ - must be on its own lines
+  content = content.replace(/\$\$([\s\S]+?)\$\$/g, (_, formula) => {
+    try {
+      return katex.renderToString(formula.trim(), {
+        displayMode: true,
+        throwOnError: false,
+        output: 'html',
+      });
+    } catch (e) {
+      return `<div class="katex-error">${formula.trim()}</div>`;
+    }
+  });
+  // Inline math: $...$ (must not span newlines)
+  content = content.replace(/\$(.+?)\$/g, (_, formula) => {
+    // Skip if inside a code block or already processed
+    if (formula.trim().length === 0) return _;
+    try {
+      return katex.renderToString(formula.trim(), {
+        displayMode: false,
+        throwOnError: false,
+        output: 'html',
+      });
+    } catch (e) {
+      return `<span class="katex-error">${formula.trim()}</span>`;
+    }
+  });
+  return content;
+}
 
 marked.setOptions({
   highlight(code, lang) {
@@ -95,6 +127,7 @@ function createHtmlTemplate(filePath, title, content, tags = [], date = '') {
   <title>${escapeHtml(title)} | Freeze the Flame</title>
   <link rel="stylesheet" href="${prefix}/assets/site.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 </head>
 <body>
   <div class="page">
@@ -146,7 +179,7 @@ function processMarkdownFile(filePath) {
   if (!frontmatter.title && content.startsWith('# ')) {
     title = content.split('\n')[0].slice(2).trim();
   }
-  const htmlContent = marked.parse(content)
+  const htmlContent = marked.parse(renderMath(content))
     // Wrap tables in scrollable containers for overflow handling
     .replace(/<table>/g, '<div class="table-wrap"><table>')
     .replace(/<\/table>/g, '</table></div>')

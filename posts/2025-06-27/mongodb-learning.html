@@ -6,6 +6,7 @@
   <title>MongoDB learning | Freeze the Flame</title>
   <link rel="stylesheet" href="../../assets/site.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 </head>
 <body>
   <div class="page">
@@ -246,26 +247,7 @@
 <td>限制集合数据返回文档数</td>
 </tr>
 </tbody></table></div>
-<div class="table-wrap"><table>
-<thead>
-<tr>
-<th>$sum</th>
-<th>总和（$num:1同count表示统计）</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>$avg</td>
-<td>平均</td>
-</tr>
-<tr>
-<td>$min</td>
-<td>最小值</td>
-</tr>
-<tr>
-<td>$max</td>
-<td>最大值</td>
-</tr>
-</tbody></table></div>
+<p><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">s</span><span class="mord mathnormal">u</span><span class="mord mathnormal">m</span><span class="mord">∣</span><span class="mord cjk_fallback">总和（</span></span></span></span>num:1同count表示统计）<br>---|---<br>$avg| 平均<br>$min| 最小值<br>$max| 最大值  </p>
 <p>比如有以下这些数据：</p>
 <pre><code>db.people.insertOne({_id:1,name:&quot;a&quot;,sex:&quot;男&quot;,age:21})
 </code></pre>
@@ -276,7 +258,7 @@ db.people.insertOne({_id:5,name:&quot;e&quot;,sex:&quot;男&quot;,age:19})</p>
 <p>就可以用如下办法进行聚合查询</p>
 <pre><code>db.people.aggregate([
 </code></pre>
-<p>\t{$group:{_id:&quot;$sex&quot;,age_sum:{$sum:&quot;$age&quot;}}}
+<p>\t{<span class="katex-error" title="ParseError: KaTeX parse error: Expected &#x27;}&#x27;, got &#x27;EOF&#x27; at end of input: group:{_id:&quot;" style="color:#cc0000">group:{_id:&quot;</span>sex&quot;,age_sum:{<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">s</span><span class="mord mathnormal">u</span><span class="mord mathnormal">m</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">:</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord">&quot;</span></span></span></span>age&quot;}}}
 ])</p>
 <p>结果是这样的：</p>
 <pre><code>[

@@ -6,6 +6,7 @@
   <title>数学建模——2019C题解析 | Freeze the Flame</title>
   <link rel="stylesheet" href="../../assets/site.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 </head>
 <body>
   <div class="page">
@@ -50,9 +51,7 @@
 <p>具体模型求解部分：</p>
 <p>定义了一个乘车效率：</p>
 <p>[latex]
-$$
-\\eta = \\frac{1}{\\sum\\limits_{i=1}^n{\\frac{t_{pt}}{n}}+\\sum\\limits^m_{j=1}{\\frac{t_{cj}}{m}}}
-$$</p>
+<span class="katex-error" title="ParseError: KaTeX parse error: Limit controls must follow a math operator at position 29: …rac{1}{\\\sum\\\̲l̲i̲m̲i̲t̲s̲_{i=1}^n{\\\fra…" style="color:#cc0000">\\eta = \\frac{1}{\\sum\\limits_{i=1}^n{\\frac{t_{pt}}{n}}+\\sum\\limits^m_{j=1}{\\frac{t_{cj}}{m}}}</span></p>
 <p>并且施加合适的约束，给出如下图所示的模拟</p>
 <p class="img-wrap"><a href="../../assets/images/2024/07/image-3.png" target="_blank" title="点击查看大图"><img src="../../assets/images/2024/07/image-3.png" alt=""></a></p>
 <p>所以看到这里，本篇文章的核心优势就在于，构建了一套非常系统的“模拟模型”</p>

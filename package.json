@@ -9,8 +9,9 @@
     "start": "npx serve ."
   },
   "dependencies": {
-    "marked": "^4.3.0",
-    "highlight.js": "^11.7.0"
+    "highlight.js": "^11.7.0",
+    "katex": "^0.17.0",
+    "marked": "^4.3.0"
   },
   "devDependencies": {
     "serve": "^14.2.0"
