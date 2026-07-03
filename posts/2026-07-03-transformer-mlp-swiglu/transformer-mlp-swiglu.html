@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>理解 Transformer 中的 MLP — 从 FFN 到 SwiGLU | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-07-03</p>
+        <h1>理解 Transformer 中的 MLP — 从 FFN 到 SwiGLU</h1>
+        <div class="post-meta">
+          <span>2026-07-03</span>
+          <span class="tag">transformer</span><span class="tag">mlp</span><span class="tag">swiglu</span><span class="tag">architecture</span><span class="tag">activation</span>
+        </div>
+        <p>Transformer 的每一层由两个核心组件组成：Attention 负责 token 之间的信息交换，MLP 负责每个 token 内部的非线性变换。这篇文章从常识出发，讲清楚 MLP 的设计为什么会从最朴素的 <code>Linear → ReLU → Linear</code> 演化成今天所有 LLM 都在用的 SwiGLU。</p>
+<h2 id="attention-之后：为什么还要-mlp">Attention 之后：为什么还要 MLP</h2>
+<p>Attention 做的事很简单——让当前 token 去看其他 token，做加权聚合。但这里有两个局限：</p>
+<ol>
+<li><strong>Attention 本质是线性加权</strong>。虽然它算出了复杂的权重分布，但最终输出只是 V 的加权和——加权和仍然是一个线性操作。</li>
+<li><strong>Attention 只看别人，不看自己</strong>。它融合了外部信息，但没有对自己内部做&quot;思考&quot;。</li>
+</ol>
+<p>MLP 填补这个缺口。它<strong>逐位置独立</strong>地对每个 token 的表示做非线性变换。Attention 和 MLP 的分工：</p>
+<pre><code>Attention: &quot;我应该关注哪些 token？&quot;   → 跨位置的信息交换
+MLP:       &quot;这个 token 的信息应该怎样重新组织？&quot; → 位置内的特征变换
+</code></pre>
+<p>用一个比喻：Attention 是会议讨论（大家交换意见），MLP 是每个人回到座位后的独立思考（消化和转化）。</p>
+<h2 id="经典-ffn-的结构">经典 FFN 的结构</h2>
+<p>最早的 Transformer 论文（Vaswani et al., 2017）里的 FFN 长这样：</p>
+<pre><code>x (d_model) → Linear(d_model → d_ff) → ReLU → Linear(d_ff → d_model) → y (d_model)
+</code></pre>
+<p>两个线性层中间夹一个激活函数。d_ff 通常是 d_model 的 4 倍——先<strong>膨胀</strong>再<strong>收缩</strong>：</p>
+<pre><code>d_model = 512  →  d_ff = 2048  →  d_model = 512
+</code></pre>
+<p>为什么要膨胀？直觉上，低维空间的非线性表示能力有限。把向量投影到更高维空间，ReLU 可以激活不同的模式，然后再投影回来——这个过程给了模型更丰富的表达能力。</p>
+<p>你可以类比为：写文章先打草稿（展开思路），再精简成最终稿（压缩回来）。</p>
+<h2 id="激活函数的演进">激活函数的演进</h2>
+<p>MLP 的&quot;灵魂&quot;在于中间的非线性激活函数。不同时期的主流选择：</p>
+<h3 id="relu-2017">ReLU (2017)</h3>
+<pre><code class="hljs language-python">relu(x) = <span class="hljs-built_in">max</span>(<span class="hljs-number">0</span>, x)
+</code></pre>
+<p>简单粗暴，负半轴完全置零。优点是计算快、梯度不会消失（正半轴恒为 1）。问题也很明显：负半轴的神经元&quot;死掉&quot;后永远不更新（dying ReLU）。</p>
+<h3 id="gelu-2018-gpt-2--bert">GELU (2018, GPT-2 / BERT)</h3>
+<pre><code class="hljs language-python">gelu(x) = x · Φ(x)    <span class="hljs-comment"># Φ 是标准正态分布的 CDF</span>
+</code></pre>
+<p>GELU 是 ReLU 的平滑版本，不再一刀切——输入越接近零，输出越小但不是零；输入越负，趋近于零但不完全为零。BERT 和 GPT-2 都用它。它在数学上等价于&quot;随机正则化 dropout 的期望值&quot;，所以比 ReLU 的性能好一截。</p>
+<h3 id="swiglu-2022-palm--llama">SwiGLU (2022, PaLM / LLaMA)</h3>
+<p>到了 2022 年，Google 的 PaLM 论文提出了 SwiGLU，Meta 的 LLaMA 立刻跟进。之后所有开源 LLM 几乎无一例外都用了 SwiGLU。</p>
+<h2 id="swiglu-到底是什么">SwiGLU 到底是什么</h2>
+<p>SwiGLU 不是换了一个激活函数，而是<strong>改变了 MLP 的整体结构</strong>。经典的 FFN 只有两个权重矩阵（W1, W2），但 SwiGLU 用了<strong>三个</strong>：</p>
+<pre><code>经典 FFN（2 个权重）：
+  x → Linear(d_model → d_ff) → ReLU → Linear(d_ff → d_model) → y
+
+SwiGLU（3 个权重）：
+  x → gate_proj(d_model → d_intermediate) ──┐
+                                              ├─ silu(gate) ⊙ up ──→ down_proj → y
+  x → up_proj(d_model → d_intermediate)   ──┘
+</code></pre>
+<p>一张图看清楚区别：</p>
+<pre><code>        x                          x
+        │                   ┌──────┴──────┐
+   Linear(W1)               │             │
+        │              gate_proj      up_proj
+     activation         (W_gate)      (W_up)
+        │                   │             │
+   Linear(W2)            SiLU            │
+        │                   │             │
+        y                   └── ⊙ ───────┘
+                                 │
+                            down_proj
+                            (W_down)
+                                 │
+                                 y
+</code></pre>
+<p>三个权重矩阵的名字来自 HuggingFace Qwen2/Llama 的实际代码：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>矩阵</th>
+<th>形状 (Qwen2.5-0.5B)</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>gate_proj</code></td>
+<td>896 → 4864</td>
+<td>门控：决定哪些信息可以通过</td>
+</tr>
+<tr>
+<td><code>up_proj</code></td>
+<td>896 → 4864</td>
+<td>提升：把输入投影到高维</td>
+</tr>
+<tr>
+<td><code>down_proj</code></td>
+<td>4864 → 896</td>
+<td>压缩：降回原来的维度</td>
+</tr>
+</tbody></table></div>
+<p>计算过程：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># SwiGLU 的核心公式</span>
+h = silu(gate_proj(x)) * up_proj(x)    <span class="hljs-comment"># element-wise 相乘</span>
+y = down_proj(h)
+</code></pre>
+<h3 id="门控机制">门控机制</h3>
+<p>&quot;gate&quot; 这个词很关键。SwiGLU 把激活函数的角色一分为二：</p>
+<ul>
+<li><code>up_proj</code> 照常产生一组值（相当于原来 W1 的输出）</li>
+<li><code>gate_proj</code> 产生另一组同样形状的值，经过 SiLU 后变成 [0, 1) 范围的&quot;门&quot;</li>
+<li><strong>门控制了哪些值可以流过去</strong>——接近 0 的门会抑制，接近 +∞ 的门会让值透过</li>
+</ul>
+<p>这种门控机制让模型学会了<strong>自适应地选择</strong>每个维度上哪些特征重要。不是一刀切的 ReLU 负值归零，也不是平滑的 GELU——每个输入自己决定如何过滤。</p>
+<h3 id="swiglu-vs-glu-vs-普通-ffn-的参数数量">SwiGLU vs GLU vs 普通 FFN 的参数数量</h3>
+<p>SwiGLU 有三个权重矩阵，看起来参数更多？是的——但论文用的是公平对比。原来的 FFN 用 <code>d_ff = 4 × d_model</code>，SwiGLU 用 <code>d_intermediate ≈ 2.67 × d_model</code>，总参数量持平：</p>
+<pre><code>经典 FFN:  W1 + W2 = d_model × 4d + 4d × d_model = 8d²
+SwiGLU:    W_gate + W_up + W_down = d × 2.67d + d × 2.67d + 2.67d × d = 8d²
+</code></pre>
+<p>参数量一样，但 SwiGLU 的性能更好。这就是为什么所有现代 LLM 都切换过来了。</p>
+<h2 id="一个真实模型的-shape-走查">一个真实模型的 shape 走查</h2>
+<p>以 Qwen2.5-0.5B 为例，用 <code>register_forward_hook</code> 追踪 MLP 内部的 tensor flow。输入是一个形状为 <code>(1, 16, 896)</code> 的向量——batch=1，16 个 token，每个 896 维。</p>
+<pre><code>输入 x:                        (1, 16, 896)
+    │
+    ├── gate_proj(x)           (1, 16, 896)  →  (1, 16, 4864)
+    │       │
+    │     silu()               element-wise, 不改变 shape
+    │       │
+    │   gate_output:           (1, 16, 4864)
+    │
+    ├── up_proj(x)             (1, 16, 896)  →  (1, 16, 4864)
+    │       │
+    │   up_output:             (1, 16, 4864)
+    │
+    └── gate_output ⊙ up_output → (1, 16, 4864)  ← element-wise 乘
+            │
+        down_proj               (1, 16, 4864) →  (1, 16, 896)
+            │
+输出 y:                         (1, 16, 896)
+</code></pre>
+<p>几个值得注意的点：</p>
+<ol>
+<li><strong>gate 和 up 的输出 shape 完全一致</strong>——这保证了 element-wise 乘法能逐元素对齐</li>
+<li><strong>中间膨胀比是 5.43x</strong>（4864 / 896）——比经典的 4x 稍大，因为 Qwen2.5-0.5B 没有严格遵循 8d/3 的公式，小模型的维度选择更灵活</li>
+<li><strong>down_proj 压缩回原来的 hidden_size</strong>——加上 residual connection 后才能相加</li>
+</ol>
+<h2 id="silu-为什么是-silu">SiLU 为什么是 SiLU</h2>
+<p>也就是 Swish 激活函数：<code>silu(x) = x · σ(x)</code>，其中 σ 是 sigmoid。</p>
+<pre><code>SiLU 图（用文字表示）:
+         │        ╱
+         │      ╱
+    ─────┼───╱───  x → +∞ 时，silu(x) ≈ x
+       ╱ │
+    ╱    │         x &lt; 0 时，silu(x) 是负的但趋近于 0（不像 ReLU 完全归零）
+         │         x → -∞ 时，silu(x) → 0
+</code></pre>
+<p>和 GELU 对比：</p>
+<ul>
+<li>SiLU 在正值区域是近似线性的（GELU 也是）</li>
+<li>SiLU 在负值区域允许小负数通过（GELU 也是）</li>
+<li>SiLU 计算更简单（sigmoid 比高斯 CDF 快）</li>
+<li>SiLU 作为门控时，sigmoid 部分天然是 [0,1]，语义清晰</li>
+</ul>
+<h2 id="总结">总结</h2>
+<p>MLP 在 Transformer 里的角色可以概括为：**每个 token 的&quot;内部处理单元&quot;**。它的演化反映了研究者对非线性表达能力日益深入的理解：</p>
+<pre><code>ReLU FFN (2017)
+  │
+  ├─ 问题: dying ReLU, 一刀切
+  │
+  ▼
+GELU FFN (2018)
+  │
+  ├─ 平滑了, 但 activation 仍然是一个整体概念
+  │
+  ▼
+SwiGLU (2022)
+  │
+  └─ 门控机制: 把&quot;激活&quot;拆成 gate + value
+     让模型学会自适应地过滤信息
+</code></pre>
+<p>如果你正在手写 Transformer 或者 debug attention/MLP 的 shape 问题，记住这个口诀：<strong>Attention 是 token 之间的对话，MLP 是每个 token 自己的思考</strong>。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
