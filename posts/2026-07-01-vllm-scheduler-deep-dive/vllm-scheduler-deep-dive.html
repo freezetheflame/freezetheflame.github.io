@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vLLM 调度架构解析：Continuous Batching 是如何工作的？ | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-07-01</p>
+        <h1>vLLM 调度架构解析：Continuous Batching 是如何工作的？</h1>
+        <div class="post-meta">
+          <span>2026-07-01</span>
+          <span class="tag">vLLM</span><span class="tag">LLM推理</span><span class="tag">架构设计</span><span class="tag">调度器</span><span class="tag">系统设计</span>
+        </div>
+        <h2 id="缘起">缘起</h2>
+<p>我的每日日报里写过几篇架构设计相关的短文，这篇关于 vLLM 调度器的内容反响不错。很多做 LLM 推理服务的人知道 vLLM 用了 PagedAttention，但对调度器内部的工作方式——尤其是 Continuous Batching 是怎么实现的——往往一知半解。这篇把它拆开讲透。</p>
+<!--more-->
+
+<h2 id="背景：为什么需要好的调度器？">背景：为什么需要好的调度器？</h2>
+<p>LLM 推理的 prefill 和 decode 阶段对 GPU 资源的消耗模式完全不同：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>计算特征</th>
+<th>GPU 瓶颈</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Prefill</td>
+<td>大量 matmul，并行计算</td>
+<td>Compute-bound（算力不足）</td>
+</tr>
+<tr>
+<td>Decode</td>
+<td>逐 token 生成，数据搬运</td>
+<td>Memory-bound（带宽瓶颈）</td>
+</tr>
+</tbody></table></div>
+<p>一个 naive 的调度器会等到整批请求全部 prefill 完成，再统一 decode。这在短序列场景下还能接受，但一旦请求长度和到达时间不均匀，GPU 利用率会惨不忍睹——prefill 阶段 GPU 算力打满但带宽闲置，decode 阶段反过来。</p>
+<p>vLLM 的核心调度架构围绕三个组件展开。</p>
+<h2 id="第一层：序列管理层（sequence-group）">第一层：序列管理层（Sequence Group）</h2>
+<p>每个请求进入 vLLM 后被封装为 <code>SequenceGroup</code>。调度器维护三个队列：</p>
+<pre><code>                ┌──────────┐
+  新请求 ──────▶│  Waiting  │  (等待队列)
+                └─────┬────┘
+                      │ 调度决策
+                      ▼
+                ┌──────────┐
+                │  Running  │  (运行队列)
+                └─────┬────┘
+                      │ 内存不足时
+                      ▼
+                ┌──────────┐
+                │  Swapped  │  (交换队列)
+                └──────────┘
+</code></pre>
+<ul>
+<li><strong>Waiting</strong>：刚进入系统、还没轮到 prefill 的请求</li>
+<li><strong>Running</strong>：正在执行（prefill 或 decode）的请求</li>
+<li><strong>Swapped</strong>：因 GPU 内存不足，KV cache 被换出到 CPU 内存的请求。等内存释放后再换回</li>
+</ul>
+<p>这里最巧妙的设计是 Swapped 队列。大多数推理系统的做法是&quot;内存不够就拒绝请求&quot;——vLLM 选择把最老的请求的 KV cache 换出，而不是拒绝新来的。<strong>这个决策直接决定了系统的 P99 尾延迟表现。</strong></p>
+<p>背后的数据结构是 <code>BlockManager</code>——它管理 PagedAttention 的物理块表（block table），维护逻辑块到物理 GPU 块、物理 CPU 块之间的映射关系。换出一个请求的 KV cache，本质上是把它的物理块标记为&quot;在 CPU 上&quot;，而不是释放。</p>
+<h2 id="第二层：调度策略层（scheduler-policy）">第二层：调度策略层（Scheduler Policy）</h2>
+<p>默认调度策略是 FCFS（先来先服务），但真正决定服务质量的是 <strong>preemption 策略</strong>。</p>
+<p>vLLM 有两种 preemption 模式：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>模式</th>
+<th>行为</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Swap</strong></td>
+<td>将序列的 KV cache 换出到 CPU 内存</td>
+<td>有 CPU 内存富余时</td>
+</tr>
+<tr>
+<td><strong>Recompute</strong></td>
+<td>直接丢弃序列的 KV cache，后续重新计算</td>
+<td>CPU 内存也不够时</td>
+</tr>
+</tbody></table></div>
+<p>Recompute 听起来浪费——确实浪费，但它保证了一个重要性质：<strong>系统永远不会 OOM</strong>。不需要提前预留内存，不需要推测请求长度，所有内存管理决策都是响应式的。</p>
+<p>vLLM 的实现里，调度器在每个 iteration 开始时会检查：</p>
+<ol>
+<li>Waiting 队列是否为空</li>
+<li>Running 队列是否有空闲 GPU 内存块</li>
+<li>如果没有空闲块，是否需要触发 preemption</li>
+</ol>
+<p>这个检查是一个 O(1) 的操作——调度器不扫描整个队列，只检查计数器和阈值。</p>
+<h2 id="第三层：continuous-batching-引擎（核心）">第三层：Continuous Batching 引擎（核心）</h2>
+<p>传统 static batching 的工作方式：</p>
+<pre><code>时间线: [请求A+B+C 统一 prefill] → [请求A+B+C 统一 decode] → [等待新请求]
+</code></pre>
+<p>vLLM 的 dynamic batching：</p>
+<pre><code>时间线: [A prefill] → [A decode + B prefill] → [A decode + B decode + C prefill] → ...
+</code></pre>
+<p>核心逻辑在调度器的 <code>schedule()</code> 函数中，每个 iteration 执行以下决策：</p>
+<pre><code>1. 检查 Running 队列中完成 decode 的序列 → 移出
+2. 检查是否需要 preemption（空闲块不足时）→ swap out 或 recompute
+3. 检查 Waiting 队列 → 如果还有空闲 GPU 内存，插入新序列的 prefill
+4. 合并 prefill 操作和 decode 操作到一个 batch 中执行
+</code></pre>
+<p>步骤 4 是最关键的部分——一个 iteration 里同时存在 prefill 和 decode 操作，它们在同一个 CUDA graph 或同一个 <code>torch.compile</code> 区域中执行。Attention 计算使用 PagedAttention 的 kernel，它天然支持在一个 batch 内混合不同长度的序列。</p>
+<h3 id="混跑的代价">混跑的代价</h3>
+<p>prefill 和 decode 混跑不是免费的午餐。prefill 会占满 Tensor Core，导致 decode 的延迟抖动。vLLM 通过两个参数控制这个 tradeoff：</p>
+<pre><code>max_num_batched_tokens = 8192     # 单次 batch 的 token 数上限
+max_num_seqs = 256                 # 并发序列数上限
+</code></pre>
+<p><code>max_num_batched_tokens</code> 限制了单次 iteration 的总 token 量，防止 prefill 把 decode 完全饿死。<code>max_num_seqs</code> 限制了并发度，避免太多序列共享同一批计算资源。</p>
+<h2 id="当前社区的演进方向">当前社区的演进方向</h2>
+<p>Continuous Batching 解决了吞吐问题，但 prefill/decode 混跑的延迟抖动仍然存在。目前社区探索的几个方向：</p>
+<p><strong>1. Disaggregated Serving（分离式推理）</strong>
+把 prefill 和 decode 分开部署到不同的 GPU 上。prefill 节点专注计算密集型工作，decode 节点专注内存带宽密集型工作。中间通过高速网络（NVLink/NVSwitch）传递 KV cache。Mooncake（来自 DeepSeek）和 Splitwise 是这一方向的代表性工作。</p>
+<p><strong>2. Chunked Prefill</strong>
+将长序列的 prefill 拆成多个 chunk，插入到 decode iteration 之间执行。这样每个 iteration 的 token 量更均匀，decode 延迟抖动更小。vLLM 的 <code>--enable-chunked-prefill</code> 选项就是为此设计的。</p>
+<p><strong>3. 推测调度（Speculative Scheduling）</strong>
+在 decode 阶段提前预测下一个 token 的 attention 模式，预取 KV cache 块到高速缓存。这个方向还在早期，但结合 speculative decoding 有不错的想象空间。</p>
+<h2 id="总结">总结</h2>
+<p>vLLM 的调度器设计本质上是<strong>用软件复杂度换硬件利用率</strong>——通过精细的序列管理、抢占策略和动态 batching，把 GPU 的利用率推到接近极限。核心的三个设计决策：</p>
+<ol>
+<li><strong>PagedAttention + BlockManager</strong>：非连续 KV cache 存储，消除内部碎片</li>
+<li><strong>Swap 优先的 preemption 策略</strong>：用 CPU 内存做二级缓存，避免粗暴拒绝</li>
+<li><strong>Continuous Batching</strong>：prefill 和 decode 混跑，填满每一个 GPU cycle</li>
+</ol>
+<p>如果你想深入了解，vLLM 的 <code>scheduler.py</code> 只有几百行核心逻辑，值得一读。读完会对&quot;如何为一个有状态的计算密集任务设计调度器&quot;有全新的理解。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
