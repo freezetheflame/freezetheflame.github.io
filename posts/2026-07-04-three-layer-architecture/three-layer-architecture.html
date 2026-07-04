@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>无处不在的三层架构：从 Kubernetes Controller 到 OpenTelemetry Pipeline | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-07-04</p>
+        <h1>无处不在的三层架构：从 Kubernetes Controller 到 OpenTelemetry Pipeline</h1>
+        <div class="post-meta">
+          <span>2026-07-04</span>
+          <span class="tag">架构设计</span><span class="tag">Kubernetes</span><span class="tag">OpenTelemetry</span><span class="tag">设计模式</span><span class="tag">系统设计</span>
+        </div>
+        <h2 id="缘起">缘起</h2>
+<p>写每日日报的架构设计栏目时，发现一个有趣的现象——很多看似不相关的系统，核心架构都长一个样：<strong>采集层 → 处理层 → 输出层</strong>。Kubernetes 的 controller-runtime 如此，OpenTelemetry Collector 的 Pipeline 如此，连 vLLM 的调度器也跑不出这个框架。这篇就把它们放在一起比比看。</p>
+<!--more-->
+
+<hr>
+<h2 id="案例一：kubernetes-controller-runtime">案例一：Kubernetes Controller-Runtime</h2>
+<p>Kubebuilder 和 Operator SDK 的底层框架是 <code>controller-runtime</code>。它把一个 Operator 的核心逻辑拆成三层：</p>
+<h3 id="第一层：informer（事件源）">第一层：Informer（事件源）</h3>
+<pre><code class="hljs language-go">informer, _ := NewInformer(
+    lw,                    <span class="hljs-comment">// ListWatcher 接口</span>
+    &amp;corev1.Pod{},         <span class="hljs-comment">// 目标对象类型</span>
+    resyncPeriod,          <span class="hljs-comment">// 周期性全量重同步</span>
+    ResourceEventHandler{  <span class="hljs-comment">// 回调注册</span>
+        AddFunc:    <span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(obj <span class="hljs-keyword">interface</span>{})</span></span> { <span class="hljs-comment">/* enqueue */</span> },
+        UpdateFunc: <span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(old, <span class="hljs-built_in">new</span> <span class="hljs-keyword">interface</span>{})</span></span> { <span class="hljs-comment">/* enqueue */</span> },
+        DeleteFunc: <span class="hljs-function"><span class="hljs-keyword">func</span><span class="hljs-params">(obj <span class="hljs-keyword">interface</span>{})</span></span> { <span class="hljs-comment">/* enqueue */</span> },
+    },
+)
+</code></pre>
+<p>Informer 通过 <strong>List + Watch</strong> 机制工作：只对 etcd 做一次全量 List，之后全部通过 Watch 增量推送。内部用 Delta FIFO 去重排序，防止事件风暴打崩 API Server。</p>
+<p><strong>这层的职责 = 从外部数据源获取原始事件。</strong></p>
+<h3 id="第二层：workqueue（排队与去重）">第二层：WorkQueue（排队与去重）</h3>
+<pre><code class="hljs language-go">queue := workqueue.NewRateLimitingQueue(
+    workqueue.DefaultControllerRateLimiter(),
+)
+<span class="hljs-comment">// 同一个 key 多次入队只保留一个</span>
+queue.Add(<span class="hljs-string">&quot;default/mypod-xyz&quot;</span>)
+</code></pre>
+<p>关键设计：<strong>去重 + 限速</strong>。同一对象的事件合并成一个 key（<code>namespace/name</code>），避免一个 Deployment 更新 30 个 Pod 时触发 30 次 reconciliation。令牌桶 + 指数退避的双重限速防止异常循环。</p>
+<p><strong>这层的职责 = 对原始事件做缓冲、过滤、排序、流量控制。</strong></p>
+<h3 id="第三层：reconciler（调和循环）">第三层：Reconciler（调和循环）</h3>
+<pre><code class="hljs language-go"><span class="hljs-function"><span class="hljs-keyword">func</span> <span class="hljs-params">(r *MyReconciler)</span></span> Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, <span class="hljs-type">error</span>) {
+    <span class="hljs-comment">// 1. 从 cache 读取当前状态</span>
+    obj := &amp;myv1.MyResource{}
+    <span class="hljs-keyword">if</span> err := r.Get(ctx, req.NamespacedName, obj); err != <span class="hljs-literal">nil</span> {
+        <span class="hljs-keyword">return</span> ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+    <span class="hljs-comment">// 2. 比较当前状态与期望状态</span>
+    <span class="hljs-comment">// 3. 执行操作使其收敛</span>
+    <span class="hljs-comment">// 4. 更新状态</span>
+    <span class="hljs-keyword">return</span> ctrl.Result{RequeueAfter: <span class="hljs-number">30</span> * time.Second}, <span class="hljs-literal">nil</span>
+}
+</code></pre>
+<p>Reconciler 只做一件事：<strong>拿到一个 key，保证系统实际状态向期望状态收敛</strong>。它不关心事件怎么来的、有没有重复——那些是前两层的事。</p>
+<p><strong>这层的职责 = 消费处理好的事件，产生外部效果。</strong></p>
+<h3 id="数据流">数据流</h3>
+<pre><code>etcd ──▶  Informer  ──▶  WorkQueue  ──▶  Reconciler  ──▶ API Server
+          (采集)          (缓冲/去重)         (业务逻辑)
+</code></pre>
+<hr>
+<h2 id="案例二：opentelemetry-collector-pipeline">案例二：OpenTelemetry Collector Pipeline</h2>
+<p>可观测性领域的事实标准 OpenTelemetry Collector，它的 Pipeline 设计也一样：</p>
+<h3 id="第一层：receivers（采集入口）">第一层：Receivers（采集入口）</h3>
+<pre><code class="hljs language-yaml"><span class="hljs-attr">receivers:</span>
+  <span class="hljs-attr">otlp:</span>
+    <span class="hljs-attr">protocols:</span>
+      <span class="hljs-attr">grpc:</span>
+        <span class="hljs-attr">endpoint:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span><span class="hljs-string">:4317</span>
+      <span class="hljs-attr">http:</span>
+        <span class="hljs-attr">endpoint:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span><span class="hljs-string">:4318</span>
+  <span class="hljs-attr">prometheus:</span>
+    <span class="hljs-attr">config:</span>
+      <span class="hljs-attr">scrape_configs:</span>
+        <span class="hljs-bullet">-</span> <span class="hljs-attr">job_name:</span> <span class="hljs-string">&#x27;my-app&#x27;</span>
+          <span class="hljs-attr">static_configs:</span>
+            <span class="hljs-bullet">-</span> <span class="hljs-attr">targets:</span> [<span class="hljs-string">&#x27;localhost:9464&#x27;</span>]
+</code></pre>
+<p>每个 Receiver 是一个独立的数据源适配器。外部协议千奇百怪（OTLP、Prometheus、Jaeger、K8s Events），Receiver 统一转化为内部的 <strong>pdata</strong>（pipeline data）模型。</p>
+<p><strong>类比 Controller：</strong> Informer 从 etcd 采集对象变更事件 → Receiver 从各种协议采集可观测性数据。</p>
+<h3 id="第二层：processors（处理管道）">第二层：Processors（处理管道）</h3>
+<pre><code class="hljs language-yaml"><span class="hljs-attr">processors:</span>
+  <span class="hljs-attr">batch:</span>           <span class="hljs-comment"># 攒批优化</span>
+    <span class="hljs-attr">timeout:</span> <span class="hljs-string">1s</span>
+    <span class="hljs-attr">send_batch_size:</span> <span class="hljs-number">8192</span>
+  <span class="hljs-attr">memory_limiter:</span>  <span class="hljs-comment"># 反压保护</span>
+    <span class="hljs-attr">check_interval:</span> <span class="hljs-string">1s</span>
+    <span class="hljs-attr">limit_mib:</span> <span class="hljs-number">512</span>
+  <span class="hljs-attr">filter:</span>          <span class="hljs-comment"># 降采样控费</span>
+    <span class="hljs-attr">metrics:</span>
+      <span class="hljs-attr">include:</span>
+        <span class="hljs-attr">match_type:</span> <span class="hljs-string">regexp</span>
+        <span class="hljs-attr">metric_names:</span> [<span class="hljs-string">&quot;http.*&quot;</span>, <span class="hljs-string">&quot;grpc.*&quot;</span>]
+</code></pre>
+<p>Processors 构成<strong>有向无环图（DAG）</strong>。每个 Processor 只做一件事：<code>batch</code> 攒批、<code>memory_limiter</code> 反压、<code>filter</code> 过滤。可以任意组合、替换顺序。</p>
+<p><strong>类比 Controller：</strong> WorkQueue 对事件做去重限速 → Processors 对观测数据做缓冲、过滤、采样。</p>
+<h3 id="第三层：exporters（输出适配）">第三层：Exporters（输出适配）</h3>
+<pre><code class="hljs language-yaml"><span class="hljs-attr">exporters:</span>
+  <span class="hljs-attr">prometheusremotewrite:</span>
+    <span class="hljs-attr">endpoint:</span> <span class="hljs-string">http://thanos-receive:19291</span>
+  <span class="hljs-attr">otlp:</span>
+    <span class="hljs-attr">endpoint:</span> <span class="hljs-string">http://jaeger-collector:4317</span>
+</code></pre>
+<p>Exporter 把统一内部数据模型重新序列化为目标后端格式。</p>
+<p><strong>类比 Controller：</strong> Reconciler 写入 API Server → Exporter 写入 Prometheus/Jaeger/其他后端。</p>
+<h3 id="pipeline-装配">Pipeline 装配</h3>
+<pre><code class="hljs language-yaml"><span class="hljs-attr">service:</span>
+  <span class="hljs-attr">pipelines:</span>
+    <span class="hljs-attr">traces:</span>
+      <span class="hljs-attr">receivers:</span> [<span class="hljs-string">otlp</span>]
+      <span class="hljs-attr">processors:</span> [<span class="hljs-string">memory_limiter</span>, <span class="hljs-string">batch</span>]
+      <span class="hljs-attr">exporters:</span> [<span class="hljs-string">otlp</span>, <span class="hljs-string">logging</span>]
+    <span class="hljs-attr">metrics:</span>
+      <span class="hljs-attr">receivers:</span> [<span class="hljs-string">otlp</span>, <span class="hljs-string">prometheus</span>]
+      <span class="hljs-attr">processors:</span> [<span class="hljs-string">memory_limiter</span>, <span class="hljs-string">filter</span>, <span class="hljs-string">batch</span>]
+      <span class="hljs-attr">exporters:</span> [<span class="hljs-string">prometheusremotewrite</span>]
+</code></pre>
+<p>灵活性体现在：同一份数据可以走不同的 pipeline 路径，不同数据类型（traces vs metrics）可以配不同的处理策略。</p>
+<h3 id="数据流-1">数据流</h3>
+<pre><code>应用埋点 ──▶  Receiver  ──▶  Processor DAG  ──▶  Exporter  ──▶ 存储后端
+            (采集/适配)      (缓冲/过滤/采样)       (输出)
+</code></pre>
+<hr>
+<h2 id="这个三层结构为什么无处不在？">这个三层结构为什么无处不在？</h2>
+<p>把两个案例放在一起看：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>系统</th>
+<th>采集层</th>
+<th>处理层</th>
+<th>输出层</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>K8s Controller</td>
+<td>Informer（List+Watch）</td>
+<td>WorkQueue（去重+限速）</td>
+<td>Reconciler（调和）</td>
+</tr>
+<tr>
+<td>OTel Collector</td>
+<td>Receiver（协议适配）</td>
+<td>Processors（DAG管道）</td>
+<td>Exporter（后端适配）</td>
+</tr>
+<tr>
+<td>vLLM Scheduler</td>
+<td>BlockManager（内存感知）</td>
+<td>Scheduler Policy（抢占决策）</td>
+<td>CUDA Kernel（执行）</td>
+</tr>
+<tr>
+<td>流处理框架（Kafka Streams）</td>
+<td>Source Connector</td>
+<td>Stream Processor</td>
+<td>Sink Connector</td>
+</tr>
+<tr>
+<td>Web 后端（典型）</td>
+<td>Controller（路由+参数解析）</td>
+<td>Service（业务逻辑）</td>
+<td>Repository（数据持久化）</td>
+</tr>
+</tbody></table></div>
+<p>它们共享一个模式：</p>
+<blockquote>
+<p><strong>从外部获取原始数据 → 在管道内做变换/过滤/缓冲 → 产生外部效果</strong></p>
+</blockquote>
+<p>每一层只关心一件事：</p>
+<ul>
+<li><strong>采集层</strong>：对接外部、统一内部表示</li>
+<li><strong>处理层</strong>：变换、过滤、缓冲、流量控制</li>
+<li><strong>输出层</strong>：消费处理好的数据，产生副作用</li>
+</ul>
+<h3 id="为什么这层划分这么自然？">为什么这层划分这么自然？</h3>
+<ol>
+<li><p><strong>关注点分离</strong>：每层可以独立演进。K8s 里你想换事件源（从 etcd 换到某种 event-driven 架构），只改 Informer 那层就行，Reconciler 完全不用动。OTel 里你想加个新后端，写个 Exporter 就行。</p>
+</li>
+<li><p><strong>可测试性</strong>：每一层都可以独立 mock 输入验证输出。写 Reconciler 单元测试不需要真的启动 Informer，直接塞 key 进去测。</p>
+</li>
+<li><p><strong>可观测性</strong>：层与层之间的数据通道（K8s 的 WorkQueue、OTel 的 pipeline channel）是天然的 metrics 埋点位置——入队速率、队列深度、处理延迟，这些都是 SRE 最关心的信号。</p>
+</li>
+<li><p><strong>反压自然</strong>：处理层是天然的流量调解器。当输出层变慢（比如 Reconciler 调用 API Server 被限流、Exporter 写入数据库超时），处理层可以通过背压让采集层降速。</p>
+</li>
+</ol>
+<h3 id="这个模式的陷阱">这个模式的陷阱</h3>
+<p>当然不是所有系统都适合套三层架构。它有两个代价：</p>
+<p><strong>1. 延迟增加</strong>
+数据每经过一层就有一次序列化/反序列化或上下文切换的开销。K8s Informer → WorkQueue 之间有一个 channel 的拷贝，OTel 的 pdata 在不同 Processor 之间传递也有内存拷贝。对延迟敏感的场景（比如实时广告 bidding），每层增加几十微秒是不可接受的。</p>
+<p><strong>2. 调试复杂度</strong>
+三层架构的问题定位往往需要跨层追踪。K8s 里一个 Pod 创建事件走丢了——是 Informer 没收到？WorkQueue 丢掉了？还是 Reconciler 处理出错了？每个可能都排查一遍，心态容易崩。OTel 里 trace 丢了也有类似的&quot;到底是在 Receiver 没收到、Processor 过滤掉了还是 Exporter 写失败了&quot;的灵魂拷问。这也就是为什么 OTel 社区一直在推 <strong>z-pages</strong>（暴露每层的健康状态和指标）和 <strong>E2E 的 trace 透传</strong>。</p>
+<hr>
+<h2 id="更多例子">更多例子</h2>
+<p>一旦你认出了这个模式，就会发现它到处都是：</p>
+<p><strong>Linux 的网络栈</strong>：NIC 硬件中断（采集）→ softirq + 协议栈处理（处理）→ socket 交付给应用（输出）</p>
+<p><strong>LLM 推理引擎</strong>：Tokenizer（采集）→ 模型推理（处理）→ Detokenizer（输出）</p>
+<p><strong>数据库查询引擎</strong>：Parser（采集 SQL）→ Optimizer（处理生成执行计划）→ Executor（输出结果）</p>
+<p>这个模式如此普遍，以至于当你遇到一个不知道如何设计的系统时，先从三层拆分开始大概率不会错——<strong>采集/事件源 → 变换/缓冲 → 输出/效果</strong>，先搭好骨架再往里填肉。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
