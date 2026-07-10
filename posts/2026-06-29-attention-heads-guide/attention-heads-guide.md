@@ -286,7 +286,7 @@ $$
 推理时，KV Cache 仅存储 latent 表示：
 
 $$
-C_{KV} = W_{DK} \cdot [h_1, h_2, ..., h_t] \quad \text{(shape: [seq_len, d_l])}
+C_{KV} = W_{DK} \cdot [h_1, h_2, ..., h_t] \quad \text{(shape: [seq\_len, d\_l])}
 $$
 
 ### Matrix Absorption
