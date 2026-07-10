@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saguaro (SSD)：把推测解码的「推测」和「解码」也并行起来 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-07-09</p>
+        <h1>Saguaro (SSD)：把推测解码的「推测」和「解码」也并行起来</h1>
+        <div class="post-meta">
+          <span>2026-07-09</span>
+          <span class="tag">LLM</span><span class="tag">推理加速</span><span class="tag">Speculative Decoding</span><span class="tag">ICLR</span><span class="tag">AI Infra</span>
+        </div>
+        <h2 id="论文信息">论文信息</h2>
+<p><strong>论文标题：</strong> Speculative Speculative Decoding<br><strong>作者：</strong> Tanishq Kumar（斯坦福）、Tri Dao（普林斯顿）、Avner May（Together AI）<br><strong>发表：</strong> ICLR 2026<br><strong>链接：</strong> <a href="https://arxiv.org/abs/2603.03251">https://arxiv.org/abs/2603.03251</a>  </p>
+<hr>
+<h2 id="为什么值得读？">为什么值得读？</h2>
+<p>Speculative Decoding（SD）已经是 LLM 推理加速的主流手段：用小 Draft Model 快速生成若干候选 token，再让大 Target Model 并行验证。但这个范式本身有一个被忽视的 <strong>串行瓶颈</strong>——Draft 和 Verify 是严格顺序的：先等 Draft 产出一批 token，再跑 Target verify，得到结果后才能开始下一轮 Draft。</p>
+<p>在大模型推理越来越追求&quot;每一微秒都压榨干净&quot;的今天，这个串行瓶颈变得不可忽视。Tri Dao（FlashAttention 之父）团队这篇 ICLR 2026 论文，直指 SD 的&quot;自我串行化&quot;问题，提出 SSD（Speculative Speculative Decoding）——<strong>让 Draft 和 Verify 重叠执行</strong>，消除了 Draft 的 hidden latency。</p>
+<hr>
+<h2 id="方法核心思路">方法核心思路</h2>
+<p>SSD 的核心洞察很直接：<strong>Target Model 在 Verify 时，Draft Model 闲着呢。</strong> 为什么不让它提前预判 Verify 的结果，并针对可能的结果先准备好下一轮 Draft？</p>
+<p><strong>三步走：</strong></p>
+<ol>
+<li><p><strong>预判（Prediction）：</strong> 当前这一轮 Target 正在 Verify 时，Draft Model 预测可能出现的 Verify 结果（即哪些 token 会被接受、哪些被拒绝）。关键点在于——因为 Verify 是并行校验多个 token 的联合分布，可能的结果数量是有限的。</p>
+</li>
+<li><p><strong>预准备（Pre-emptive Drafting）：</strong> 针对每种可能结果，Draft Model <strong>提前计算</strong>下一轮要给出的 Draft Token。这本质上是让 Draft Model 在一个&quot;猜测&quot;上执行 Attention，而不是等实际结果出来再跑。</p>
+</li>
+<li><p><strong>即时匹配：</strong> 当 Target 正式返回 Verify 结果时，如果该结果落在预测集合中，Draft 结果可直接复用，<strong>零延迟开始下一轮</strong>。如果没命中（小概率事件），Fallback 到传统串行 SD。</p>
+</li>
+</ol>
+<p>论文识别了 SSD 面对的 <strong>三个关键挑战</strong> 并给出了优雅解决：</p>
+<ul>
+<li><strong>不可预测性（Unpredictability）：</strong> Verify 结果空间太大怎么办？→ 设计了 <strong>Top-K 截断 + 条件概率剪枝</strong>，只保留最可能的结果路径</li>
+<li><strong>预计算开销（Pre-computation Cost）：</strong> 预先计算多种结果会不会更慢？→ Draft Model 本身很轻量，Draft 的计算量远小于 Target Verify，预计算多个分支的总开销仍低于等待 Verify 完成的空闲时间</li>
+<li><strong>KV Cache 污染（Cache Contamination）：</strong> 预计算用的假设性 KV Cache 和实际 KV Cache 不一致怎么办？→ 引入 <strong>Lazy KV Cache 合并</strong>策略</li>
+</ul>
+<p>最终优化算法称为 <strong>Saguaro</strong>。</p>
+<hr>
+<h2 id="实验关键数据">实验关键数据</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>vs 优化版 SD 基线（平均加速）</td>
+<td><strong>30%</strong></td>
+</tr>
+<tr>
+<td>vs 自回归解码（最大加速）</td>
+<td><strong>5×</strong></td>
+</tr>
+<tr>
+<td>测试基线</td>
+<td>Eagle3、Medusa、标准 SD</td>
+</tr>
+<tr>
+<td>实现</td>
+<td>开源推理引擎（Together AI 生产环境）</td>
+</tr>
+</tbody></table></div>
+<p>关键消融实验表明：预判准确率在 Top-2 条件下超过 **85%**，即 85% 以上的 Verify 结果可以即时匹配，真正实现零延迟 Draft。</p>
+<hr>
+<h2 id="思考">思考</h2>
+<p>这篇论文的核心贡献在于 <strong>识别并消除了 SD 范式中最后一个串行瓶颈</strong>。从 SuperScalar 处理器的分支预测到 GPU 的乱序执行，计算机体系结构的历史告诉我们——<strong>覆盖流水线气泡是提升吞吐最有效的手段</strong>。SSD 把同样的思想引入 LLM 推理，视角非常深刻。</p>
+<p>Tri Dao 团队在系统-算法交叉领域的功力在这篇论文中体现得淋漓尽致——不是简单堆砌技巧，而是从计算流水线的本质出发做设计。</p>
+<p><strong>可改进之处：</strong> 1）预计算分支数量在大批量场景（batch size &gt; 8）下的扩展性没有充分讨论；2）预判失败时的 fallback 机制相对简单（退回串行），可能在大并发时引入尾部延迟抖动；3）Draft Model 需要支持多分支 Attention，对某些极简 Draft Model 架构可能不够友好。</p>
+<p><strong>适合谁读：</strong> LLM 推理引擎核心开发者、关注推测解码的 AI 系统研究员、对算法-系统协同设计感兴趣的工程师。如果你用过 vLLM 的 speculative decoding 功能，这篇会让你看到&quot;还有 30% 的潜力可挖&quot;。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
