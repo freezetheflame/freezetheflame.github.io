@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gaokao-Math-DS：高考数学 LLM 数据集工程（开篇） | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">POST</p>
+        <h1>Gaokao-Math-DS：高考数学 LLM 数据集工程（开篇）</h1>
+        <div class="post-meta">
+          
+        </div>
+        <h1 id="gaokao-math-ds：高考数学-llm-数据集工程（开篇）">Gaokao-Math-DS：高考数学 LLM 数据集工程（开篇）</h1>
+<p>上个月开始构思一个项目：构建一个高质量的高考数学领域数据集，用来微调一个小尺寸 LLM（目标 1.5B-7B 级别），看能不能在 MATH、GSM8K 这类 benchmark 上拿到可量化的提升。</p>
+<h2 id="为什么选高考数学">为什么选高考数学</h2>
+<p>几个原因：</p>
+<ol>
+<li><strong>领域封闭</strong> — 高考数学的知识点、题型、难度层级都很明确，不像&quot;通用对话&quot;那样边界模糊。数据质量可控。</li>
+<li><strong>答案可验证</strong> — 数学题有精确答案，可以用符号计算（sympy）做自动验证，不会出现 LLM 合成数据里常见的&quot;看起来对但实际错&quot;的问题。</li>
+<li><strong>个人匹配</strong> — 我平时兼职做高中数学家教，对这个领域的内容很熟悉，知道哪些题是好题、哪些是废题。</li>
+<li><strong>多模态扩展空间</strong> — 远期可以加几何图像、函数图像这类视觉输入，但现阶段先聚焦纯文本的公式题目。</li>
+</ol>
+<h2 id="phase-0：先学数据工程">Phase 0：先学数据工程</h2>
+<p>我不打算一上来就写爬虫。LLM 的数据处理和常规的数据工程不太一样——要去重、要合成、要验证、要防评测集污染。先把这些基础打扎实再动手。</p>
+<p>目前整理的技能树：</p>
+<ul>
+<li><strong>数据集格式</strong> — Alpaca、ShareGPT、ChatML，各有适用场景</li>
+<li><strong>去重体系</strong> — 从 URL 去重到全文 hash 到 MinHash 近似去重</li>
+<li><strong>数据合成</strong> — Self-Instruct、Evol-Instruct、参数化变体生成</li>
+<li><strong>质量过滤</strong> — perplexity 过滤、LLM-as-judge、规则校验</li>
+<li><strong>评测方法论</strong> — 基准选择、污染检测、难度分层报告</li>
+</ul>
+<p>这些内容后续会陆续整理成博客。</p>
+<h2 id="项目结构">项目结构</h2>
+<pre><code>gaokao-math-ds/
+├── docs/           # 路线图、学习笔记、知识体系
+├── pipeline/       # 采集→清洗→标注→合成 管线
+├── config/         # 数据源注册、schema 定义
+└── evaluation/     # 评测基准
+</code></pre>
+<p>项目地址：<a href="https://github.com/freezetheflame/gaokao-math-ds">github.com/freezetheflame/gaokao-math-ds</a></p>
+<p>下一步计划：调研训练数据的格式设计，确定本项目的标准结构，然后开始收集真题。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
