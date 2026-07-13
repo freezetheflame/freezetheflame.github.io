@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>通配符与正则匹配 | Freeze the Flame</title>
   <link rel="stylesheet" href="../../assets/site.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 </head>
 <body>
@@ -182,7 +182,7 @@
 <h1 id="定义正则表达式">定义正则表达式</h1>
 <p>email_pattern = r&#39;[\w\.-]+@[\w\.-]+\.\w+&#39;</p>
 <h1 id="测试字符串">测试字符串</h1>
-<p>text = &quot;Contact us at <a href="mailto:&#115;&#x75;&#112;&#x70;&#111;&#114;&#116;&#x40;&#x65;&#120;&#x61;&#x6d;&#112;&#x6c;&#101;&#46;&#x63;&#x6f;&#x6d;">&#115;&#x75;&#112;&#x70;&#111;&#114;&#116;&#x40;&#x65;&#120;&#x61;&#x6d;&#112;&#x6c;&#101;&#46;&#x63;&#x6f;&#x6d;</a> or <a href="mailto:&#105;&#x6e;&#102;&#x6f;&#x40;&#100;&#x6f;&#x6d;&#97;&#x69;&#x6e;&#x2e;&#x63;&#x6f;&#109;">&#105;&#x6e;&#102;&#x6f;&#x40;&#100;&#x6f;&#x6d;&#97;&#x69;&#x6e;&#x2e;&#x63;&#x6f;&#109;</a>.&quot;</p>
+<p>text = &quot;Contact us at <a href="mailto:&#x73;&#117;&#x70;&#112;&#111;&#114;&#116;&#64;&#101;&#120;&#x61;&#x6d;&#112;&#108;&#x65;&#46;&#99;&#111;&#x6d;">&#x73;&#117;&#x70;&#112;&#111;&#114;&#116;&#64;&#101;&#120;&#x61;&#x6d;&#112;&#108;&#x65;&#46;&#99;&#111;&#x6d;</a> or <a href="mailto:&#x69;&#x6e;&#x66;&#x6f;&#64;&#x64;&#x6f;&#109;&#x61;&#105;&#x6e;&#x2e;&#99;&#111;&#x6d;">&#x69;&#x6e;&#x66;&#x6f;&#64;&#x64;&#x6f;&#109;&#x61;&#105;&#x6e;&#x2e;&#99;&#111;&#x6d;</a>.&quot;</p>
 <h1 id="查找所有匹配的电子邮件地址">查找所有匹配的电子邮件地址</h1>
 <p>emails = re.findall(email_pattern, text)
 print(&quot;Emails found:&quot;, emails)</p>

@@ -546,18 +546,35 @@ a {
   overflow-x: auto;
   padding: 16px;
   border-radius: 8px;
-  background: #222820;
-  color: #f7f0df;
+  background: #282c34;
+  color: #abb2bf;
+  font-size: 14px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.article pre::-webkit-scrollbar {
+  height: 6px;
+}
+.article pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+.article pre::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
 }
 
 .article code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'JetBrains Mono', monospace;
+  font-size: 0.9em;
 }
 
 .article :not(pre) > code {
-  padding: 2px 5px;
+  padding: 2px 6px;
   border-radius: 4px;
   background: rgba(43, 114, 95, 0.1);
+  color: #2b725f;
+  font-weight: 500;
 }
 
 @media (max-width: 860px) {
