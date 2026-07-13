@@ -487,6 +487,7 @@
           <button class="tag-pill" data-tag="AI算子">AI算子<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="kernel">kernel<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="MoE">MoE<span class="tag-count">3</span></button>
+          <button class="tag-pill" data-tag="PyTorch">PyTorch<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="transformer">transformer<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="算法">算法<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="量化">量化<span class="tag-count">3</span></button>
@@ -498,7 +499,6 @@
           <button class="tag-pill" data-tag="mlp">mlp<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="PL理论">PL理论<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="PostgreSQL">PostgreSQL<span class="tag-count">2</span></button>
-          <button class="tag-pill" data-tag="PyTorch">PyTorch<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="RUST">RUST<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="vLLM">vLLM<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="北京大学">北京大学<span class="tag-count">2</span></button>
@@ -519,14 +519,18 @@
           <button class="tag-pill" data-tag="architecture">architecture<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="ascend">ascend<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Ascend">Ascend<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="attention">attention<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="autotune">autotune<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AWQ">AWQ<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="backend">backend<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="CI">CI<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="CNN">CNN<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="cuBLAS">cuBLAS<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="cuDNN">cuDNN<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="CUTLASS">CUTLASS<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="debugging">debugging<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="deep-learning">deep-learning<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="einops">einops<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="eval">eval<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="FastAPI">FastAPI<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="FP8">FP8<span class="tag-count">1</span></button>
@@ -572,6 +576,7 @@
           <button class="tag-pill" data-tag="Speculative Decoding">Speculative Decoding<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="SQL">SQL<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="swiglu">swiglu<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="tensor">tensor<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TensorFlow">TensorFlow<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Thrust">Thrust<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TileLang">TileLang<span class="tag-count">1</span></button>
@@ -659,13 +664,13 @@
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
-          <li class="post-card" data-tags="">
+          <li class="post-card" data-tags="einops,PyTorch,tensor,deep-learning,attention,CNN">
             <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-07-12-einops-guide/einops-guide.html">einops-guide</a></h3>
-              <p class="post-preview">Einops 完全指南：重塑张量操作的读写体验 如果你写过 PyTorch 或 NumPy 的张量变换，大概率写过类似这样的代码： 每次看到这种全靠索引数字的写法，心里都会冒出一个问题：这行代码到底在干什么</p>
+              <h3 class="post-card-title"><a href="posts/2026-07-12-einops-guide/einops-guide.html">einops 实用指南：用可读的方式重排、归约和重复张量</a></h3>
+              <p class="post-preview">是一个用于张量变换的 Python 库，它把 、、、、、、 等操作统一成一种接近数学记号的字符串表达式。它的核心价值不是&quot;能做原生框架做不到的事&quot;，而是让张量操作更可读、更难写错、更容易维护</p>
               <div class="post-card-meta">
-                <span class="post-date">2026-07-12</span>
-                <span class="post-card-tags"></span>
+                <span class="post-date">2026-07-12 10:00:00 +0800</span>
+                <span class="post-card-tags"><span class="post-tag">einops</span><span class="post-tag">PyTorch</span><span class="post-tag">tensor</span><span class="post-tag">deep-learning</span><span class="post-tag">attention</span><span class="post-tag">CNN</span></span>
               </div>
             </div>
             <a href="posts/2026-07-12-einops-guide/einops-guide.html" class="post-card-arrow" aria-hidden="true">→</a>
