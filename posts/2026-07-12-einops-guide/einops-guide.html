@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Einops 完全指南：重塑张量操作的读写体验 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">POST</p>
+        <h1>Einops 完全指南：重塑张量操作的读写体验</h1>
+        <div class="post-meta">
+          
+        </div>
+        <h1 id="einops-完全指南：重塑张量操作的读写体验">Einops 完全指南：重塑张量操作的读写体验</h1>
+<p>如果你写过 PyTorch 或 NumPy 的张量变换，大概率写过类似这样的代码：</p>
+<pre><code class="hljs language-python">x = x.permute(<span class="hljs-number">0</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">1</span>).reshape(batch, -<span class="hljs-number">1</span>, <span class="hljs-number">3</span>)
+</code></pre>
+<p>每次看到这种全靠索引数字的写法，心里都会冒出一个问题：<strong>这行代码到底在干什么？</strong></p>
+<p><a href="https://github.com/arogozhnikov/einops">Einops</a> 就是为了解决这个问题而生的。它用可读的字符串模式替代 <code>transpose</code>、<code>reshape</code>、<code>squeeze</code>、<code>stack</code>、<code>concatenate</code>、<code>repeat</code>、<code>tile</code> 等一整套操作，而且同时支持 NumPy、PyTorch、JAX、TensorFlow、MLX 等主流框架。</p>
+<blockquote>
+<p>einops 被 ICLR 2022 接收为 Oral 论文。GitHub 9,500+ stars，Andrej Karpathy 亲自推荐。</p>
+</blockquote>
+<h2 id="安装">安装</h2>
+<pre><code class="hljs language-bash">pip install einops
+</code></pre>
+<h2 id="核心思想：用模式字符串描述变换">核心思想：用模式字符串描述变换</h2>
+<p>einops 的所有操作都基于一个统一的思路：<strong>用字符串描述张量各维度的变换方式</strong>。</p>
+<p>例如将形状 <code>[batch, channel, height, width]</code> 的图像数据转为 <code>[batch, height, width, channel]</code>：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> einops <span class="hljs-keyword">import</span> rearrange
+
+<span class="hljs-comment"># 传统写法</span>
+y = x.transpose(<span class="hljs-number">0</span>, <span class="hljs-number">2</span>, <span class="hljs-number">3</span>, <span class="hljs-number">1</span>)
+
+<span class="hljs-comment"># einops 写法</span>
+y = rearrange(x, <span class="hljs-string">&#x27;b c h w -&gt; b h w c&#x27;</span>)
+</code></pre>
+<p>代码一目了然：<code>b</code> 保持不动，<code>c</code> 移到末尾，<code>h</code> <code>w</code> 放在中间。<strong>不需要背索引位置</strong>。</p>
+<hr>
+<h2 id="三大核心操作">三大核心操作</h2>
+<h3 id="1-rearrange--元素重排">1. rearrange — 元素重排</h3>
+<p><code>rearrange</code> 可以替代：<code>transpose</code>、<code>reshape</code>、<code>view</code>、<code>squeeze</code>、<code>unsqueeze</code>、<code>stack</code>、<code>concatenate</code>。</p>
+<p><strong>维度交换：</strong></p>
+<pre><code class="hljs language-python">rearrange(x, <span class="hljs-string">&#x27;b c h w -&gt; b h w c&#x27;</span>)    <span class="hljs-comment"># 等价于 .transpose()</span>
+rearrange(x, <span class="hljs-string">&#x27;h w c -&gt; w h c&#x27;</span>)         <span class="hljs-comment"># 交换 height 和 width</span>
+</code></pre>
+<p><strong>维度压缩（类似于 reshape）：</strong></p>
+<pre><code class="hljs language-python">rearrange(x, <span class="hljs-string">&#x27;b h w c -&gt; b (h w c)&#x27;</span>)   <span class="hljs-comment"># 展平为向量</span>
+rearrange(x, <span class="hljs-string">&#x27;b h w c -&gt; (b h) w c&#x27;</span>)   <span class="hljs-comment"># batch 和 height 合并</span>
+</code></pre>
+<p><strong>维度拆分：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 将 6 张图拆成 2 组 × 3 张</span>
+rearrange(x, <span class="hljs-string">&#x27;(b1 b2) h w c -&gt; b1 b2 h w c&#x27;</span>, b1=<span class="hljs-number">2</span>)
+</code></pre>
+<p><strong>拼接多张图片：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 将多张图片沿水平方向拼接</span>
+rearrange(images, <span class="hljs-string">&#x27;b h w c -&gt; h (b w) c&#x27;</span>)
+</code></pre>
+<p><strong>编解码中的典型操作：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Vision Transformer: 将图像打成 patch</span>
+<span class="hljs-comment"># x shape: [b, c, h, w] → patches: [b, (h/ph)*(w/pw), ph*pw*c]</span>
+rearrange(x, <span class="hljs-string">&#x27;b c (h p1) (w p2) -&gt; b (h w) (p1 p2 c)&#x27;</span>, p1=<span class="hljs-number">16</span>, p2=<span class="hljs-number">16</span>)
+</code></pre>
+<h3 id="2-reduce--带缩并的重排">2. reduce — 带缩并的重排</h3>
+<p>在 <code>rearrange</code> 的基础上增加归约操作（mean、sum、max、min、prod 等）。</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> einops <span class="hljs-keyword">import</span> reduce
+
+<span class="hljs-comment"># 全局平均池化</span>
+reduce(x, <span class="hljs-string">&#x27;b c h w -&gt; b c&#x27;</span>, <span class="hljs-string">&#x27;mean&#x27;</span>)
+
+<span class="hljs-comment"># 2×2 平均池化</span>
+reduce(x, <span class="hljs-string">&#x27;b c (h 2) (w 2) -&gt; b c h w&#x27;</span>, <span class="hljs-string">&#x27;mean&#x27;</span>)
+
+<span class="hljs-comment"># 在 batch 维度上取最大值</span>
+reduce(images, <span class="hljs-string">&#x27;b h w c -&gt; h w c&#x27;</span>, <span class="hljs-string">&#x27;max&#x27;</span>)
+
+<span class="hljs-comment"># 通道维度的全局求和</span>
+reduce(x, <span class="hljs-string">&#x27;b c h w -&gt; b h w&#x27;</span>, <span class="hljs-string">&#x27;sum&#x27;</span>)
+</code></pre>
+<p><strong>在神经网络中的典型用法：</strong></p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 在 Transformer 中做 attention pooling</span>
+<span class="hljs-comment"># scores shape: [b, heads, seq_len, seq_len]</span>
+attention_weights = reduce(scores, <span class="hljs-string">&#x27;b h i j -&gt; b i j&#x27;</span>, <span class="hljs-string">&#x27;mean&#x27;</span>)  <span class="hljs-comment"># 多头平均</span>
+</code></pre>
+<h3 id="3-repeat--复制元素">3. repeat — 复制元素</h3>
+<p>复制元素沿新轴或已有轴。</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> einops <span class="hljs-keyword">import</span> repeat
+
+<span class="hljs-comment"># 沿新轴复制（类似 unsqueeze + expand）</span>
+repeat(x, <span class="hljs-string">&#x27;h w c -&gt; h new_axis w c&#x27;</span>, new_axis=<span class="hljs-number">5</span>)
+
+<span class="hljs-comment"># 沿已有轴复制（类似 repeat/tile）</span>
+repeat(x, <span class="hljs-string">&#x27;h w c -&gt; h (repeat w) c&#x27;</span>, repeat=<span class="hljs-number">3</span>)
+
+<span class="hljs-comment"># 直接用数字代替命名轴</span>
+repeat(x, <span class="hljs-string">&#x27;h w c -&gt; h 5 w c&#x27;</span>)       <span class="hljs-comment"># 沿新轴复制 5 份</span>
+repeat(x, <span class="hljs-string">&#x27;h w c -&gt; (2 h) (2 w) c&#x27;</span>) <span class="hljs-comment"># 放大两倍</span>
+</code></pre>
+<hr>
+<h2 id="进阶操作">进阶操作</h2>
+<h3 id="4-pack--unpack--打包解包多维张量">4. pack &amp; unpack — 打包/解包多维张量</h3>
+<p><code>0.6</code> 版本引入，用于把多个形状不完全一致的张量打包成单个张量，处理完再解包。</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> einops <span class="hljs-keyword">import</span> pack, unpack
+
+<span class="hljs-comment"># 打包：类 token + image tokens + text tokens</span>
+packed, ps = pack([
+    class_token,       <span class="hljs-comment"># shape: [b, c]</span>
+    image_tokens,      <span class="hljs-comment"># shape: [b, h, w, c]</span>
+    text_tokens        <span class="hljs-comment"># shape: [b, t, c]</span>
+], <span class="hljs-string">&#x27;b * c&#x27;</span>)            <span class="hljs-comment"># * 表示可以变化的维度</span>
+
+<span class="hljs-comment"># 经过 transformer 处理...</span>
+output = transformer(packed)
+
+<span class="hljs-comment"># 按原结构解包</span>
+class_emb, image_emb, text_emb = unpack(output, ps, <span class="hljs-string">&#x27;b * c&#x27;</span>)
+</code></pre>
+<p>这比手动做 stack/pad/split 要可靠得多。</p>
+<h3 id="5-einsum--更清晰的爱因斯坦求和">5. einsum — 更清晰的爱因斯坦求和</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> einops <span class="hljs-keyword">import</span> einsum
+
+<span class="hljs-comment"># 标准的 batch 矩阵乘法</span>
+C = einsum(A, B, <span class="hljs-string">&#x27;b t1 head c, b t2 head c -&gt; b head t1 t2&#x27;</span>)
+
+<span class="hljs-comment"># 支持多字母轴名，比 torch.einsum 更可读</span>
+attention = einsum(Q, K, <span class="hljs-string">&#x27;b h s d, b h t d -&gt; b h s t&#x27;</span>)
+</code></pre>
+<h3 id="6-einmix--用于-mixer-架构的通用线性层">6. EinMix — 用于 Mixer 架构的通用线性层</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> einops.layers.torch <span class="hljs-keyword">import</span> EinMix
+
+<span class="hljs-comment"># MLP-Mixer 风格的混合层</span>
+mixer = EinMix(
+    <span class="hljs-string">&#x27;b h w c -&gt; b h w d&#x27;</span>,
+    weight_shape=<span class="hljs-string">&#x27;h c d&#x27;</span>,   <span class="hljs-comment"># 仅 h 维度参数共享</span>
+    bias_shape=<span class="hljs-string">&#x27;h d&#x27;</span>,
+    c=<span class="hljs-number">64</span>, d=<span class="hljs-number">128</span>
+)
+</code></pre>
+<hr>
+<h2 id="实际应用场景">实际应用场景</h2>
+<h3 id="在-pytorch-模型中的用法">在 PyTorch 模型中的用法</h3>
+<p>einops 提供了 <code>torch.nn.Module</code> 风格的封装：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">from</span> einops.layers.torch <span class="hljs-keyword">import</span> Rearrange, Reduce
+
+model = nn.Sequential(
+    <span class="hljs-comment"># 输入: [batch, 1, 28, 28] → 打平</span>
+    Rearrange(<span class="hljs-string">&#x27;b c h w -&gt; b (c h w)&#x27;</span>),
+    nn.Linear(<span class="hljs-number">784</span>, <span class="hljs-number">256</span>),
+    nn.ReLU(),
+    <span class="hljs-comment"># 输出: [batch, 256]</span>
+)
+
+<span class="hljs-comment"># Vision Transformer 的 patch 嵌入层</span>
+patch_embed = Rearrange(
+    <span class="hljs-string">&#x27;b c (h p1) (w p2) -&gt; b (h w) (p1 p2 c)&#x27;</span>,
+    p1=<span class="hljs-number">16</span>, p2=<span class="hljs-number">16</span>
+)
+</code></pre>
+<h3 id="注意力机制中的用法">注意力机制中的用法</h3>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">attention</span>(<span class="hljs-params">Q, K, V</span>):
+    <span class="hljs-comment"># Q, K, V: [batch, seq_len, d_model]</span>
+    <span class="hljs-comment"># 分头: [batch, heads, seq_len, d_k]</span>
+    Q = rearrange(Q, <span class="hljs-string">&#x27;b n (h d) -&gt; b h n d&#x27;</span>, h=<span class="hljs-number">8</span>)
+    K = rearrange(K, <span class="hljs-string">&#x27;b n (h d) -&gt; b h n d&#x27;</span>, h=<span class="hljs-number">8</span>)
+    V = rearrange(V, <span class="hljs-string">&#x27;b n (h d) -&gt; b h n d&#x27;</span>, h=<span class="hljs-number">8</span>)
+
+    scores = einsum(Q, K, <span class="hljs-string">&#x27;b h i d, b h j d -&gt; b h i j&#x27;</span>)
+    attn = scores.softmax(dim=-<span class="hljs-number">1</span>)
+
+    out = einsum(attn, V, <span class="hljs-string">&#x27;b h i j, b h j d -&gt; b h i d&#x27;</span>)
+    out = rearrange(out, <span class="hljs-string">&#x27;b h n d -&gt; b n (h d)&#x27;</span>)
+    <span class="hljs-keyword">return</span> out
+</code></pre>
+<h3 id="批量图像处理">批量图像处理</h3>
+<pre><code class="hljs language-python"><span class="hljs-comment"># 将 6 张 96×96 的图片交错排布</span>
+rearrange(images, <span class="hljs-string">&#x27;(b1 b2) h w c -&gt; (h b1) (w b2) c&#x27;</span>, b1=<span class="hljs-number">2</span>)
+<span class="hljs-comment"># 效果：3 行 2 列的图像网格</span>
+
+<span class="hljs-comment"># Space-to-Depth（用于 Super-Resolution / YOLO）</span>
+rearrange(x, <span class="hljs-string">&#x27;b (h p1) (w p2) c -&gt; b h w (c p1 p2)&#x27;</span>, p1=<span class="hljs-number">2</span>, p2=<span class="hljs-number">2</span>)
+</code></pre>
+<hr>
+<h2 id="为什么推荐使用-einops">为什么推荐使用 einops</h2>
+<ol>
+<li><p><strong>可读性</strong> — 模式字符串本身就是文档。<code>&#39;b c h w -&gt; b h w c&#39;</code> 的含义比 <code>.permute(0, 2, 3, 1)</code> 直观得多。</p>
+</li>
+<li><p><strong>防错</strong> — 索引数字出错的概率远高于命名字符串。einops 还能在运行时校验维度匹配。</p>
+</li>
+<li><p><strong>一致性</strong> — 一种语法覆盖 reshape、transpose、reduce、repeat 等数种操作，不需要记不同的 API。</p>
+</li>
+<li><p><strong>跨框架</strong> — 同样的语法在 PyTorch、JAX、TensorFlow、NumPy、MLX 之间完全通用。切换框架不需要重写张量操作代码。</p>
+</li>
+<li><p><strong>可编译</strong> — 从 <code>0.7</code> 开始完全支持 <code>torch.compile</code>，无运行时开销。</p>
+</li>
+</ol>
+<hr>
+<h2 id="资源">资源</h2>
+<ul>
+<li><a href="https://einops.rocks/">官方文档</a> — 交互式教程和完整 API 参考</li>
+<li><a href="https://github.com/arogozhnikov/einops">GitHub 仓库</a></li>
+<li><a href="https://openreview.net/pdf?id=oapKSVM2bcj">ICLR 2022 论文</a></li>
+<li>安装：<code>pip install einops</code></li>
+</ul>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
