@@ -1,3 +1,9 @@
+---
+title: "NVIDIA Polar：对任何 Agent Harness 做强化学习"
+date: "2026-07-15"
+tags: ["rl", "agent", "nvidia"]
+---
+
 # NVIDIA Polar：对任何 Agent Harness 做强化学习
 
 ## 问题：Agent RL 的工程瓶颈

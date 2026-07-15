@@ -513,6 +513,7 @@
           <button class="tag-pill" data-tag="随笔">随笔<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="activation">activation<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="agent">agent<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Agentless">Agentless<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AI编译">AI编译<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="algorithm">algorithm<span class="tag-count">1</span></button>
@@ -555,7 +556,6 @@
           <button class="tag-pill" data-tag="layernorm">layernorm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Lean">Lean<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="llm">llm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="LLM4Code">LLM4Code<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="LLM推理">LLM推理<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="memory">memory<span class="tag-count">1</span></button>
@@ -564,18 +564,17 @@
           <button class="tag-pill" data-tag="MLA">MLA<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MySQL">MySQL<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="npu">npu<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="nvidia">nvidia<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="ONNX">ONNX<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="OpenTelemetry">OpenTelemetry<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="performance">performance<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Profiling">Profiling<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Python">Python<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="React">React<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="research">research<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="rl">rl<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="RL">RL<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="rmsnorm">rmsnorm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="ROCm">ROCm<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="security">security<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Skill">Skill<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="SkillOpt">SkillOpt<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Speculative Decoding">Speculative Decoding<span class="tag-count">1</span></button>
@@ -640,7 +639,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 166 篇文章
+      共 165 篇文章
     </div>
   </aside>
 
@@ -664,19 +663,19 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 166</span>
+        <span class="section-count" id="visibleCount">15 / 165</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
-          <li class="post-card" data-tags="">
+          <li class="post-card" data-tags="rl,agent,nvidia">
             <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-07-15-nvidia-polar-agentic-rl/nvidia-polar-agentic-rl.html">nvidia-polar-agentic-rl</a></h3>
+              <h3 class="post-card-title"><a href="posts/2026-07-15-nvidia-polar-agentic-rl/nvidia-polar-agentic-rl.html">NVIDIA Polar：对任何 Agent Harness 做强化学习</a></h3>
               <p class="post-preview">NVIDIA Polar：对任何 Agent Harness 做强化学习 问题：Agent RL 的工程瓶颈 给 LLM Agent 做强化学习，目前面临一个尴尬的工程问题：</p>
               <div class="post-card-meta">
                 <span class="post-date">2026-07-15</span>
-                <span class="post-card-tags"></span>
+                <span class="post-card-tags"><span class="post-tag">rl</span><span class="post-tag">agent</span><span class="post-tag">nvidia</span></span>
               </div>
             </div>
             <a href="posts/2026-07-15-nvidia-polar-agentic-rl/nvidia-polar-agentic-rl.html" class="post-card-arrow" aria-hidden="true">→</a>
@@ -691,17 +690,6 @@
               </div>
             </div>
             <a href="posts/2026-07-15-pico-dual-channel/pico-dual-channel.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
-          <li class="post-card" data-tags="research,llm,rl,security">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-07-15-pico-polar/pico-polar.html">PICO + Polar：双通道嵌入与 Agentic RL 框架</a></h3>
-              <p class="post-preview">PICO：把 System Prompt 和用户输入分开编码 问题 大模型里 system prompt 和用户输入走的是同一个 embedding 通路。模型对这两者的&quot;重要性&quot;没有先验区分——一个藏在用户消息里的 &quot;ignore ...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-07-15</span>
-                <span class="post-card-tags"><span class="post-tag">research</span><span class="post-tag">llm</span><span class="post-tag">rl</span><span class="post-tag">security</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-07-15-pico-polar/pico-polar.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="RL,LLM">
             <div class="post-card-body">
@@ -835,9 +823,20 @@
             </div>
             <a href="posts/2026-06-29-attention-heads-guide/attention-heads-guide.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
+          <li class="post-card" data-tags="FlashAttention,CUDA,Triton,推理优化,深度学习">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-06-29-flash-attention-deep-dive/flash-attention-deep-dive.html">FlashAttention 完整解析：从原理到 CUDA/Triton 实现</a></h3>
+              <p class="post-preview">如果你在 2022 年某个深夜跑过一个 16K 长度的 transformer 训练任务，一定会记得 OOM 的恐惧——标准的 PyTorch Attention 需要存一个 的 attention score 矩阵，N=16384 ...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-06-29</span>
+                <span class="post-card-tags"><span class="post-tag">FlashAttention</span><span class="post-tag">CUDA</span><span class="post-tag">Triton</span><span class="post-tag">推理优化</span><span class="post-tag">深度学习</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-06-29-flash-attention-deep-dive/flash-attention-deep-dive.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 166 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 165 篇文章 →</a>
     </section>
   </main>
 
