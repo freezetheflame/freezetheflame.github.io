@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PICO 与双通道嵌入：用架构隔离防止Prompt注入 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">POST</p>
+        <h1>PICO 与双通道嵌入：用架构隔离防止Prompt注入</h1>
+        <div class="post-meta">
+          
+        </div>
+        <h1 id="pico-与双通道嵌入：用架构隔离防止prompt注入">PICO 与双通道嵌入：用架构隔离防止Prompt注入</h1>
+<p>最近在想一个问题：LLM 对 system prompt 和 user input 用的是一套 embedding，模型无法在架构层面区分&quot;这是指令&quot;和&quot;这是数据&quot;。有没有人尝试过在 embedding 阶段加个 gate，让两类输入走不同的处理通道？</p>
+<p>答案是有的。</p>
+<h2 id="pico：dual-channel-transformer">PICO：Dual-Channel Transformer</h2>
+<p><strong>PICO</strong>（Prompt Isolation and Cybersecurity Oversight）是 Ben Goertzel（SingularityNET CEO）和 Paulos Yibelo（Amazon Security Engineer）在 2025 年 4 月提出的架构。</p>
+<p>论文：arXiv:2504.21029</p>
+<p><em>截至 2026 年 7 月，PICO 仍为 arXiv preprint，未查到会议录用记录。</em></p>
+<h3 id="核心思想">核心思想</h3>
+<p>传统的 LLM 把 system prompt + user input 拼接成一个 token 序列喂进模型。模型没有&quot;这是指令、这是数据&quot;的概念——对所有 token 一视同仁。这就是 prompt injection 能成功的根因。</p>
+<p>PICO 的做法是在架构层做分离：</p>
+<pre><code>传统架构：
+  [system prompt tokens | user input tokens] → 单通道 embedding → transformer
+
+PICO 架构：
+  system prompt tokens → 通道 A (不可变 embedding) ─┐
+                                                       ├→ Gated Fusion → transformer
+  user input tokens   → 通道 B (可更新 embedding) ──┘
+</code></pre>
+<ul>
+<li><strong>通道 A（Trusted Instruction Channel）</strong>：处理 system prompt，embedding 参数冻结（不可训练），确保指令永远不被污染</li>
+<li><strong>通道 B（Untrusted Input Channel）</strong>：处理 user input，正常参与训练和推理</li>
+<li><strong>Gated Fusion</strong>：可学习的门控机制，决定两个通道的信息如何合并。当检测到可疑模式时，门控偏向通道 A</li>
+</ul>
+<h3 id="形式化定义">形式化定义</h3>
+<p>数学上，输入被建模为二元组 (s, x)，其中 s = 系统指令，x = 用户输入：</p>
+<pre><code>E_s: S → R^{d_s}    # 系统指令编码（冻结）
+E_x: X → R^{d_x}    # 用户输入编码（可训练）
+
+融合：h = Gate(h_s, h_x, c) ⊙ h_s + (1 - Gate(h_s, h_x, c)) ⊙ h_x
+</code></pre>
+<p>其中 c 是 Security Expert Agent 提供的安全信号。</p>
+<h3 id="附加组件">附加组件</h3>
+<p>除了双通道，PICO 还集成了：</p>
+<ul>
+<li><strong>Security Expert Agent（MoE）</strong>：一个专门的安全专家，在 Mixture-of-Experts 框架中作为一个 expert，专门负责检测 injection 模式</li>
+<li><strong>Cybersecurity Knowledge Graph（CKG）</strong>：提供已知漏洞、可疑短语、上下文关系的先验知识</li>
+</ul>
+<h3 id="训练策略">训练策略</h3>
+<p>PICO 提供两种方案：</p>
+<ol>
+<li><strong>From scratch</strong>：从头训练一个双通道 transformer（效果最好但成本高）</li>
+<li><strong>Fine-tuning</strong>：在现有模型上做微调适配（成本低但可能不够彻底）</li>
+</ol>
+<p>训练目标是让系统指令分支保持不可变（frozen），同时其他部分学会安全处理对抗性输入。</p>
+<hr>
+<h2 id="相关研究脉络">相关研究脉络</h2>
+<p>PICO 不是唯一在做这件事的。有几个方向值得关注：</p>
+<h3 id="1-microsoft-spotlighting">1. Microsoft Spotlighting</h3>
+<p>Microsoft 在 2025 年提出 Spotlighting 技术——用特殊标记包裹不可信内容，让模型知道哪些 token 是&quot;用户数据&quot;而不是&quot;指令&quot;。</p>
+<pre><code>&lt;untrusted&gt;用户输入的内容在这里&lt;/untrusted&gt;
+</code></pre>
+<p>这种方法不需要改模型架构，但本质上还是靠模型去理解标记的含义，没有架构级别的保证。</p>
+<h3 id="2-dual-llm（evaluator-generator）">2. Dual-LLM（Evaluator-Generator）</h3>
+<p>生产环境中用得最多的是双模型架构：</p>
+<ul>
+<li><strong>Evaluator（轻量模型）</strong>：专门判断输入是否为 injection 攻击</li>
+<li><strong>Generator（主模型）</strong>：只处理 evaluator 判定为安全的输入</li>
+</ul>
+<p>这种方法有效但增加了推理成本和延迟。</p>
+<h3 id="3-双通道检测（专利方向）">3. 双通道检测（专利方向）</h3>
+<p>2025 年有一份专利（Seaninzg 等人）提出了双通道检测架构，把 prompt injection 检测拆成两个正交通道：</p>
+<ul>
+<li><strong>指令/权威注入检测</strong>：检测显式的系统行为覆盖</li>
+<li><strong>审美/诗意注入检测</strong>：检测隐式的符号化、隐喻化操作</li>
+</ul>
+<p>两个通道都通过后才执行下游任务。</p>
+<hr>
+<h2 id="对-agent-系统的启示">对 Agent 系统的启示</h2>
+<p>PICO 的核心洞察——&quot;在架构层分开指令和数据&quot;——对 Agent 系统也适用：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>传统 Agent</th>
+<th>PICO 式的 Agent</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>system prompt + user message 拼接</td>
+<td>指令通道冻结，用户数据独立</td>
+</tr>
+<tr>
+<td>所有 tool output 混在一起</td>
+<td>tool output 打上 untrusted 标记</td>
+</tr>
+<tr>
+<td>单次 forward 决策</td>
+<td>Gated Fusion 带安全信号</td>
+</tr>
+<tr>
+<td>依赖 prompt engineering 防 injection</td>
+<td>架构级防护</td>
+</tr>
+</tbody></table></div>
+<p>如果把这个思路套用到 Hermes 的 E-T-C-S-L-V 框架里，User Intent 的 embedding 和 Tool Registry 返回的 Context 可以走不同通道，在 Context Manager 层做 Gated Fusion——这可能是打造更鲁棒 Agent 的有趣方向。</p>
+<hr>
+<p><em>参考：Goertzel, B., Yibelo, P. &quot;PICO: Secure Transformers via Robust Prompt Isolation and Cybersecurity Oversight.&quot; arXiv:2504.21029, Apr 2025.</em></p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
