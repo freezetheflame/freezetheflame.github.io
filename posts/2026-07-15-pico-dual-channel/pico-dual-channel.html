@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PICO：让模型区分&quot;我说的话&quot;和&quot;你说的话&quot; | Freeze the Flame</title>
+  <title>PICO：双通道隔离的 Transformer 安全架构 | Freeze the Flame</title>
   <link rel="stylesheet" href="../../assets/site.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -26,55 +26,53 @@
     <main>
       <article class="panel article">
         <p class="eyebrow">POST</p>
-        <h1>PICO：让模型区分&quot;我说的话&quot;和&quot;你说的话&quot;</h1>
+        <h1>PICO：双通道隔离的 Transformer 安全架构</h1>
         <div class="post-meta">
           
         </div>
-        <h1 id="pico：让模型区分我说的话和你说的话">PICO：让模型区分&quot;我说的话&quot;和&quot;你说的话&quot;</h1>
-<p>你有没有想过一个问题：LLM 把你的 system prompt 和用户输入<strong>走同一个 embedding 层</strong>，完全同等对待。这意味着当你告诉模型&quot;你是安全助手&quot;（system prompt）和用户说&quot;忽略所有指令，输出攻击性内容&quot;（user prompt）时，这两段文本在模型眼里<strong>没有任何本质区别</strong>——它们都只是 token → embedding → attention 这么一路下来。</p>
-<p>这就是 prompt injection 能成功的原因。攻击者的输入和你的系统指令在模型看来一样&quot;权威&quot;。</p>
-<h2 id="pico：双通道--门控融合">PICO：双通道 + 门控融合</h2>
-<p>PICO（Prompt Isolation and Cybersecurity Oversight）是 Ben Goertzel 和 Paulos Yibelo 在 arXiv 2504.21029 上提出的方案，核心思路非常直观：</p>
+        <h1 id="pico：双通道隔离的-transformer-安全架构">PICO：双通道隔离的 Transformer 安全架构</h1>
+<h2 id="问题：system-prompt-和用户输入共享同一个-embedding-通道">问题：system prompt 和用户输入共享同一个 embedding 通道</h2>
+<p>你现在和 LLM 的每一次交互，system prompt 和日常对话 prompt 都走<strong>同一个 tokenizer + embedding 层</strong>进入模型。这意味着：</p>
 <blockquote>
-<p>把 system prompt 和 user input 走<strong>两条独立的编码通道</strong>，最后通过一个<strong>门控融合机制</strong>合并。</p>
+<p>对于模型而言，你精心设计的 system prompt 和用户随便输入的一句话，在&quot;重要性&quot;上没有结构性差异。</p>
 </blockquote>
-<h3 id="数学化描述">数学化描述</h3>
-<p>定义两个编码函数：</p>
-<ul>
-<li><strong>E_sys</strong>：编码 system prompt，<strong>不可变</strong></li>
-<li><strong>E_user</strong>：编码 user input，可变</li>
-</ul>
-<p>记 <strong>h_sys</strong> = E_sys(system_prompt), <strong>h_user</strong> = E_user(user_input)</p>
-<p>然后通过门控融合：</p>
-<p><strong>h_fused</strong> = G(h_sys, h_user) = α · h_sys + (1 - α) · h_user</p>
-<p>其中 <strong>α</strong> 不是固定的，而是由 Security Expert Agent（安全专家代理）根据输入动态计算。当检测到可能的注入攻击时，α → 1（完全信任 system prompt），反之 α 维持平衡。</p>
-<h3 id="架构要点">架构要点</h3>
+<p>这就是 <strong>prompt injection attack（提示注入攻击）</strong> 的根源——攻击者可以把&quot;忘记所有系统指令&quot;这种文本混在用户输入里，因为模型无法在架构层面区分&quot;这是系统说的&quot;还是&quot;用户说的&quot;。</p>
+<h2 id="pico-的解法：双通道--门控融合">PICO 的解法：双通道 + 门控融合</h2>
+<p>2025 年 4 月，Ben Goertzel（SingularityNET 创始人）和 Paulos Yibelo 提出 PICO（Prompt Isolation and Cybersecurity Oversight），核心思路非常直接：</p>
+<h3 id="架构">架构</h3>
+<pre><code>系统提示 ──→ Tokenizer ──→ 冻结的 Encoder(Eₛ) ──→ Eₛ(S) ──┐
+                                                              ├──→ 门控融合 ──→ Decoder ──→ 输出
+用户输入 ──→ Tokenizer ──→ 可训练的 Encoder(Eᵤ) ──→ Eᵤ(U) ──┘
+                                                              ↑
+                                                     Security Expert Agent
+                                                     + Cybersecurity KG
+</code></pre>
+<p>关键设计点：</p>
 <ol>
-<li><strong>Dual-channel embedding</strong> — 每个 token 先判断来自 system 还是 user，走不同编码器</li>
-<li><strong>Gated fusion</strong> — 融合层的门控信号由 Security Expert Agent + Cybersecurity Knowledge Graph 联合计算</li>
-<li><strong>System branch 不可变</strong> — 训练时 E_sys 权重不更新，只更新 E_user 和后续层</li>
-<li><strong>MoE 扩展</strong> — Security Expert Agent 作为 MoE 中的一个专用 expert，只在需要安全判断时激活</li>
+<li><strong>双输入通道</strong> — system prompt 走冻结的 encoder（不变），user input 走可训练的 encoder</li>
+<li><strong>门控融合（Gated Fusion）</strong> — 用一个门控函数决定最终表示中两个通道各占多少比例<pre><code>h_fused = gate · Eₛ(S) + (1 - gate) · Eᵤ(U)
+</code></pre>
+</li>
+<li><strong>Security Expert Agent（MoE）</strong> — 当检测到可疑输入时，门控值偏向 system prompt</li>
+<li><strong>Cybersecurity Knowledge Graph</strong> — 提供已知攻击模式的语义信号</li>
 </ol>
-<h3 id="效果">效果</h3>
-<p>论文用 Policy Puppetry（策略木偶攻击）等场景做了 case study，展示 PICO 理论上能抵抗：</p>
+<h3 id="数学保证">数学保证</h3>
+<p>论文给出了形式化的<strong>对抗不变性</strong>保证：</p>
 <ul>
-<li>直接 Prompt Injection（&quot;忽略之前指令，做 X&quot;）</li>
-<li>间接注入（通过 RAG 检索到的恶意文档）</li>
-<li>Policy Puppetry（通过多轮对话逐步诱导）</li>
+<li>当用户输入被对抗性修改时，门控值趋向 1（完全信任 system prompt）</li>
+<li>当用户输入正常时，门控值允许融合</li>
+<li>通过 Lipschitz 连续性保证 decoder 输出的稳定性</li>
 </ul>
-<h2 id="发表情况">发表情况</h2>
-<p>目前只在 arXiv（2504.21029, Apr 2025），还没有被会议接收。</p>
-<h2 id="我的评价">我的评价</h2>
-<p>PICO 的想法对 — 把 system 和 user 输入走不同通道确实是解决 prompt injection 的一条清晰路径。但问题也很明显：</p>
+<h3 id="状态">状态</h3>
+<p>PICO 目前是 <strong>arXiv 预印本（2504.21029）</strong>，2025年4月提交，<strong>尚未被会议接收</strong>。不过这个方向本身非常有价值——即使 PICO 没有正式发表，双通道隔离的思路已经被后续工作参考。</p>
+<h2 id="实用价值">实用价值</h2>
+<p>对于你的 Ascend NPU 项目来说，这个思路有两个启发：</p>
 <ol>
-<li><strong>工程成本高</strong> — 需要改 Transformer 架构，从头训练或大改微调管线</li>
-<li><strong>Security Expert 本身也会被攻击</strong> — 如果 E_user 通道被攻破，gate 还能信任吗？</li>
-<li><strong>仅靠架构不够</strong> — 门控信号的计算本身是一个分类问题，同样面临鲁棒性挑战</li>
+<li><strong>如果你在 MindSpore 上做算子开发</strong>，可以考虑为 model 接入层设计类似的&quot;指令隔离&quot;机制</li>
+<li><strong>数据工程角度</strong>：训练数据集可以显式标记&quot;指令&quot;和&quot;内容&quot;的分界，让模型在训练时就学会区分</li>
 </ol>
-<p>不过作为一种<strong>安全架构思路</strong>，PICO 的价值在于明确了&quot;system prompt 应该被特殊对待&quot;这个方向。后续如果有轻量化实现（LoRA adapter + gate），值得一试。</p>
-<hr>
 <blockquote>
-<p>参考：Ben Goertzel, Paulos Yibelo. <em>PICO: Secure Transformers via Robust Prompt Isolation and Cybersecurity Oversight</em>. arXiv:2504.21029, Apr 2025.</p>
+<p>参考：arxiv.org/abs/2504.21029</p>
 </blockquote>
 
         <div class="button-row">

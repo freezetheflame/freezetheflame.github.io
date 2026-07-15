@@ -638,7 +638,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 164 篇文章
+      共 166 篇文章
     </div>
   </aside>
 
@@ -662,7 +662,7 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 164</span>
+        <span class="section-count" id="visibleCount">15 / 166</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
@@ -670,8 +670,19 @@
       <ul class="post-list" id="postList">
           <li class="post-card" data-tags="">
             <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-07-15-nvidia-polar-agentic-rl/nvidia-polar-agentic-rl.html">nvidia-polar-agentic-rl</a></h3>
+              <p class="post-preview">NVIDIA Polar：对任何 Agent Harness 做强化学习 问题：Agent RL 的工程瓶颈 给 LLM Agent 做强化学习，目前面临一个尴尬的工程问题：</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-07-15</span>
+                <span class="post-card-tags"></span>
+              </div>
+            </div>
+            <a href="posts/2026-07-15-nvidia-polar-agentic-rl/nvidia-polar-agentic-rl.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
+          <li class="post-card" data-tags="">
+            <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-07-15-pico-dual-channel/pico-dual-channel.html">pico-dual-channel</a></h3>
-              <p class="post-preview">PICO：让模型区分&quot;我说的话&quot;和&quot;你说的话&quot; 你有没有想过一个问题：LLM 把你的 system prompt 和用户输入走同一个 embedding 层，完全同等对待。这意味着当你告诉模型&quot;你是安全助手&quot;（system promp...</p>
+              <p class="post-preview">PICO：双通道隔离的 Transformer 安全架构 问题：system prompt 和用户输入共享同一个 embedding 通道 你现在和 LLM 的每一次交互，system prompt 和日常对话 prompt 都走同一...</p>
               <div class="post-card-meta">
                 <span class="post-date">2026-07-15</span>
                 <span class="post-card-tags"></span>
@@ -689,6 +700,17 @@
               </div>
             </div>
             <a href="posts/2026-07-15-pico-polar/pico-polar.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
+          <li class="post-card" data-tags="">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-07-15-rl-for-llms-basics/rl-for-llms-basics.html">rl-for-llms-basics</a></h3>
+              <p class="post-preview">RL for LLMs：从零到完整训练流程</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-07-15</span>
+                <span class="post-card-tags"></span>
+              </div>
+            </div>
+            <a href="posts/2026-07-15-rl-for-llms-basics/rl-for-llms-basics.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="einops,PyTorch,tensor,deep-learning,attention,CNN">
             <div class="post-card-body">
@@ -811,31 +833,9 @@
             </div>
             <a href="posts/2026-06-29-attention-heads-guide/attention-heads-guide.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="FlashAttention,CUDA,Triton,推理优化,深度学习">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-29-flash-attention-deep-dive/flash-attention-deep-dive.html">FlashAttention 完整解析：从原理到 CUDA/Triton 实现</a></h3>
-              <p class="post-preview">如果你在 2022 年某个深夜跑过一个 16K 长度的 transformer 训练任务，一定会记得 OOM 的恐惧——标准的 PyTorch Attention 需要存一个 的 attention score 矩阵，N=16384 ...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-29</span>
-                <span class="post-card-tags"><span class="post-tag">FlashAttention</span><span class="post-tag">CUDA</span><span class="post-tag">Triton</span><span class="post-tag">推理优化</span><span class="post-tag">深度学习</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-29-flash-attention-deep-dive/flash-attention-deep-dive.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
-          <li class="post-card" data-tags="PyTorch,TensorFlow,ONNX,MLIR,TVM,AI Infra,算子,编译器">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-29-framework-operator-insight/framework-operator-insight.html">深度学习框架算子体系深度解析 —— PyTorch / TensorFlow / ONNX / MLIR / TVM 全面对比</a></h3>
-              <p class="post-preview">如果你写过一行 ，你已经在和&quot;算子&quot;打交道了。但同一个算子，在 PyTorch 的 ATen 里是一段 YAML 声明加上 C++ kernel；在 TensorFlow 里是一个 宏加一个 OpKernel 类；在 ONNX 里是一...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-29</span>
-                <span class="post-card-tags"><span class="post-tag">PyTorch</span><span class="post-tag">TensorFlow</span><span class="post-tag">ONNX</span><span class="post-tag">MLIR</span><span class="post-tag">TVM</span><span class="post-tag">AI Infra</span><span class="post-tag">算子</span><span class="post-tag">编译器</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-29-framework-operator-insight/framework-operator-insight.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 164 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 166 篇文章 →</a>
     </section>
   </main>
 

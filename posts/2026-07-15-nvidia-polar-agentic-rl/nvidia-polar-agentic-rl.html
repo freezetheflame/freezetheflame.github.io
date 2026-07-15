@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NVIDIA Polar：对任何 Agent Harness 做强化学习 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">POST</p>
+        <h1>NVIDIA Polar：对任何 Agent Harness 做强化学习</h1>
+        <div class="post-meta">
+          
+        </div>
+        <h1 id="nvidia-polar：对任何-agent-harness-做强化学习">NVIDIA Polar：对任何 Agent Harness 做强化学习</h1>
+<h2 id="问题：agent-rl-的工程瓶颈">问题：Agent RL 的工程瓶颈</h2>
+<p>给 LLM Agent 做强化学习，目前面临一个尴尬的工程问题：</p>
+<blockquote>
+<p>Agent 的执行环境（harness）——比如 Codex CLI、Claude Code、Qwen Code——都有自己一套复杂的 system prompt、工具调用格式、状态管理逻辑。传统的 RL 框架要求把 harness 重写成 <code>env.init()</code> / <code>env.step()</code> / <code>env.reset()</code> 接口，不仅工作量巨大，还会丢失 harness 特有的执行细节。</p>
+</blockquote>
+<p>更麻烦的是，如果 harness 是闭源的（比如 Claude Code），你根本没法改它的代码。</p>
+<h2 id="polar-的核心洞察">Polar 的核心洞察</h2>
+<p>2026 年 5 月，NVIDIA NeMo 团队开源了 <strong>Polar</strong>（GitHub: NVIDIA-NeMo/ProRL-Agent-Server，Apache 2.0）。</p>
+<p>Polar 的洞察非常简洁：</p>
+<blockquote>
+<p>无论什么 agent，它<strong>必须调用 LLM API</strong>。这个 API 边界就是天然的拦截点。</p>
+</blockquote>
+<h3 id="代理（proxy）模式">代理（Proxy）模式</h3>
+<p>Polar 在 agent harness 和 inference server 之间插一个 <strong>API 代理</strong>：</p>
+<pre><code>Agent Harness ──→ [Polar Proxy] ──→ Inference Server (SGLang/vLLM)
+                      │
+                      ▼
+                记录 token 级数据
+                （prompt、response、log probs）
+                      │
+                      ▼
+                重建 RL trajectory
+</code></pre>
+<p>只需要把 harness 的 model base URL 指向 Polar 的 gateway，<strong>不需要改任何 harness 代码</strong>。</p>
+<h3 id="四个核心步骤">四个核心步骤</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>做什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1. 检测提供方 API</td>
+<td>自动识别 Anthropic Messages、OpenAI Chat、Google generateContent</td>
+</tr>
+<tr>
+<td>2. 标准化请求</td>
+<td>把不同格式统一转成 OpenAI Chat Completions</td>
+</tr>
+<tr>
+<td>3. 捕获 token 级数据</td>
+<td>保存 prompt token IDs、sampled token IDs、log probabilities</td>
+</tr>
+<tr>
+<td>4. 还原响应格式</td>
+<td>把结果转回 harness 期望的格式返回，对 harness 完全透明</td>
+</tr>
+</tbody></table></div>
+<h3 id="关键技术">关键技术</h3>
+<ul>
+<li><strong>Token-faithful 重建</strong> — 直接用 inference server 返回的 token IDs 和 log probs 重建训练轨迹，不重新编码，避免 drift</li>
+<li><strong>Prefix Merging</strong> — 多轮对话中复用公共前缀的 hidden states，训练速度提升 <strong>5.39×</strong></li>
+<li><strong>异步解耦</strong> — rollout 节点的 runtime 预热、agent 执行、轨迹重建、评估并行处理</li>
+<li><strong>支持流式</strong> — 对期望 SSE 流式响应的 harness，Polar 先请求非流式结果再合成流式输出</li>
+</ul>
+<h2 id="实验结果">实验结果</h2>
+<p>用简单的 GRPO 算法在 SWE-Bench Verified 上测试：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Harness</th>
+<th>Qwen3.5-4B 基线</th>
+<th>+Polar GRPO</th>
+<th>提升</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Codex CLI</td>
+<td>—</td>
+<td>+22.6</td>
+<td><strong>最大</strong></td>
+</tr>
+<tr>
+<td>Claude Code</td>
+<td>—</td>
+<td>+4.8</td>
+<td></td>
+</tr>
+<tr>
+<td>Qwen Code</td>
+<td>—</td>
+<td>+0.6</td>
+<td>已是 Qwen 亲儿子</td>
+</tr>
+<tr>
+<td>Pi</td>
+<td>—</td>
+<td>+6.2</td>
+<td></td>
+</tr>
+</tbody></table></div>
+<p><strong>+22.6 分</strong> 在 SWE-Bench 上是巨大的提升，说明 harness-native 的训练确实学到了原生执行路径上的细节。</p>
+<h2 id="对-hermes-agent-的启示">对 Hermes Agent 的启示</h2>
+<p>你正在用的 Hermes Agent 本身就是个 agent harness（E-T-C-S-L-V 六元组）。Polar 的思路意味着：</p>
+<p>理论上你可以<strong>把 Hermes 挂到 Polar proxy 后面</strong>，然后用 GRPO 训练一个 &quot;Hermes-native&quot; 的模型——模型学会在 Hermes 的工具调用格式、上下文管理方式下更高效地执行任务。</p>
+<blockquote>
+<p>论文：arxiv.org/abs/2605.24220
+代码：github.com/NVIDIA-NeMo/ProRL-Agent-Server</p>
+</blockquote>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
