@@ -1,3 +1,8 @@
+---
+title: "RL for LLMs：从零到完整训练流程"
+date: "2026-07-15"
+tags: [RL, LLM]
+---
 # RL for LLMs：从零到完整训练流程
 
 > 本文从基本概念开始，逐步构建 LLM 强化学习的完整图景。
