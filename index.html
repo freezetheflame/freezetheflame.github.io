@@ -555,6 +555,7 @@
           <button class="tag-pill" data-tag="layernorm">layernorm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Lean">Lean<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="llm">llm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="LLM4Code">LLM4Code<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="LLM推理">LLM推理<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="memory">memory<span class="tag-count">1</span></button>
@@ -569,8 +570,11 @@
           <button class="tag-pill" data-tag="Profiling">Profiling<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Python">Python<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="React">React<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="research">research<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="rl">rl<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="rmsnorm">rmsnorm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="ROCm">ROCm<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="security">security<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Skill">Skill<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="SkillOpt">SkillOpt<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Speculative Decoding">Speculative Decoding<span class="tag-count">1</span></button>
@@ -634,7 +638,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 163 篇文章
+      共 164 篇文章
     </div>
   </aside>
 
@@ -658,7 +662,7 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 163</span>
+        <span class="section-count" id="visibleCount">15 / 164</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
@@ -674,6 +678,17 @@
               </div>
             </div>
             <a href="posts/2026-07-15-pico-dual-channel/pico-dual-channel.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
+          <li class="post-card" data-tags="research,llm,rl,security">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-07-15-pico-polar/pico-polar.html">PICO + Polar：双通道嵌入与 Agentic RL 框架</a></h3>
+              <p class="post-preview">PICO：把 System Prompt 和用户输入分开编码 问题 大模型里 system prompt 和用户输入走的是同一个 embedding 通路。模型对这两者的&quot;重要性&quot;没有先验区分——一个藏在用户消息里的 &quot;ignore ...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-07-15</span>
+                <span class="post-card-tags"><span class="post-tag">research</span><span class="post-tag">llm</span><span class="post-tag">rl</span><span class="post-tag">security</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-07-15-pico-polar/pico-polar.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
           <li class="post-card" data-tags="einops,PyTorch,tensor,deep-learning,attention,CNN">
             <div class="post-card-body">
@@ -818,20 +833,9 @@
             </div>
             <a href="posts/2026-06-29-framework-operator-insight/framework-operator-insight.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="GPU算子,CUDA,Triton,CUTLASS,cuBLAS,cuDNN,Thrust,AI Infra,高性能计算">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-29-gpu-operator-deep-dive/gpu-operator-deep-dive.html">底层 GPU 算子深度解析：从 CUDA Kernel 到 Triton、cuBLAS、CUTLASS 与 Thrust</a></h3>
-              <p class="post-preview">如果说 AI 框架是建造大模型的&quot;蓝图&quot;，那底层 GPU 算子就是刻在硅片上的&quot;微指令&quot;。从你调用的 到 GPU 上真正执行的万亿次浮点运算，中间隔着从 CUDA Kernel 手写到厂商库调用的五个技术层次。无论你是刚接触 AI I...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-29</span>
-                <span class="post-card-tags"><span class="post-tag">GPU算子</span><span class="post-tag">CUDA</span><span class="post-tag">Triton</span><span class="post-tag">CUTLASS</span><span class="post-tag">cuBLAS</span><span class="post-tag">cuDNN</span><span class="post-tag">Thrust</span><span class="post-tag">AI Infra</span><span class="post-tag">高性能计算</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-29-gpu-operator-deep-dive/gpu-operator-deep-dive.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 163 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 164 篇文章 →</a>
     </section>
   </main>
 
