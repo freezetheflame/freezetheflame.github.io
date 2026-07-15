@@ -31,8 +31,7 @@
           <span>2026-07-15</span>
           <span class="tag">rl</span><span class="tag">agent</span><span class="tag">nvidia</span>
         </div>
-        <h1 id="nvidia-polar：对任何-agent-harness-做强化学习">NVIDIA Polar：对任何 Agent Harness 做强化学习</h1>
-<h2 id="问题：agent-rl-的工程瓶颈">问题：Agent RL 的工程瓶颈</h2>
+        <h2 id="问题：agent-rl-的工程瓶颈">问题：Agent RL 的工程瓶颈</h2>
 <p>给 LLM Agent 做强化学习，目前面临一个尴尬的工程问题：</p>
 <blockquote>
 <p>Agent 的执行环境（harness）——比如 Codex CLI、Claude Code、Qwen Code——都有自己一套复杂的 system prompt、工具调用格式、状态管理逻辑。传统的 RL 框架要求把 harness 重写成 <code>env.init()</code> / <code>env.step()</code> / <code>env.reset()</code> 接口，不仅工作量巨大，还会丢失 harness 特有的执行细节。</p>

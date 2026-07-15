@@ -1,9 +1,8 @@
 ---
 title: "PICO：双通道隔离的 Transformer 安全架构"
 date: "2026-07-15"
-tags: [安全]
+tags: ["pico", "dual-channel", "模型架构"]
 ---
-# PICO：双通道隔离的 Transformer 安全架构
 
 ## 问题：system prompt 和用户输入共享同一个 embedding 通道
 

@@ -29,10 +29,9 @@
         <h1>PICO：双通道隔离的 Transformer 安全架构</h1>
         <div class="post-meta">
           <span>2026-07-15</span>
-          <span class="tag">安全</span>
+          <span class="tag">pico</span><span class="tag">dual-channel</span><span class="tag">模型架构</span>
         </div>
-        <h1 id="pico：双通道隔离的-transformer-安全架构">PICO：双通道隔离的 Transformer 安全架构</h1>
-<h2 id="问题：system-prompt-和用户输入共享同一个-embedding-通道">问题：system prompt 和用户输入共享同一个 embedding 通道</h2>
+        <h2 id="问题：system-prompt-和用户输入共享同一个-embedding-通道">问题：system prompt 和用户输入共享同一个 embedding 通道</h2>
 <p>你现在和 LLM 的每一次交互，system prompt 和日常对话 prompt 都走<strong>同一个 tokenizer + embedding 层</strong>进入模型。这意味着：</p>
 <blockquote>
 <p>对于模型而言，你精心设计的 system prompt 和用户随便输入的一句话，在&quot;重要性&quot;上没有结构性差异。</p>

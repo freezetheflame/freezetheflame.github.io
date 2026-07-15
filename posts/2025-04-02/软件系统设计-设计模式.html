@@ -131,7 +131,11 @@ class Application is
             &quot;Someone has opened the file: %s&quot;)
         editor.events.subscribe(&quot;open&quot;, logger)
         emailAlerts = new EmailAlertsListener(
+<<<<<<< HEAD
             &quot;<a href="mailto:&#x61;&#x64;&#x6d;&#x69;&#110;&#64;&#101;&#120;&#x61;&#x6d;&#x70;&#x6c;&#x65;&#x2e;&#99;&#111;&#x6d;">&#x61;&#x64;&#x6d;&#x69;&#110;&#64;&#101;&#120;&#x61;&#x6d;&#x70;&#x6c;&#x65;&#x2e;&#99;&#111;&#x6d;</a>&quot;,
+=======
+            &quot;<a href="mailto:&#x61;&#x64;&#x6d;&#105;&#110;&#64;&#101;&#x78;&#97;&#x6d;&#112;&#108;&#x65;&#x2e;&#x63;&#x6f;&#109;">&#x61;&#x64;&#x6d;&#105;&#110;&#64;&#101;&#x78;&#97;&#x6d;&#112;&#108;&#x65;&#x2e;&#x63;&#x6f;&#109;</a>&quot;,
+>>>>>>> ac1c7b8 (fix: 删除重复标题，修正标签格式)
             &quot;Someone has changed the file: %s&quot;)
         editor.events.subscribe(&quot;save&quot;, emailAlerts)</p>
 <h3 id="change-manager">change manager</h3>
