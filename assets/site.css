@@ -546,11 +546,18 @@ a {
   overflow-x: auto;
   padding: 16px;
   border-radius: 8px;
-  background: #282c34;
-  color: #abb2bf;
+  background: #f8f5ee;
+  color: #444d45;
   font-size: 14px;
   line-height: 1.6;
   tab-size: 2;
+  border: 1px solid var(--line);
+}
+
+.article pre code {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 450;
+  font-size: 0.9em;
 }
 
 .article pre::-webkit-scrollbar {
@@ -565,8 +572,92 @@ a {
 }
 
 .article code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.9em;
+}
+
+/* ══════ Code Highlighting — Warm Light Theme ══════ */
+/* Overrides atom-one-dark / github from CDN to match blog's warm palette */
+.article .hljs {
+  background: #f8f5ee;
+  color: #444d45;
+}
+
+.article .hljs-keyword,
+.article .hljs-selector-tag,
+.article .hljs-type {
+  color: #2b725f;
+  font-weight: 600;
+}
+
+.article .hljs-string,
+.article .hljs-addition {
+  color: #b76545;
+}
+
+.article .hljs-number,
+.article .hljs-literal,
+.article .hljs-variable {
+  color: #315f9d;
+}
+
+.article .hljs-comment,
+.article .hljs-quote,
+.article .hljs-meta {
+  color: #a8a29e;
+  font-style: italic;
+}
+
+.article .hljs-built_in,
+.article .hljs-builtin-name {
+  color: #953800;
+}
+
+.article .hljs-title,
+.article .hljs-title.function_,
+.article .hljs-title.class_ {
+  color: #8250df;
+  font-weight: 600;
+}
+
+.article .hljs-attr,
+.article .hljs-attribute {
+  color: #315f9d;
+}
+
+.article .hljs-params {
+  color: #444d45;
+}
+
+.article .hljs-selector-class {
+  color: #1a6e6e;
+}
+
+.article .hljs-selector-id {
+  color: #b76545;
+}
+
+.article .hljs-section {
+  color: #2b725f;
+  font-weight: 700;
+}
+
+.article .hljs-deletion {
+  color: #c41e3a;
+  background: rgba(196, 30, 58, 0.06);
+}
+
+.article .hljs-link {
+  color: #315f9d;
+  text-decoration: underline;
+}
+
+.article .hljs-emphasis {
+  font-style: italic;
+}
+
+.article .hljs-strong {
+  font-weight: 700;
 }
 
 .article :not(pre) > code {
