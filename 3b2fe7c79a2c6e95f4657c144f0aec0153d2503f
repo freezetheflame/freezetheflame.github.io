@@ -1,0 +1,14 @@
+{
+  "task": "Published new blog post: biz form platform",
+  "approach": "Created markdown post file, generated static HTML, updated index",
+  "alternatives_considered": [
+    "Write directly on GitHub",
+    "Use a CMS"
+  ],
+  "rejected": "Chose local workflow for better control over formatting",
+  "diff_rationale": "Files: posts/2026-06-19-biz-form-platform/biz-form-platform.html, posts/2026-06-19-biz-form-platform/biz-form-platform.md",
+  "relevant_sessions": [],
+  "agent_version": "git-agent-retro (heuristic)",
+  "timestamp": "2026-07-20T06:03:42Z",
+  "_diff_stat": ".../biz-form-platform.html                         | 237 +++++++++++++++++++++\n .../biz-form-platform.md                           | 218 +++++++++++++++++++\n 2 files changed, 455 insertions(+)"
+}
