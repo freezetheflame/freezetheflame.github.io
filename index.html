@@ -854,27 +854,113 @@
       var activeFilters = document.getElementById('activeFilters');
       var visibleCount = document.getElementById('visibleCount');
       var activeTag = null;
+      var allPosts = [];       // full dataset from data.json
       var cards = Array.from(postList.querySelectorAll('.post-card'));
+      var showingAll = false;  // true when we loaded data.json
+
+      // Load data.json for full-dataset filtering
+      function loadAllPosts() {
+        if (allPosts.length > 0) return Promise.resolve(allPosts);
+        return fetch('posts/data.json').then(function(r) { return r.json(); }).then(function(data) {
+          allPosts = data;
+          return data;
+        }).catch(function() {
+          return null;  // fallback to static cards
+        });
+      }
+
+      // Render a single post card from data.json entry
+      function renderPostCard(post) {
+        var li = document.createElement('li');
+        li.className = 'post-card';
+        li.dataset.tags = (post.tags || []).join(',');
+
+        var tagsHtml = (post.tags || []).map(function(t) {
+          return '<span class="post-tag">' + t + '</span>';
+        }).join('');
+
+        li.innerHTML =
+          '<div class="post-card-body">' +
+            '<h3 class="post-card-title"><a href="posts/' + post.path + '">' + post.title + '</a></h3>' +
+            '<div class="post-card-meta">' +
+              '<span class="post-date">' + post.date.slice(0, 10) + '</span>' +
+              '<span class="post-card-tags">' + tagsHtml + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<a href="posts/' + post.path + '" class="post-card-arrow" aria-hidden="true">→</a>';
+        return li;
+      }
 
       function filter() {
         var term = sidebarSearch.value.toLowerCase();
         var visible = 0;
+
+        if (activeTag) {
+          // Full-dataset filtering: load from data.json
+          loadAllPosts().then(function(data) {
+            if (!data) {
+              // Fallback: filter visible cards only
+              filterCards(term);
+              return;
+            }
+            showingAll = true;
+            var matches = data.filter(function(post) {
+              var tags = (post.tags || []).map(function(t) { return t.toLowerCase(); });
+              var matchTag = tags.indexOf(activeTag.toLowerCase()) !== -1;
+              if (!matchTag) return false;
+              if (!term) return true;
+              return post.title.toLowerCase().includes(term);
+            });
+
+            // Rebuild post list
+            postList.innerHTML = '';
+            matches.forEach(function(post) {
+              postList.appendChild(renderPostCard(post));
+            });
+
+            visible = matches.length;
+            visibleCount.textContent = visible + ' / ' + data.length;
+            updateFilterBar();
+            highlightPills();
+          });
+          return;
+        }
+
+        // No active tag: filter static cards (original behavior)
+        showingAll = false;
+        filterCards(term);
+      }
+
+      // Original static-card filter (search only, no tag)
+      function filterCards(term) {
+        var visible = 0;
         cards.forEach(function(card) {
-          var tags = (card.dataset.tags || '').toLowerCase();
           var text = card.textContent.toLowerCase();
           var matchSearch = !term || text.includes(term);
-          var matchTag = !activeTag || tags.split(',').includes(activeTag.toLowerCase());
-          card.style.display = (matchSearch && matchTag) ? '' : 'none';
-          if (matchSearch && matchTag) visible++;
+          card.style.display = matchSearch ? '' : 'none';
+          if (matchSearch) visible++;
         });
+        // Show static cards if hidden
+        cards.forEach(function(c) { postList.appendChild(c); });
         visibleCount.textContent = visible + ' / ' + cards.length;
+        updateFilterBar();
+        highlightPills();
+      }
+
+      function updateFilterBar() {
         if (activeTag) {
           activeFilters.innerHTML = '筛选: <span class="active-filter-tag">' + activeTag + ' <button class="active-filter-clear" onclick="clearFilter()">✕</button></span>';
           activeFilters.style.display = 'flex';
         } else {
           activeFilters.style.display = 'none';
         }
-        // highlight active tag pill
+        var viewAll = document.querySelector('.view-all');
+        if (viewAll) {
+          viewAll.style.display = activeTag ? 'none' : '';
+        }
+      }
+
+      function highlightPills() {
         document.querySelectorAll('.tag-pill').forEach(function(pill) {
           pill.classList.toggle('active', pill.dataset.tag === activeTag);
         });
@@ -883,7 +969,11 @@
       window.clearFilter = function() {
         activeTag = null;
         sidebarSearch.value = '';
-        filter();
+        // Restore original cards
+        postList.innerHTML = '';
+        cards.forEach(function(c) { postList.appendChild(c); });
+        showingAll = false;
+        filterCards('');
       };
 
       sidebarSearch.addEventListener('input', filter);
@@ -894,9 +984,10 @@
         if (!pill) return;
         if (activeTag === pill.dataset.tag) {
           activeTag = null;
-        } else {
-          activeTag = pill.dataset.tag;
+          window.clearFilter();
+          return;
         }
+        activeTag = pill.dataset.tag;
         filter();
       });
     })();
