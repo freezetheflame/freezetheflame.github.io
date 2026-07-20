@@ -1,0 +1,11 @@
+{
+  "task": "Updated blog posts: blog: einops 实用指南",
+  "approach": "Modified existing post files",
+  "alternatives_considered": [],
+  "rejected": "",
+  "diff_rationale": "Files: posts/2026-07-12-einops-guide/einops-guide.md",
+  "relevant_sessions": [],
+  "agent_version": "git-agent-retro (heuristic)",
+  "timestamp": "2026-07-20T06:03:43Z",
+  "_diff_stat": "posts/2026-07-12-einops-guide/einops-guide.md | 628 ++++++++++++++++++++------\n 1 file changed, 497 insertions(+), 131 deletions(-)"
+}
