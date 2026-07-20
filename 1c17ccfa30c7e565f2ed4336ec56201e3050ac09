@@ -1,0 +1,14 @@
+{
+  "task": "Published new blog post: transformer mlp swiglu",
+  "approach": "Created markdown post file, generated static HTML, updated index",
+  "alternatives_considered": [
+    "Write directly on GitHub",
+    "Use a CMS"
+  ],
+  "rejected": "Chose local workflow for better control over formatting",
+  "diff_rationale": "Files: index.html, posts/2026-07-03-transformer-mlp-swiglu/transformer-mlp-swiglu.html, posts/2026-07-03-transformer-mlp-swiglu/transformer-mlp-swiglu.md, posts/data.json, posts/index.html",
+  "relevant_sessions": [],
+  "agent_version": "git-agent-retro (heuristic)",
+  "timestamp": "2026-07-20T06:03:42Z",
+  "_diff_stat": "index.html                                         |  35 ++--\n .../transformer-mlp-swiglu.html                    | 216 +++++++++++++++++++++\n .../transformer-mlp-swiglu.md                      | 208 ++++++++++++++++++++\n posts/data.json                                    |   2 +-\n posts/index.html                                   |  17 +-\n 5 files changed, 458 insertions(+), 20 deletions(-)"
+}
