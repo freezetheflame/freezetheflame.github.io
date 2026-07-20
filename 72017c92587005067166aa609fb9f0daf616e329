@@ -1,0 +1,14 @@
+{
+  "task": "Published new blog post: flash attention deep dive",
+  "approach": "Created markdown post file, generated static HTML, updated index",
+  "alternatives_considered": [
+    "Write directly on GitHub",
+    "Use a CMS"
+  ],
+  "rejected": "Chose local workflow for better control over formatting",
+  "diff_rationale": "Files: index.html, \"posts/2025-01-20/\\351\\200\\232\\351\\205\\215\\347\\254\\246\\344\\270\\216\\346\\255\\243\\345\\210\\231\\345\\214\\271\\351\\205\\215.html\", \"posts/2025-04-02/\\350\\275\\257\\344\\273\\266\\347\\263\\273\\347\\273\\237\\350\\256\\276\\350\\256\\241-\\350\\256\\276\\350\\256\\241\\346\\250\\241\\345\\274\\217.html\", posts/2026-06-29-flash-attention-deep-dive/flash-attention-deep-dive.html, posts/2026-06-29-flash-attention-deep-dive/flash-attention-deep-dive.md +16 more",
+  "relevant_sessions": [],
+  "agent_version": "git-agent-retro (heuristic)",
+  "timestamp": "2026-07-20T06:03:42Z",
+  "_diff_stat": "index.html                                         |  224 +--\n ...5\\243\\345\\210\\231\\345\\214\\271\\351\\205\\215.html\" |    2 +-\n ...6\\276\\350\\256\\241\\346\\250\\241\\345\\274\\217.html\" |    2 +-\n .../flash-attention-deep-dive.html                 | 1283 ++++++++++++++\n .../flash-attention-deep-dive.md                   | 1079 ++++++++++++\n .../framework-operator-insight.html                | 1066 ++++++++++++\n .../framework-operator-insight.md                  |  827 +++++++++\n .../gpu-operator-deep-dive.html                    | 1118 +++++++++++++\n .../gpu-operator-deep-dive.md                      |  836 ++++++++++\n .../hardware-operator-adaptation.html              | 1014 +++++++++++\n .../hardware-operator-adaptation.md                |  624 +++++++\n .../inference-optimization-deep-dive.html          | 1016 +++++++++++\n .../inference-optimization-deep-dive.md            |  927 +++++++++++\n .../moe-operator-deep-dive.html                    | 1423 ++++++++++++++++\n .../moe-operator-deep-dive.md                      | 1273 ++++++++++++++\n .../operator-testing-guide.html                    | 1104 ++++++++++++\n .../operator-testing-guide.md                      |  980 +++++++++++\n .../quantization-deep-dive.html                    | 1759 ++++++++++++++++++++\n .../quantization-deep-dive.md                      | 1344 +++++++++++++++\n posts/data.json                                    |    2 +-\n posts/index.html                                   |  127 +-\n 21 files changed, 17920 insertions(+), 110 deletions(-)"
+}
