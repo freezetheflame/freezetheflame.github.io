@@ -1,0 +1,14 @@
+{
+  "task": "Published new blog post: gaokao math ds kickoff",
+  "approach": "Created markdown post file, generated static HTML, updated index",
+  "alternatives_considered": [
+    "Write directly on GitHub",
+    "Use a CMS"
+  ],
+  "rejected": "Chose local workflow for better control over formatting",
+  "diff_rationale": "Files: posts/2026-07-12-gaokao-math-ds-kickoff/gaokao-math-ds-kickoff.md",
+  "relevant_sessions": [],
+  "agent_version": "git-agent-retro (heuristic)",
+  "timestamp": "2026-07-20T06:03:43Z",
+  "_diff_stat": ".../gaokao-math-ds-kickoff.md                      | 40 ++++++++++++++++++++++\n 1 file changed, 40 insertions(+)"
+}
