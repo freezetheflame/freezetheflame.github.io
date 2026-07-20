@@ -1,0 +1,14 @@
+{
+  "task": "Published new blog post: pythagoras prover",
+  "approach": "Created markdown post file, generated static HTML, updated index",
+  "alternatives_considered": [
+    "Write directly on GitHub",
+    "Use a CMS"
+  ],
+  "rejected": "Chose local workflow for better control over formatting",
+  "diff_rationale": "Files: index.html, \"posts/2025-01-20/\\351\\200\\232\\351\\205\\215\\347\\254\\246\\344\\270\\216\\346\\255\\243\\345\\210\\231\\345\\214\\271\\351\\205\\215.html\", \"posts/2025-04-02/\\350\\275\\257\\344\\273\\266\\347\\263\\273\\347\\273\\237\\350\\256\\276\\350\\256\\241-\\350\\256\\276\\350\\256\\241\\346\\250\\241\\345\\274\\217.html\", posts/2026-06-14-pythagoras-prover/images/accepted_rejected_totals_vertical-1.png, posts/2026-06-14-pythagoras-prover/images/error_distribution_donut_tight_legend-1.png +9 more",
+  "relevant_sessions": [],
+  "agent_version": "git-agent-retro (heuristic)",
+  "timestamp": "2026-07-20T06:03:41Z",
+  "_diff_stat": "index.html                                         |  35 ++--\n ...5\\243\\345\\210\\231\\345\\214\\271\\351\\205\\215.html\" |   2 +-\n ...6\\276\\350\\256\\241\\346\\250\\241\\345\\274\\217.html\" |   2 +-\n .../images/accepted_rejected_totals_vertical-1.png | Bin 0 -> 74183 bytes\n .../error_distribution_donut_tight_legend-1.png    | Bin 0 -> 82861 bytes\n .../images/fig_3_minif2f_alf_cropped-1.png         | Bin 0 -> 251604 bytes\n .../images/figure_1_-miniALF_1_cropped-1.png       | Bin 0 -> 209578 bytes\n .../images/pass32_comparison-1.png                 | Bin 0 -> 47983 bytes\n .../images/prover_fig1-1.png                       | Bin 0 -> 381980 bytes\n .../pythagoras_prover_comparison_barplot-1.png     | Bin 0 -> 41863 bytes\n .../pythagoras-prover.html                         | 212 +++++++++++++++++++++\n .../pythagoras-prover.md                           | 178 +++++++++++++++++\n posts/data.json                                    |   2 +-\n posts/index.html                                   |  17 +-\n 14 files changed, 429 insertions(+), 19 deletions(-)"
+}
