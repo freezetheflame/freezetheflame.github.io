@@ -1,0 +1,18 @@
+{
+  "task": "Fix tag filtering: sidebar counts vs post list mismatch",
+  "approach": "Replaced static-card-only filtering with dynamic fetch from data.json. When a tag is clicked, load all 165 posts from data.json, filter by tag, and render matching cards on the fly. Clears dynamically loaded cards when filter is removed.",
+  "alternatives_considered": [
+    "Re-render full static HTML for every tag — too much build-time effort",
+    "JS filter on all 165 static cards — would bloat homepage HTML loading time",
+    "AJAX pagination — overkill for a blog"
+  ],
+  "rejected": "Static approach won't work because homepage only embeds 15 most recent posts. Dynamic fetch from existing data.json is minimal (single HTTP GET), uses already-available data, no backend change.",
+  "diff_rationale": "index.html: replaced tag filter function. New logic: on tag click → fetch('posts/data.json') → filter full dataset → rebuild post list DOM. On clear → restore original 15 static cards. Search inside tag filters by title from data.json. Preserves original UX for no-tag state.",
+  "relevant_sessions": [
+    "2026-07-20-blog-bugfix"
+  ],
+  "agent_version": "hermes-agent",
+  "confidence": "high",
+  "timestamp": "2026-07-20T06:18:30Z",
+  "_diff_stat": "index.html | 107 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----\n 1 file changed, 99 insertions(+), 8 deletions(-)"
+}
