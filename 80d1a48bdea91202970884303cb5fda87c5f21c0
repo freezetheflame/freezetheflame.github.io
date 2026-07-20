@@ -1,0 +1,14 @@
+{
+  "task": "Published new blog post: ssd speculative speculative decoding",
+  "approach": "Created markdown post file, generated static HTML, updated index",
+  "alternatives_considered": [
+    "Write directly on GitHub",
+    "Use a CMS"
+  ],
+  "rejected": "Chose local workflow for better control over formatting",
+  "diff_rationale": "Files: index.html, posts/2026-07-09-ssd-speculative-speculative-decoding/ssd-speculative-speculative-decoding.html, posts/2026-07-09-ssd-speculative-speculative-decoding/ssd-speculative-speculative-decoding.md, posts/data.json, posts/index.html",
+  "relevant_sessions": [],
+  "agent_version": "git-agent-retro (heuristic)",
+  "timestamp": "2026-07-20T06:05:23Z",
+  "_diff_stat": "index.html                                         |  35 ++++---\n .../ssd-speculative-speculative-decoding.html      | 110 +++++++++++++++++++++\n .../ssd-speculative-speculative-decoding.md        |  68 +++++++++++++\n posts/data.json                                    |   2 +-\n posts/index.html                                   |  19 +++-\n 5 files changed, 213 insertions(+), 21 deletions(-)"
+}
