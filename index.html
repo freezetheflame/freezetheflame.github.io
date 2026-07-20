@@ -298,6 +298,16 @@
       background: none; border: none;
       color: var(--clay); font-size: 15px; cursor: pointer;
     }
+    .active-filter-clear-all {
+      margin-left: 6px;
+      background: none; border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 12px;
+      color: var(--fg-muted);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .active-filter-clear-all:hover { background: var(--bg-hover); color: var(--fg); }
 
     .post-list {
       display: grid;
@@ -853,7 +863,7 @@
       var postList = document.getElementById('postList');
       var activeFilters = document.getElementById('activeFilters');
       var visibleCount = document.getElementById('visibleCount');
-      var activeTag = null;
+      var activeTags = [];
       var allPosts = [];       // full dataset from data.json
       var cards = Array.from(postList.querySelectorAll('.post-card'));
       var showingAll = false;  // true when we loaded data.json
@@ -891,23 +901,28 @@
         return li;
       }
 
+      function matchesAnyTag(postTags, activeTags) {
+        if (activeTags.length === 0) return true;
+        var lowerTags = (postTags || []).map(function(t) { return t.toLowerCase(); });
+        return activeTags.some(function(at) {
+          return lowerTags.indexOf(at.toLowerCase()) !== -1;
+        });
+      }
+
       function filter() {
         var term = sidebarSearch.value.toLowerCase();
         var visible = 0;
 
-        if (activeTag) {
+        if (activeTags.length > 0) {
           // Full-dataset filtering: load from data.json
           loadAllPosts().then(function(data) {
             if (!data) {
-              // Fallback: filter visible cards only
               filterCards(term);
               return;
             }
             showingAll = true;
             var matches = data.filter(function(post) {
-              var tags = (post.tags || []).map(function(t) { return t.toLowerCase(); });
-              var matchTag = tags.indexOf(activeTag.toLowerCase()) !== -1;
-              if (!matchTag) return false;
+              if (!matchesAnyTag(post.tags, activeTags)) return false;
               if (!term) return true;
               return post.title.toLowerCase().includes(term);
             });
@@ -926,12 +941,11 @@
           return;
         }
 
-        // No active tag: filter static cards (original behavior)
+        // No active tags: filter static cards (original behavior)
         showingAll = false;
         filterCards(term);
       }
 
-      // Original static-card filter (search only, no tag)
       function filterCards(term) {
         var visible = 0;
         cards.forEach(function(card) {
@@ -947,27 +961,39 @@
         highlightPills();
       }
 
+      function removeTag(tag) {
+        activeTags = activeTags.filter(function(t) { return t !== tag; });
+        if (activeTags.length === 0) {
+          window.clearFilter();
+        } else {
+          filter();
+        }
+      }
+
       function updateFilterBar() {
-        if (activeTag) {
-          activeFilters.innerHTML = '筛选: <span class="active-filter-tag">' + activeTag + ' <button class="active-filter-clear" onclick="clearFilter()">✕</button></span>';
+        if (activeTags.length > 0) {
+          var chips = activeTags.map(function(t) {
+            return '<span class="active-filter-tag">' + t + ' <button class="active-filter-clear" onclick="removeTag(\'' + t.replace(/'/g, "\\'") + '\')">✕</button></span>';
+          }).join('');
+          activeFilters.innerHTML = '筛选: ' + chips + ' <button class="active-filter-clear-all" onclick="clearFilter()">清除全部</button>';
           activeFilters.style.display = 'flex';
         } else {
           activeFilters.style.display = 'none';
         }
         var viewAll = document.querySelector('.view-all');
         if (viewAll) {
-          viewAll.style.display = activeTag ? 'none' : '';
+          viewAll.style.display = activeTags.length > 0 ? 'none' : '';
         }
       }
 
       function highlightPills() {
         document.querySelectorAll('.tag-pill').forEach(function(pill) {
-          pill.classList.toggle('active', pill.dataset.tag === activeTag);
+          pill.classList.toggle('active', activeTags.indexOf(pill.dataset.tag) !== -1);
         });
       }
 
       window.clearFilter = function() {
-        activeTag = null;
+        activeTags = [];
         sidebarSearch.value = '';
         // Restore original cards
         postList.innerHTML = '';
@@ -982,12 +1008,19 @@
       document.getElementById('tagList').addEventListener('click', function(e) {
         var pill = e.target.closest('.tag-pill');
         if (!pill) return;
-        if (activeTag === pill.dataset.tag) {
-          activeTag = null;
-          window.clearFilter();
-          return;
+        var tag = pill.dataset.tag;
+        var idx = activeTags.indexOf(tag);
+        if (idx !== -1) {
+          // Deselect
+          activeTags.splice(idx, 1);
+          if (activeTags.length === 0) {
+            window.clearFilter();
+            return;
+          }
+        } else {
+          // Select (add)
+          activeTags.push(tag);
         }
-        activeTag = pill.dataset.tag;
         filter();
       });
     })();
