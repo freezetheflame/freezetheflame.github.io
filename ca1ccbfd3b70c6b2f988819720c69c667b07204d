@@ -1,0 +1,17 @@
+{
+  "task": "Add multi-tag filter support to blog homepage",
+  "approach": "Changed activeTag (single string) to activeTags (array) with OR logic. Added individual tag remove via ✕ buttons and a '清除全部' button. Tag pills highlight independently for all active tags.",
+  "alternatives_considered": [
+    "AND logic — too restrictive, few posts have multiple specific tags",
+    "Server-side filtering — overkill for a static blog"
+  ],
+  "rejected": "AND filtering would show 0 results for most multi-tag queries. OR is more useful for discovery.",
+  "diff_rationale": "index.html: activeTag → activeTags[]. matchesAnyTag() uses Array.some(). updateFilterBar() renders all active chips + clear-all button. removeTag() splices from array. Tag click toggles in/out.",
+  "relevant_sessions": [
+    "2026-07-20-blog-bugfix"
+  ],
+  "agent_version": "hermes-agent",
+  "confidence": "high",
+  "timestamp": "2026-07-20T06:21:16Z",
+  "_diff_stat": "index.html | 69 ++++++++++++++++++++++++++++++++++++++++++++++----------------\n 1 file changed, 51 insertions(+), 18 deletions(-)"
+}
