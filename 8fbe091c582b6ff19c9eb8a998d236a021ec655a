@@ -1,0 +1,14 @@
+{
+  "task": "Published new blog post: pico dual channel",
+  "approach": "Created markdown post file, generated static HTML, updated index",
+  "alternatives_considered": [
+    "Write directly on GitHub",
+    "Use a CMS"
+  ],
+  "rejected": "Chose local workflow for better control over formatting",
+  "diff_rationale": "Files: index.html, \"posts/2025-01-20/\\351\\200\\232\\351\\205\\215\\347\\254\\246\\344\\270\\216\\346\\255\\243\\345\\210\\231\\345\\214\\271\\351\\205\\215.html\", \"posts/2025-04-02/\\350\\275\\257\\344\\273\\266\\347\\263\\273\\347\\273\\237\\350\\256\\276\\350\\256\\241-\\350\\256\\276\\350\\256\\241\\346\\250\\241\\345\\274\\217.html\", posts/2026-07-15-pico-dual-channel/pico-dual-channel.html, posts/2026-07-15-pico-dual-channel/pico-dual-channel.md +2 more",
+  "relevant_sessions": [],
+  "agent_version": "git-agent-retro (heuristic)",
+  "timestamp": "2026-07-20T06:03:43Z",
+  "_diff_stat": "index.html                                         |  28 ++--\n ...5\\243\\345\\210\\231\\345\\214\\271\\351\\205\\215.html\" |   2 +-\n ...6\\276\\350\\256\\241\\346\\250\\241\\345\\274\\217.html\" |   2 +-\n .../pico-dual-channel.html                         | 147 +++++++++++++++++++++\n .../pico-dual-channel.md                           | 111 ++++++++++++++++\n posts/data.json                                    |   2 +-\n posts/index.html                                   |  11 +-\n 7 files changed, 284 insertions(+), 19 deletions(-)"
+}
