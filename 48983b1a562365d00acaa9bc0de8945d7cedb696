@@ -1,0 +1,11 @@
+{
+  "task": "Fixed issues in blog posts: fix: escape underscores in KaTeX formula (attention heads gu",
+  "approach": "Edited post files to fix formatting, tags, or content issues",
+  "alternatives_considered": [],
+  "rejected": "",
+  "diff_rationale": "Files: posts/2026-06-29-attention-heads-guide/attention-heads-guide.html, posts/2026-06-29-attention-heads-guide/attention-heads-guide.md",
+  "relevant_sessions": [],
+  "agent_version": "git-agent-retro (heuristic)",
+  "timestamp": "2026-07-20T06:03:43Z",
+  "_diff_stat": "posts/2026-06-29-attention-heads-guide/attention-heads-guide.html | 2 +-\n posts/2026-06-29-attention-heads-guide/attention-heads-guide.md   | 2 +-\n 2 files changed, 2 insertions(+), 2 deletions(-)"
+}
