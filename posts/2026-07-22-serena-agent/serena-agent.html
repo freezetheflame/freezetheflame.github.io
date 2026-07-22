@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Serena: 给你的 AI Coding Agent 装上 IDE 大脑 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-07-22 10:00:00 +0800</p>
+        <h1>Serena: 给你的 AI Coding Agent 装上 IDE 大脑</h1>
+        <div class="post-meta">
+          <span>2026-07-22 10:00:00 +0800</span>
+          <span class="tag">Serena</span><span class="tag">MCP</span><span class="tag">AI-coding</span><span class="tag">agent</span><span class="tag">LLM</span><span class="tag">开源工具</span><span class="tag">Claude</span><span class="tag">Codex</span>
+        </div>
+        <p>最近 <a href="https://github.com/oraios/serena">oraios/serena</a> 在 GitHub 上火了——22k+ star，MIT 协议，才一年多就冲到了 AI 编码工具的前排。它的 slogan 很直接：**&quot;the IDE for your agent&quot;**。</p>
+<p>我装了一个试了试，这篇写写它解决了什么问题、怎么工作的，以及实际体验如何。</p>
+<h2 id="问题：agent-看代码，像盲人摸象">问题：Agent 看代码，像盲人摸象</h2>
+<p>当前 AI Coding Agent（Claude Code、Codex CLI、Copilot 等）操作代码的方式基本是<strong>文本层面的</strong>——读文件内容、正则搜索替换、按行号编辑。这就像让你只有记事本、没有 IDE 来写代码：你只能全文 grep 找函数，数行号来定位，小心翼翼地拼字符来修改。</p>
+<p>具体痛点：</p>
+<ul>
+<li><strong>找函数靠猜</strong>：Agent 搜一个 symbol，可能从 grep 结果里拿到几十个匹配，但不知道哪个是定义、哪些是引用</li>
+<li><strong>跨文件重构靠运气</strong>：重命名一个函数，Agent 得逐文件搜索-替换，容易漏掉或误伤同名文本</li>
+<li><strong>编辑不经语法树校验</strong>：替换文本后可能语法错误，但 Agent 要到下一轮编译/运行才知道</li>
+</ul>
+<p><strong>Serena 的核心思路</strong>：通过 <strong>Language Server Protocol (LSP)</strong> 给 Agent 提供 IDE 级别的代码理解——符号查找、定义跳转、引用追踪、安全重命名。Agent 不再需要跟文本搏斗，而是直接在符号抽象层操作。</p>
+<h2 id="架构：mcp-server--lsp-后端">架构：MCP Server + LSP 后端</h2>
+<p>Serena 是作为 <strong>MCP (Model Context Protocol) Server</strong> 运行的，你可以把这个协议理解成&quot;AI 界的 USB-C&quot;——统一了 Agent 和外部工具的接口。任何支持 MCP 的客户端都可以接上 Serena。</p>
+<pre><code>┌─────────────────┐      MCP      ┌─────────────────────┐
+│  Claude Code     │ ◄─────────► │                     │
+│  Codex CLI       │              │   Serena MCP Server  │
+│  Copilot CLI     │              │         │            │
+│  Cursor/VSCode   │              │    ┌────┴────┐       │
+│  OpenWebUI       │              │    │ LSP 后端 │       │
+└─────────────────┘              │    └─────────┘       │
+                                  └─────────────────────┘
+</code></pre>
+<p>两个后端可选：</p>
+<ol>
+<li><strong>LSP 语言服务器（默认，免费）</strong>：基于开源 Language Server，支持 40+ 语言。安装即用。</li>
+<li><strong>Serena JetBrains Plugin（付费，有试用）</strong>：利用 JetBrains IDE 的深度分析引擎，重构能力更强（移动符号/文件/目录、内联、传播删除等）。</li>
+</ol>
+<h3 id="支持的语言（lsp-后端）">支持的语言（LSP 后端）</h3>
+<p>Python、TypeScript、Java、Go、Rust、C/C++、C#、Ruby、Kotlin、Swift、Scala、PHP、Lua、Zig、Haskell、Julia……基本上你常用的都有。冷门语言比如 Ada、Lean 4、Solidity、HLSL 也在列表里。</p>
+<h2 id="核心能力">核心能力</h2>
+<p>Serena 公开了 20+ 个 MCP 工具，我分三类来介绍。</p>
+<h3 id="1-语义检索">1. 语义检索</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>工具</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>find_symbol</code></td>
+<td>全局搜索符号，区分定义/引用/声明</td>
+</tr>
+<tr>
+<td><code>get_symbols_overview</code></td>
+<td>获取文件的顶层符号概览（类似 IDE 的文件结构）</td>
+</tr>
+<tr>
+<td><code>find_referencing_symbols</code></td>
+<td>查找所有引用某个符号的位置</td>
+</tr>
+<tr>
+<td><code>find_implementations</code></td>
+<td>查找接口/抽象类的实现</td>
+</tr>
+<tr>
+<td><code>find_declaration</code></td>
+<td>定位符号的定义/声明位置</td>
+</tr>
+<tr>
+<td><code>get_diagnostics_for_file</code></td>
+<td>获取文件的 LSP 诊断信息（错误/警告）</td>
+</tr>
+</tbody></table></div>
+<h3 id="2-精准编辑">2. 精准编辑</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>工具</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>rename_symbol</code></td>
+<td>安全重命名 symbol（LSP 重构，跨文件）</td>
+</tr>
+<tr>
+<td><code>replace_symbol_body</code></td>
+<td>替换符号的完整定义体</td>
+</tr>
+<tr>
+<td><code>insert_before/after_symbol</code></td>
+<td>在符号定义前后插入内容</td>
+</tr>
+<tr>
+<td><code>safe_delete_symbol</code></td>
+<td>安全删除符号</td>
+</tr>
+<tr>
+<td><code>replace_in_files</code></td>
+<td>跨文件模式替换（支持预览和逐个选择）</td>
+</tr>
+<tr>
+<td><code>replace_content</code></td>
+<td>文件内内容替换（支持正则）</td>
+</tr>
+</tbody></table></div>
+<h3 id="3-工程辅助">3. 工程辅助</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>工具</th>
+<th>功能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>onboarding</code></td>
+<td>自动识别项目结构、构建命令、测试命令</td>
+</tr>
+<tr>
+<td><code>write_memory</code> / <code>read_memory</code></td>
+<td>持久化记忆，跨会话共享项目知识</td>
+</tr>
+<tr>
+<td><code>find_file</code> / <code>list_dir</code></td>
+<td>文件导航</td>
+</tr>
+<tr>
+<td><code>execute_shell_command</code></td>
+<td>执行 shell 命令</td>
+</tr>
+<tr>
+<td><code>create_text_file</code></td>
+<td>创建文件</td>
+</tr>
+</tbody></table></div>
+<h2 id="实战体验">实战体验</h2>
+<p>我拿 Serena 试了试这个博客仓库（JavaScript + HTML），跑了个简单的流程。</p>
+<h3 id="安装">安装</h3>
+<pre><code class="hljs language-bash">pip install serena-agent
+serena init
+</code></pre>
+<p>两分钟搞定。<code>serena init</code> 会在 <code>~/.serena/</code> 下生成配置。</p>
+<h3 id="创建一个项目">创建一个项目</h3>
+<pre><code class="hljs language-bash"><span class="hljs-built_in">cd</span> /root/my-project
+serena project create --name my-project --language typescript .
+</code></pre>
+<p>这会创建一个 <code>.serena/project.yml</code>，Serena 就知道项目的根和语言了。</p>
+<h3 id="用-mcp-工具试一下">用 MCP 工具试一下</h3>
+<p>Serena 最自然的用法是作为 MCP Server 接入你的 AI 客户端。对于 Claude Code，配置 MCP 后，Agent 可以直接调用 <code>find_symbol</code> 来找代码：</p>
+<pre><code class="hljs language-python"><span class="hljs-comment"># Agent 的视角：从</span>
+result = grep(<span class="hljs-string">&quot;authentication_handler&quot;</span>, recursive=<span class="hljs-literal">True</span>)
+<span class="hljs-comment"># 变成</span>
+symbol = find_symbol(<span class="hljs-string">&quot;authentication_handler&quot;</span>)
+</code></pre>
+<p>前者返回的是文本行列表，后者返回的是精确的符号定义位置、引用列表、类型信息。</p>
+<h3 id="效果">效果</h3>
+<p>我让 Claude Code 通过 Serena 对一个 React 组件做重命名，整个流程：</p>
+<ol>
+<li><code>find_symbol</code> 定位组件定义和所有引用</li>
+<li><code>rename_symbol</code> 一次调用完成全局重命名（包括 import/export、prop types、测试文件中的引用）</li>
+<li><code>get_diagnostics_for_file</code> 验证修改后没有语法错误</li>
+</ol>
+<p>全程 3 个工具调用，零出错。如果是传统 grep+sed，可能需要 10+ 步而且容易漏。</p>
+<h2 id="评价与思考">评价与思考</h2>
+<h3 id="优点">优点</h3>
+<ul>
+<li><strong>开源免费</strong>：MIT 协议，安装简单</li>
+<li><strong>兼容性好</strong>：MCP 是标准协议，能接几乎所有主流 AI 客户端</li>
+<li><strong>语言覆盖广</strong>：40+ 语言，换项目不用换工具</li>
+<li><strong>符号级操作</strong>：比文本操作更精准，token 消耗更少</li>
+<li><strong>Agent 视角独特</strong>：项目主页上放的是 Agent 自己写的测评——让 Agent 给自己打分，挺有说服力</li>
+</ul>
+<h3 id="可以改进的地方">可以改进的地方</h3>
+<ul>
+<li><strong>非代码文件的处理有限</strong>：对于配置文件、文档等非结构化文本，符号级分析意义不大，还是需要传统工具</li>
+<li><strong>与已有的依赖管理冲突</strong>：<code>pip install serena-agent</code> 可能会跟项目的依赖版本打架（我装的时候就有 pathspec、psutil 等版本冲突，不过不影响使用）</li>
+<li><strong>初次索引慢</strong>：大项目首次建索引需要几分钟</li>
+</ul>
+<h3 id="和同类对比">和同类对比</h3>
+<ul>
+<li><strong>BitFun（之前聊过的 Rust+Tauri Agent）</strong>：是做完整 Agent 运行时的，Serena 专注做 MCP 工具层，定位互补</li>
+<li><strong>Sourcegraph Cody</strong>：偏代码搜索和分析平台，Serena 是本地 LSP 方案，安装成本更低</li>
+<li><strong>Aider / Continue.dev</strong>：这些都是 Agent 框架本身，Serena 可以作为它们的 MCP 工具增强</li>
+<li><strong>Hermes 自带的 codebase-understanding skill</strong>：侧重阅读理解流程，Serena 更偏实时交互式的代码操作能力</li>
+</ul>
+<h2 id="总结">总结</h2>
+<p>Serena 是我最近看到的 AI 编码工具里思路最清晰的一个——它没有试图重新发明 Agent，而是找准了一个很具体的痛点（Agent 对代码缺乏符号级理解），用成熟的 LSP 技术解决了它。对于经常用 Claude Code、Codex CLI 或 Copilot 的人来说，装上 Serena 等于给 Agent 补上了&quot;IDE 感&quot;，值得一试。</p>
+<blockquote>
+<p>项目地址：<a href="https://github.com/oraios/serena">https://github.com/oraios/serena</a>
+文档：<a href="https://oraios.github.io/serena">https://oraios.github.io/serena</a></p>
+</blockquote>
+<!-- 文章结束 -->
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

@@ -298,16 +298,6 @@
       background: none; border: none;
       color: var(--clay); font-size: 15px; cursor: pointer;
     }
-    .active-filter-clear-all {
-      margin-left: 6px;
-      background: none; border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 2px 12px;
-      color: var(--fg-muted);
-      font-size: 12px;
-      cursor: pointer;
-    }
-    .active-filter-clear-all:hover { background: var(--bg-hover); color: var(--fg); }
 
     .post-list {
       display: grid;
@@ -480,8 +470,8 @@
           <button class="tag-pill" data-tag="CG">CG<span class="tag-count">12</span></button>
           <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">12</span></button>
           <button class="tag-pill" data-tag="服务器后端内容">服务器后端内容<span class="tag-count">12</span></button>
+          <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">11</span></button>
           <button class="tag-pill" data-tag="深度学习">深度学习<span class="tag-count">11</span></button>
-          <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">10</span></button>
           <button class="tag-pill" data-tag="Java">Java<span class="tag-count">9</span></button>
           <button class="tag-pill" data-tag="GPU 编程">GPU 编程<span class="tag-count">8</span></button>
           <button class="tag-pill" data-tag="CUDA">CUDA<span class="tag-count">7</span></button>
@@ -502,6 +492,7 @@
           <button class="tag-pill" data-tag="transformer">transformer<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="算法">算法<span class="tag-count">3</span></button>
           <button class="tag-pill" data-tag="量化">量化<span class="tag-count">3</span></button>
+          <button class="tag-pill" data-tag="agent">agent<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="FlashAttention">FlashAttention<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="framework">framework<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="fusion">fusion<span class="tag-count">2</span></button>
@@ -524,8 +515,8 @@
           <button class="tag-pill" data-tag="随笔">随笔<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="activation">activation<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="agent">agent<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Agentless">Agentless<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="AI-coding">AI-coding<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AI编译">AI编译<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="algorithm">algorithm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="architecture">architecture<span class="tag-count">1</span></button>
@@ -536,7 +527,9 @@
           <button class="tag-pill" data-tag="AWQ">AWQ<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="backend">backend<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="CI">CI<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="Claude">Claude<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="CNN">CNN<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="Codex">Codex<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="cuBLAS">cuBLAS<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="cuDNN">cuDNN<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="CUTLASS">CUTLASS<span class="tag-count">1</span></button>
@@ -572,6 +565,7 @@
           <button class="tag-pill" data-tag="llm">llm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="LLM4Code">LLM4Code<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="LLM推理">LLM推理<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="MCP">MCP<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="memory">memory<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MHA">MHA<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MindSpeed">MindSpeed<span class="tag-count">1</span></button>
@@ -589,6 +583,7 @@
           <button class="tag-pill" data-tag="rmsnorm">rmsnorm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="ROCm">ROCm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Rust">Rust<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="Serena">Serena<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Skill">Skill<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="SkillOpt">SkillOpt<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Speculative Decoding">Speculative Decoding<span class="tag-count">1</span></button>
@@ -614,6 +609,7 @@
           <button class="tag-pill" data-tag="工程">工程<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="差分测试">差分测试<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="幽灵GDP">幽灵GDP<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="开源工具">开源工具<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="形式化验证">形式化验证<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="微软">微软<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="性能基准">性能基准<span class="tag-count">1</span></button>
@@ -656,7 +652,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 166 篇文章
+      共 167 篇文章
     </div>
   </aside>
 
@@ -680,12 +676,23 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 166</span>
+        <span class="section-count" id="visibleCount">15 / 167</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="Serena,MCP,AI-coding,agent,LLM,开源工具,Claude,Codex">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-07-22-serena-agent/serena-agent.html">Serena: 给你的 AI Coding Agent 装上 IDE 大脑</a></h3>
+              <p class="post-preview">最近 oraios/serena 在 GitHub 上火了——22k+ star，MIT 协议，才一年多就冲到了 AI 编码工具的前排。它的 slogan 很直接：&quot;the IDE for your agent&quot;</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-07-22 10:00:00 +0800</span>
+                <span class="post-card-tags"><span class="post-tag">Serena</span><span class="post-tag">MCP</span><span class="post-tag">AI-coding</span><span class="post-tag">agent</span><span class="post-tag">LLM</span><span class="post-tag">开源工具</span><span class="post-tag">Claude</span><span class="post-tag">Codex</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-07-22-serena-agent/serena-agent.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="Grok Build,xAI,Rust,AI Agent,多 Agent 编排,架构分析">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-07-16-grok-build-orchestration/grok-build-orchestration.html">Grok Build 对话编排系统深度解析：多 Agent 架构的设计哲学</a></h3>
@@ -840,20 +847,9 @@
             </div>
             <a href="posts/2026-06-29-ai-operator-guide/ai-operator-guide.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="注意力机制,Transformer,MHA,GQA,MLA,推理优化,KV Cache">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-06-29-attention-heads-guide/attention-heads-guide.html">多头注意力完全图解：MHA/MQA/GQA/MLA的头部关系与数量约束</a></h3>
-              <p class="post-preview">如果你用过 LLaMA、Mistral、Qwen 或者 DeepSeekV2，肯定在它们的 config.json 里见过 和 这两个参数。前者等于 32 或 64，后者可能是 8、16 或者跟前者一样——这不是随便选的数字，这两者的...</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-06-29</span>
-                <span class="post-card-tags"><span class="post-tag">注意力机制</span><span class="post-tag">Transformer</span><span class="post-tag">MHA</span><span class="post-tag">GQA</span><span class="post-tag">MLA</span><span class="post-tag">推理优化</span><span class="post-tag">KV Cache</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-06-29-attention-heads-guide/attention-heads-guide.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 166 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 167 篇文章 →</a>
     </section>
   </main>
 
@@ -863,143 +859,37 @@
       var postList = document.getElementById('postList');
       var activeFilters = document.getElementById('activeFilters');
       var visibleCount = document.getElementById('visibleCount');
-      var activeTags = [];
-      var allPosts = [];       // full dataset from data.json
+      var activeTag = null;
       var cards = Array.from(postList.querySelectorAll('.post-card'));
-      var showingAll = false;  // true when we loaded data.json
-
-      // Load data.json for full-dataset filtering
-      function loadAllPosts() {
-        if (allPosts.length > 0) return Promise.resolve(allPosts);
-        return fetch('posts/data.json').then(function(r) { return r.json(); }).then(function(data) {
-          allPosts = data;
-          return data;
-        }).catch(function() {
-          return null;  // fallback to static cards
-        });
-      }
-
-      // Render a single post card from data.json entry
-      function renderPostCard(post) {
-        var li = document.createElement('li');
-        li.className = 'post-card';
-        li.dataset.tags = (post.tags || []).join(',');
-
-        var tagsHtml = (post.tags || []).map(function(t) {
-          return '<span class="post-tag">' + t + '</span>';
-        }).join('');
-
-        li.innerHTML =
-          '<div class="post-card-body">' +
-            '<h3 class="post-card-title"><a href="posts/' + post.path + '">' + post.title + '</a></h3>' +
-            '<div class="post-card-meta">' +
-              '<span class="post-date">' + post.date.slice(0, 10) + '</span>' +
-              '<span class="post-card-tags">' + tagsHtml + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<a href="posts/' + post.path + '" class="post-card-arrow" aria-hidden="true">→</a>';
-        return li;
-      }
-
-      function matchesAnyTag(postTags, activeTags) {
-        if (activeTags.length === 0) return true;
-        var lowerTags = (postTags || []).map(function(t) { return t.toLowerCase(); });
-        return activeTags.some(function(at) {
-          return lowerTags.indexOf(at.toLowerCase()) !== -1;
-        });
-      }
 
       function filter() {
         var term = sidebarSearch.value.toLowerCase();
         var visible = 0;
-
-        if (activeTags.length > 0) {
-          // Full-dataset filtering: load from data.json
-          loadAllPosts().then(function(data) {
-            if (!data) {
-              filterCards(term);
-              return;
-            }
-            showingAll = true;
-            var matches = data.filter(function(post) {
-              if (!matchesAnyTag(post.tags, activeTags)) return false;
-              if (!term) return true;
-              return post.title.toLowerCase().includes(term);
-            });
-
-            // Rebuild post list
-            postList.innerHTML = '';
-            matches.forEach(function(post) {
-              postList.appendChild(renderPostCard(post));
-            });
-
-            visible = matches.length;
-            visibleCount.textContent = visible + ' / ' + data.length;
-            updateFilterBar();
-            highlightPills();
-          });
-          return;
-        }
-
-        // No active tags: filter static cards (original behavior)
-        showingAll = false;
-        filterCards(term);
-      }
-
-      function filterCards(term) {
-        var visible = 0;
         cards.forEach(function(card) {
+          var tags = (card.dataset.tags || '').toLowerCase();
           var text = card.textContent.toLowerCase();
           var matchSearch = !term || text.includes(term);
-          card.style.display = matchSearch ? '' : 'none';
-          if (matchSearch) visible++;
+          var matchTag = !activeTag || tags.split(',').includes(activeTag.toLowerCase());
+          card.style.display = (matchSearch && matchTag) ? '' : 'none';
+          if (matchSearch && matchTag) visible++;
         });
-        // Show static cards if hidden
-        cards.forEach(function(c) { postList.appendChild(c); });
         visibleCount.textContent = visible + ' / ' + cards.length;
-        updateFilterBar();
-        highlightPills();
-      }
-
-      function removeTag(tag) {
-        activeTags = activeTags.filter(function(t) { return t !== tag; });
-        if (activeTags.length === 0) {
-          window.clearFilter();
-        } else {
-          filter();
-        }
-      }
-
-      function updateFilterBar() {
-        if (activeTags.length > 0) {
-          var chips = activeTags.map(function(t) {
-            return '<span class="active-filter-tag">' + t + ' <button class="active-filter-clear" onclick="removeTag(\'' + t.replace(/'/g, "\\'") + '\')">✕</button></span>';
-          }).join('');
-          activeFilters.innerHTML = '筛选: ' + chips + ' <button class="active-filter-clear-all" onclick="clearFilter()">清除全部</button>';
+        if (activeTag) {
+          activeFilters.innerHTML = '筛选: <span class="active-filter-tag">' + activeTag + ' <button class="active-filter-clear" onclick="clearFilter()">✕</button></span>';
           activeFilters.style.display = 'flex';
         } else {
           activeFilters.style.display = 'none';
         }
-        var viewAll = document.querySelector('.view-all');
-        if (viewAll) {
-          viewAll.style.display = activeTags.length > 0 ? 'none' : '';
-        }
-      }
-
-      function highlightPills() {
+        // highlight active tag pill
         document.querySelectorAll('.tag-pill').forEach(function(pill) {
-          pill.classList.toggle('active', activeTags.indexOf(pill.dataset.tag) !== -1);
+          pill.classList.toggle('active', pill.dataset.tag === activeTag);
         });
       }
 
       window.clearFilter = function() {
-        activeTags = [];
+        activeTag = null;
         sidebarSearch.value = '';
-        // Restore original cards
-        postList.innerHTML = '';
-        cards.forEach(function(c) { postList.appendChild(c); });
-        showingAll = false;
-        filterCards('');
+        filter();
       };
 
       sidebarSearch.addEventListener('input', filter);
@@ -1008,18 +898,10 @@
       document.getElementById('tagList').addEventListener('click', function(e) {
         var pill = e.target.closest('.tag-pill');
         if (!pill) return;
-        var tag = pill.dataset.tag;
-        var idx = activeTags.indexOf(tag);
-        if (idx !== -1) {
-          // Deselect
-          activeTags.splice(idx, 1);
-          if (activeTags.length === 0) {
-            window.clearFilter();
-            return;
-          }
+        if (activeTag === pill.dataset.tag) {
+          activeTag = null;
         } else {
-          // Select (add)
-          activeTags.push(tag);
+          activeTag = pill.dataset.tag;
         }
         filter();
       });
