@@ -60,8 +60,8 @@ GroupedTopK 在普通 Top-K 前增加一层“按组筛选”：
 
 这种结构可以限制候选专家的分布，是计算选择与通信约束之间的一种折中。
 
-如果希望先复习 MoE 的整体结构，可以参考之前的
-[Step into MoE](../2025-09-03/step-into-moe.html)。
+如果对 expert、router、Top-K 和路由权重还比较陌生，建议先阅读配套前置篇：
+[MoE 路由入门：从 Dense FFN 到 GroupedTopK](../2026-07-27-moe-routing-primer/moe-routing-primer.html)。
 
 ---
 

@@ -76,8 +76,8 @@ Task01 题面。具体评测细节仍应以后续官方评测程序为准。</p>
 只在这 4 组的 128 个 expert 中选最终 Top-8
 </code></pre>
 <p>这种结构可以限制候选专家的分布，是计算选择与通信约束之间的一种折中。</p>
-<p>如果希望先复习 MoE 的整体结构，可以参考之前的
-<a href="../2025-09-03/step-into-moe.html">Step into MoE</a>。</p>
+<p>如果对 expert、router、Top-K 和路由权重还比较陌生，建议先阅读配套前置篇：
+<a href="../2026-07-27-moe-routing-primer/moe-routing-primer.html">MoE 路由入门：从 Dense FFN 到 GroupedTopK</a>。</p>
 <hr>
 <h2 id="二、官方任务的接口">二、官方任务的接口</h2>
 <p>官方 <code>Model</code> 的构造参数如下：</p>
