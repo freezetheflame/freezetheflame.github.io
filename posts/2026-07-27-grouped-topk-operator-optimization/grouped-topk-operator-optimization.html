@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GroupedTopK 算子优化入门：从 MoE 路由到 Triton 融合思路 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-07-27</p>
+        <h1>GroupedTopK 算子优化入门：从 MoE 路由到 Triton 融合思路</h1>
+        <div class="post-meta">
+          <span>2026-07-27</span>
+          <span class="tag">AI Infra</span><span class="tag">Triton</span><span class="tag">GPU 编程</span><span class="tag">MoE</span><span class="tag">算子优化</span><span class="tag">GroupedTopK</span><span class="tag">KernelSwift</span>
+        </div>
+        <p>最近开始准备 KernelSwift 算子创新大赛。第一个打算认真拆解的题目是
+GroupedTopK：它规模不大，却刚好涵盖 GPU 算子开发里最值得入门的几个主题——
+并行划分、归约、Top-K、算子融合、数值稳定性和性能分析。</p>
+<p>这篇文章记录我从 PyTorch reference 出发理解这个算子的过程。目标不是立刻写出
+最快的 kernel，而是先回答三个问题：</p>
+<ol>
+<li>GroupedTopK 在 MoE 模型里解决什么问题？</li>
+<li>官方 reference 的每一步究竟在算什么？</li>
+<li>为什么把这些步骤融合进一个 Triton kernel 可能更快？</li>
+</ol>
+<blockquote>
+<p>本文的接口与默认 shape 来自 2026 KernelSwift 算子创新大赛赛道一
+Task01 题面。具体评测细节仍应以后续官方评测程序为准。</p>
+</blockquote>
+<hr>
+<h2 id="一、先建立背景：moe-为什么需要路由">一、先建立背景：MoE 为什么需要路由</h2>
+<p>普通 Transformer 的 FFN 层会让每个 token 经过同一套参数。MoE
+（Mixture of Experts）则准备多套 FFN，也就是多个 expert，然后让每个 token
+只进入少数几个 expert。</p>
+<p>一个典型的数据流是：</p>
+<pre><code class="hljs language-text">hidden states
+      │
+      ▼
+  router / gate
+      │  为每个 token 产生 E 个 expert logits
+      ▼
+  Top-K routing
+      │  选择 K 个 expert 和对应权重
+      ▼
+ selected experts
+      │
+      ▼
+ weighted reduction
+</code></pre>
+<p>如果一共有 256 个专家，而每个 token 只选择 8 个，那么真正执行的专家计算会稀疏
+很多。但专家通常分布在不同设备上：完全自由的全局 Top-K 可能让 token 在设备间
+频繁通信。</p>
+<p>GroupedTopK 在普通 Top-K 前增加一层“按组筛选”：</p>
+<pre><code class="hljs language-text">256 experts
+   ↓ 分成 8 组，每组 32 个
+先选 4 个 expert group
+   ↓
+只在这 4 组的 128 个 expert 中选最终 Top-8
+</code></pre>
+<p>这种结构可以限制候选专家的分布，是计算选择与通信约束之间的一种折中。</p>
+<p>如果对 expert、router、Top-K 和路由权重还比较陌生，建议先阅读配套前置篇：
+<a href="../2026-07-27-moe-routing-primer/moe-routing-primer.html">MoE 路由入门：从 Dense FFN 到 GroupedTopK</a>。</p>
+<hr>
+<h2 id="二、官方任务的接口">二、官方任务的接口</h2>
+<p>官方 <code>Model</code> 的构造参数如下：</p>
+<pre><code class="hljs language-python">Model(
+    topk=<span class="hljs-number">8</span>,
+    renormalize=<span class="hljs-literal">True</span>,
+    num_expert_group=<span class="hljs-number">8</span>,
+    topk_group=<span class="hljs-number">4</span>,
+    scoring_func=<span class="hljs-string">&quot;softmax&quot;</span>,
+    routed_scaling_factor=<span class="hljs-number">1.0</span>,
+)
+</code></pre>
+<p>示例输入为：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>输入</th>
+<th align="right">Shape</th>
+<th>Dtype</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>hidden_states</code></td>
+<td align="right"><code>[83, 7168]</code></td>
+<td>FP16</td>
+<td>只用于核对 token 数</td>
+</tr>
+<tr>
+<td><code>gating_output</code></td>
+<td align="right"><code>[83, 256]</code></td>
+<td>FP32</td>
+<td>每个 token 对 256 个专家的 logits</td>
+</tr>
+</tbody></table></div>
+<p>输出为：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>输出</th>
+<th align="right">Shape</th>
+<th>Dtype</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>topk_weights</code></td>
+<td align="right"><code>[83, 8]</code></td>
+<td>FP32</td>
+<td>最终 8 个专家的路由权重</td>
+</tr>
+<tr>
+<td><code>topk_ids</code></td>
+<td align="right"><code>[83, 8]</code></td>
+<td>INT32</td>
+<td>最终 8 个专家的全局编号</td>
+</tr>
+</tbody></table></div>
+<p>这里有一个容易忽略却很重要的点：<code>hidden_states</code> 的数据完全不参与路由计算，
+reference 只读取它的第 0 维来检查 token 数是否一致。</p>
+<p>因此，一个合理的自定义算子不应该把 <code>[83, 7168]</code> 的内容读入设备计算。实际需要
+处理的核心输入只有大约 85 KiB：</p>
+<pre><code class="hljs language-text">83 × 256 × sizeof(float32) ≈ 85 KiB
+</code></pre>
+<hr>
+<h2 id="三、逐步拆解-groupedtopk">三、逐步拆解 GroupedTopK</h2>
+<p>记：</p>
+<ul>
+<li>token 数为 <code>T</code>；</li>
+<li>expert 数为 <code>E</code>；</li>
+<li>expert group 数为 <code>G</code>；</li>
+<li>每组 expert 数为 <code>P = E / G</code>；</li>
+<li>保留的 group 数为 <code>K_g</code>；</li>
+<li>最终 expert 数为 <code>K</code>。</li>
+</ul>
+<p>官方默认值是：</p>
+<pre><code class="hljs language-text">T = 83, E = 256, G = 8, P = 32, K_g = 4, K = 8
+</code></pre>
+<h3 id="31-激活路由分数">3.1 激活路由分数</h3>
+<p><code>scoring_func=&quot;softmax&quot;</code> 时，对每个 token 的 256 个 logits 做 softmax。</p>
+<p>为避免指数溢出，数值稳定的计算形式是：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">m</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.2943em;vertical-align:-0.8638em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.4306em;"><span style="top:-2.3723em;margin-left:0em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span><span class="mop">max</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8638em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span></span></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.5488em;vertical-align:-1.1218em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.162em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.4358em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">exp</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal">m</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mop">exp</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal">m</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.1218em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<p>题目也支持 sigmoid：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.2935em;vertical-align:-0.9721em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3214em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mop">exp</span><span class="mopen">(</span><span class="mord">−</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9721em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<p>softmax 会让同一 token 的所有 expert 竞争一个总概率；sigmoid 则独立地给每个
+expert 打分。两条路径的权重语义不同，不能混用。</p>
+<h3 id="32-按组求最大值">3.2 按组求最大值</h3>
+<p>逻辑上将：</p>
+<pre><code class="hljs language-text">scores: [T, 256]
+</code></pre>
+<p>看作：</p>
+<pre><code class="hljs language-text">grouped_scores: [T, 8, 32]
+</code></pre>
+<p>每组分数取组内最大 expert 分数：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">g</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.3167em;vertical-align:-0.8861em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.4306em;"><span style="top:-2.4em;margin-left:0em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">e</span><span class="mrel mtight">∈</span><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">group</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2052em;"><span style="top:-2.2341em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2659em;"><span></span></span></span></span></span></span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span><span class="mop">max</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8861em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span></span></p>
+<p>注意，这里官方明确采用组内最大值，不是一些 MoE 实现里的“组内 Top-2
+求和”。算子优化首先必须忠于 reference，而不是忠于我们熟悉的另一个模型实现。</p>
+<h3 id="33-选择-top-4-expert-group">3.3 选择 Top-4 expert group</h3>
+<p>对每个 token 的 8 个 <code>group_scores</code> 做 Top-4，得到保留组的 ID。</p>
+<pre><code class="hljs language-text">group_scores:   [T, 8]
+selected_group: [T, 4]
+</code></pre>
+<h3 id="34-屏蔽未选中的组">3.4 屏蔽未选中的组</h3>
+<p>reference 会构造 group mask，再展开成 <code>[T, 256]</code> 的 expert mask。未选中组的
+expert 分数被替换为负无穷：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.954em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6679em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">s</span></span><span style="top:-3.35em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.1944em;"><span class="mord">~</span></span></span></span></span></span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:3em;vertical-align:-1.25em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size4">{</span></span><span class="mord"><span class="mtable"><span class="col-align-l"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.69em;"><span style="top:-3.69em;"><span class="pstrut" style="height:3.008em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span></span></span><span style="top:-2.25em;"><span class="pstrut" style="height:3.008em;"></span><span class="mord"><span class="mord">−</span><span class="mord">∞</span><span class="mpunct">,</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.19em;"><span></span></span></span></span></span><span class="arraycolsep" style="width:1em;"></span><span class="col-align-l"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.69em;"><span style="top:-3.69em;"><span class="pstrut" style="height:3.008em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="mord text"><span class="mord"> </span><span class="mord cjk_fallback">所在组被选中</span></span></span></span><span style="top:-2.25em;"><span class="pstrut" style="height:3.008em;"></span><span class="mord"><span class="mord text"><span class="mord cjk_fallback">其他情况</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.19em;"><span></span></span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<h3 id="35-从候选-expert-中选择-top-8">3.5 从候选 expert 中选择 Top-8</h3>
+<p>4 个保留组一共有 128 个候选 expert。再做一次 Top-8，得到最终 ID 与权重。</p>
+<pre><code class="hljs language-text">topk_weights: [T, 8]
+topk_ids:     [T, 8]
+</code></pre>
+<h3 id="36-重新归一化和缩放">3.6 重新归一化和缩放</h3>
+<p>默认 <code>renormalize=True</code>，因此将选中的权重除以它们的总和：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.9805em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6944em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal" style="margin-right:0.0269em;">w</span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.1667em;"><span class="mord">^</span></span></span></span></span></span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.4146em;vertical-align:-1.307em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.1288em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9812em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span><span class="mrel mtight">=</span><span class="mord mtight">1</span></span></span></span><span style="top:-3.2029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0715em;">K</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.4358em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.307em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<p>最后再乘 <code>routed_scaling_factor</code>。</p>
+<hr>
+<h2 id="四、用一个小例子手算">四、用一个小例子手算</h2>
+<p>假设只有 8 个 expert，分为 4 组，每组 2 个：</p>
+<pre><code class="hljs language-text">group 0: expert 0, 1
+group 1: expert 2, 3
+group 2: expert 4, 5
+group 3: expert 6, 7
+</code></pre>
+<p>某个 token 的分数是：</p>
+<pre><code class="hljs language-text">expert:  0    1    2    3    4    5    6    7
+score:  .1   .8   .4   .3   .9   .7   .2   .6
+</code></pre>
+<p>组分数为：</p>
+<pre><code class="hljs language-text">group 0: max(.1, .8) = .8
+group 1: max(.4, .3) = .4
+group 2: max(.9, .7) = .9
+group 3: max(.2, .6) = .6
+</code></pre>
+<p>如果 <code>topk_group=2</code>，保留 group 2 和 group 0：</p>
+<pre><code class="hljs language-text">expert:  0    1    2    3    4    5    6    7
+score:  .1   .8   -∞   -∞   .9   .7   -∞   -∞
+</code></pre>
+<p>如果最终 <code>topk=2</code>，则选择 expert 4 和 expert 1。这个例子揭示了 GroupedTopK
+的本质：两层选择，而不是对全部 expert 直接做一次 Top-K。</p>
+<hr>
+<h2 id="五、为什么-pytorch-写法可能慢">五、为什么 PyTorch 写法可能慢</h2>
+<p>PyTorch reference 非常清晰，但清晰的张量表达不等于最少的设备工作。它的逻辑数据流
+大致是：</p>
+<pre><code class="hljs language-text">gating_output
+    ↓ softmax / sigmoid
+scores
+    ↓ view + max
+group_scores
+    ↓ topk
+group_idx
+    ↓ zeros_like + scatter + expand + reshape
+score_mask
+    ↓ masked_fill
+tmp_scores
+    ↓ topk
+weights + ids
+    ↓ sum + div + scale + cast
+outputs
+</code></pre>
+<p>其中会出现多个 kernel launch 和多个中间张量。对于 GroupedTopK 这种数据量不大的
+操作，真正昂贵的未必是浮点运算，而可能是：</p>
+<ul>
+<li>启动许多小 kernel 的固定开销；</li>
+<li>中间结果反复写入和读出显存；</li>
+<li>构造与原始 scores 一样大的 mask；</li>
+<li>通用 Top-K 没有利用 <code>G=8</code>、<code>K_g=4</code>、<code>K=8</code> 都很小这一事实。</li>
+</ul>
+<p>因此这道题的优化目标不是“堆更多 FLOPS”，而是减少数据搬运和调度阶段。</p>
+<hr>
+<h2 id="六、第一个-triton-kernel-应该怎样划分">六、第一个 Triton kernel 应该怎样划分</h2>
+<p>最自然的 baseline 是：<strong>一个 Triton program 处理一个 token</strong>。</p>
+<pre><code class="hljs language-text">Grid: (T,)
+
+program 0 → token 0 的 256 个 logits
+program 1 → token 1 的 256 个 logits
+...
+program 82 → token 82 的 256 个 logits
+</code></pre>
+<p>每个 program 内部完成：</p>
+<pre><code class="hljs language-text">load 256 logits
+   ↓
+8 组 × 32 元素归约
+   ↓
+选 4 个 group
+   ↓
+屏蔽未选 group
+   ↓
+选 8 个 expert
+   ↓
+计算并归一化权重
+   ↓
+store 8 weights + 8 ids
+</code></pre>
+<p>理想情况下，所有中间值留在寄存器或片上存储中，最终只写出真正需要的 16 个值。</p>
+<p>为什么不一开始就设计更复杂的二维 grid？因为不同 token 完全独立，一 token 一
+program：</p>
+<ul>
+<li>没有跨 program 同步；</li>
+<li>输入行在内存中连续；</li>
+<li>容易与逐行 reference 对拍；</li>
+<li>容易定位 Top-K 和 mask 的错误。</li>
+</ul>
+<p>83 个 program 的并行度是否足够，要等实际硬件 profiling 后再判断。先写对，再依据证据
+改变并行策略。</p>
+<p>如果对 program、grid 和 tile 还不熟悉，可以先看
+<a href="../2026-06-11/triton-tile-grid-wave.html">GPU Kernel 的 Tile、Grid、Wave 与 Launch Overhead</a>。</p>
+<hr>
+<h2 id="七、一个关键的数学化简">七、一个关键的数学化简</h2>
+<p>官方默认路径是：</p>
+<pre><code class="hljs language-text">scoring_func = &quot;softmax&quot;
+renormalize = True
+</code></pre>
+<p>softmax 对同一行的大小关系是单调的：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6891em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">a</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&gt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.675em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">b</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">⟺</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop"><span class="mord mathrm">softmax</span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose"><span class="mclose">)</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">a</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&gt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop"><span class="mord mathrm">softmax</span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose"><span class="mclose">)</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">b</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span></p>
+<p>因此，选 group 和选 expert 时，可以直接比较 logits，不必先物化全部 256 个 softmax
+结果。</p>
+<p>更进一步，若最终还会对选中的 K 个权重重新归一化，完整 softmax 的公共分母会约掉。
+设最终选中集合为 <code>S</code>：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:3.1141em;vertical-align:-1.307em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.807em;"><span style="top:-2.1288em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1864em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span><span class="mrel mtight">∈</span><span class="mord mathnormal mtight" style="margin-right:0.0576em;">S</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.3271em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">exp</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mord">/</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9812em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span><span class="mrel mtight">=</span><span class="mord mtight">1</span></span></span></span><span style="top:-3.2029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0576em;">E</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.4358em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">exp</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.8258em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mop">exp</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mord">/</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9812em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span><span class="mrel mtight">=</span><span class="mord mtight">1</span></span></span></span><span style="top:-3.2029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0576em;">E</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.4358em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">exp</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0572em;">j</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.307em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.4401em;vertical-align:-1.0131em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1864em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span><span class="mrel mtight">∈</span><span class="mord mathnormal mtight" style="margin-right:0.0576em;">S</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.3271em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">exp</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mop">exp</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.0131em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<p>这意味着默认路径可以尝试：</p>
+<pre><code class="hljs language-text">在 logits 上选 group
+→ 在 logits 上选最终 expert
+→ 只对选中的 8 个 logits 做稳定 softmax
+</code></pre>
+<p>原本 256 个元素上的指数与求和，缩小成了 8 个元素上的计算。</p>
+<p>不过这个化简有明确边界：</p>
+<ul>
+<li><code>softmax + renormalize=False</code> 仍需要完整 256-way softmax 的分母；</li>
+<li>sigmoid 路径的输出权重不能套用 softmax 公式；</li>
+<li>NaN、正负无穷和相同值的行为必须与 reference 对齐；</li>
+<li>如果评测会改变构造参数，kernel 必须有正确的通用路径。</li>
+</ul>
+<p>数学上等价不代表浮点逐位相等，最终仍要用官方容差验证。</p>
+<hr>
+<h2 id="八、top-k-才是实现中的核心难点">八、Top-K 才是实现中的核心难点</h2>
+<p>sum 和 max 都是标准归约；Top-K 则需要同时维护值与索引。</p>
+<p>当 <code>K</code> 很小时，最直观的方法是重复 K 次：</p>
+<pre><code class="hljs language-text">找到当前最大值与 argmax
+记录 value 和 index
+把该位置设为 -∞
+继续寻找下一个最大值
+</code></pre>
+<p>它避免了对全部 256 个元素做完整排序，但还有不少细节：</p>
+<ol>
+<li>相同值时选择较小 ID 还是较大 ID？</li>
+<li><code>argmax</code> 的 tie-breaking 是否和 <code>torch.topk</code> 一致？</li>
+<li>被 padding 的 lane 会不会意外入选？</li>
+<li>NaN 如何传播或参与比较？</li>
+<li>两级 Top-K 是否保持了正确的全局 expert ID？</li>
+<li>输出顺序是否和 reference 一样按权重降序？</li>
+</ol>
+<p>随机输入几乎不会产生 tie，因此只测随机数很容易掩盖错误。正确性测试必须主动构造
+相同分数、边界值和特殊值。</p>
+<hr>
+<h2 id="九、正确性优先：应该怎样建立测试矩阵">九、正确性优先：应该怎样建立测试矩阵</h2>
+<p>在追求速度前，至少需要覆盖以下情况。</p>
+<h3 id="shape-与分组">Shape 与分组</h3>
+<ul>
+<li>expert 数是 2 的幂和不是 2 的幂；</li>
+<li>expert 数可被 group 数整除；</li>
+<li><code>topk_group=1</code>；</li>
+<li><code>topk=1</code>；</li>
+<li>最终 Top-K 接近候选 expert 数；</li>
+<li>token 数很小和较大。</li>
+</ul>
+<h3 id="数值">数值</h3>
+<ul>
+<li>全部 logits 相等；</li>
+<li>一组内出现多个相同最大值；</li>
+<li>极大正数与极小负数；</li>
+<li>全零输入；</li>
+<li>包含正负无穷；</li>
+<li>根据官方要求决定是否测试 NaN。</li>
+</ul>
+<h3 id="配置">配置</h3>
+<ul>
+<li>softmax 与 sigmoid；</li>
+<li><code>renormalize=True/False</code>；</li>
+<li>scaling factor 等于和不等于 1；</li>
+<li>FP32 输出 dtype；</li>
+<li>INT32 ID dtype。</li>
+</ul>
+<h3 id="不变量">不变量</h3>
+<p>默认配置下可以检查：</p>
+<ul>
+<li>每行恰好输出 8 个合法 ID；</li>
+<li>ID 范围在 <code>[0, 255]</code>；</li>
+<li>所有 ID 都来自选中的 4 个 group；</li>
+<li>renormalize 后每行权重和约等于 1；</li>
+<li>scaling 后每行权重和约等于 scaling factor；</li>
+<li><code>hidden_states</code> 内容变化不会影响输出。</li>
+</ul>
+<p>最后一条很有价值：它能帮助我们确认实现没有误读那块大输入。</p>
+<hr>
+<h2 id="十、如何判断优化是否真的有效">十、如何判断优化是否真的有效</h2>
+<p>不要只看一次 wall-clock 时间。至少要区分：</p>
+<ul>
+<li>首次 JIT 编译时间；</li>
+<li>warm-up 后的稳态 kernel 时间；</li>
+<li>PyTorch reference 的总时间；</li>
+<li>自定义 kernel 的总时间；</li>
+<li>不同参数和不同芯片上的表现。</li>
+</ul>
+<p>GroupedTopK 很可能主要受 kernel launch 与延迟影响，而不是峰值算力限制。一个很快的
+kernel 仍可能因为编译、框架调度或不必要的输入处理失去优势。</p>
+<p>性能分析时可以按以下顺序提问：</p>
+<ol>
+<li>自定义实现到底启动了几个 kernel？</li>
+<li>是否物化了 <code>[T, E]</code> 的中间 mask 或 scores？</li>
+<li>是否读取了无用的 <code>hidden_states</code>？</li>
+<li>Top-K 的时间占比是多少？</li>
+<li>一 token 一 program 是否让设备利用率过低？</li>
+<li>增加 <code>num_warps</code> 后是更快，还是带来寄存器压力？</li>
+<li>默认路径的数学化简是否减少了 exp 与 reduction？</li>
+</ol>
+<p>可以结合之前的
+<a href="../2026-06-07/triton-performance-tuning-methodology.html">Triton 性能调优方法论</a>
+和
+<a href="../2026-06-07/triton-profiling-practical-guide.html">GPU 算子 Profiling 实战指南</a>
+继续学习。</p>
+<hr>
+<h2 id="十一、适合初学者的开发路线">十一、适合初学者的开发路线</h2>
+<p>我准备按下面的顺序推进，而不是一上来就追求比赛最快成绩。</p>
+<h3 id="stage-0：锁定-reference">Stage 0：锁定 reference</h3>
+<p>保存官方 PyTorch 实现，记录接口、shape、dtype、构造参数和输出语义。</p>
+<h3 id="stage-1：cpu-小例子">Stage 1：CPU 小例子</h3>
+<p>用很小的 expert 数手算并观察每个中间结果：激活分数、group score、group ID、mask、
+最终 expert ID 和权重。</p>
+<h3 id="stage-2：建立正确性测试">Stage 2：建立正确性测试</h3>
+<p>覆盖随机输入、tie、极端数值、不同配置和输出 dtype。先明确“什么叫做正确”。</p>
+<h3 id="stage-3：朴素融合-triton-baseline">Stage 3：朴素融合 Triton baseline</h3>
+<p>一个 program 处理一个 token，完整实现 reference 语义。此阶段不追求极致性能，也不急着
+autotune。</p>
+<h3 id="stage-4：默认路径特化">Stage 4：默认路径特化</h3>
+<p>针对 <code>softmax + renormalize=True</code> 验证 logits 直接选择与 K-way softmax 化简。</p>
+<h3 id="stage-5：benchmark-与-profiling">Stage 5：Benchmark 与 profiling</h3>
+<p>在真实目标芯片上测 warm-up 后延迟，检查 kernel 数量、内存访问、寄存器压力与设备占用。</p>
+<h3 id="stage-6：shape-aware-dispatch">Stage 6：Shape-aware dispatch</h3>
+<p>只有证据表明单一配置无法覆盖不同 shape 时，才增加多套 block/warp 配置与通用 fallback。</p>
+<hr>
+<h2 id="十二、现阶段最值得记住的原则">十二、现阶段最值得记住的原则</h2>
+<p>GroupedTopK 看起来只是几个 PyTorch API 串起来，但算子优化关注的是另一层问题：</p>
+<pre><code class="hljs language-text">数学语义是什么？
+数据在哪里？
+中间结果是否必须落到显存？
+GPU 被启动了多少次？
+不同操作能否在同一个 program 中完成？
+能否利用单调性或代数关系减少计算？
+浮点行为是否仍与 reference 一致？
+</code></pre>
+<p>对第一次接触算子优化的人来说，最重要的转变是：不要把 PyTorch reference 当作必须逐行
+翻译的实现方案。它定义的是<strong>可观察语义</strong>；自定义 kernel 可以采用完全不同的数据流，
+只要输出正确，并且真正减少硬件工作。</p>
+<p>这也是 GroupedTopK 适合作为第一道题的原因。它足够小，可以完整地看清从模型语义、数学
+化简、并行映射、正确性到性能验证的整条链路。</p>
+<p>下一篇将从官方 reference 出发，建立可复现的测试基线，并进一步拆解 Triton 中的一 token
+一 program 应该如何表达。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

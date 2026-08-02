@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoE 路由入门：从 Dense FFN 到 GroupedTopK | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-07-27</p>
+        <h1>MoE 路由入门：从 Dense FFN 到 GroupedTopK</h1>
+        <div class="post-meta">
+          <span>2026-07-27</span>
+          <span class="tag">AI Infra</span><span class="tag">MoE</span><span class="tag">Transformer</span><span class="tag">路由</span><span class="tag">GroupedTopK</span><span class="tag">算子优化</span><span class="tag">入门</span>
+        </div>
+        <p>在研究 GroupedTopK 算子之前，我发现自己虽然知道 MoE 的全称是 Mixture of
+Experts，却没有真正想清楚：expert 到底是什么、router 输出的数字代表什么、Top-K
+之后数据怎样流动，以及一个看似简单的路由操作为什么值得单独优化。</p>
+<p>这篇文章补齐这层背景。我们从普通 Transformer 的 FFN 开始，一步步走到稀疏
+MoE、Top-K 路由和 GroupedTopK，并把模型概念翻译成算子开发时真正需要关注的 tensor
+shape、数据搬运和性能问题。</p>
+<p>读完后，希望能清楚回答：</p>
+<ol>
+<li>MoE 的“专家”究竟是什么？</li>
+<li>为什么参数量可以增长，但每个 token 的计算量不必同比增长？</li>
+<li>router、Top-K、dispatch 和 combine 分别做什么？</li>
+<li>为什么专家分组能够影响多卡通信？</li>
+<li>GroupedTopK 在整条 MoE 数据流中处于什么位置？</li>
+</ol>
+<hr>
+<h2 id="一、从普通-transformer-的-ffn-说起">一、从普通 Transformer 的 FFN 说起</h2>
+<p>一个 Transformer block 通常包含 Attention 和 FFN 两个主要计算模块。先忽略归一化
+和残差连接，数据流可以简化为：</p>
+<pre><code class="hljs language-text">hidden states
+    │
+    ├── Self-Attention
+    │
+    └── Feed-Forward Network (FFN)
+</code></pre>
+<p>经典 FFN 对每个 token 独立应用同一组参数：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop"><span class="mord mathrm">FFN</span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">σ</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">x</span><span class="mclose">)</span></span></span></span></span></p>
+<p>如果模型使用 SwiGLU，则常见形式是：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop"><span class="mord mathrm">FFN</span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">d</span><span class="mord mathnormal mtight">o</span><span class="mord mathnormal mtight" style="margin-right:0.0269em;">w</span><span class="mord mathnormal mtight">n</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;">(</span><span class="mop"><span class="mord mathrm">SiLU</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0359em;">g</span><span class="mord mathnormal mtight">a</span><span class="mord mathnormal mtight">t</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⊙</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">u</span><span class="mord mathnormal mtight">p</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mord mathnormal">x</span><span class="mclose delimcenter" style="top:0em;">)</span></span></span></span></span></span></p>
+<p>无论输入 token 表达的是代码、数学、中文还是图像信息，普通 FFN 都会使用这一套共享
+权重。</p>
+<p>从 tensor 角度看，假设：</p>
+<pre><code class="hljs language-text">T = token 数
+H = hidden size
+I = intermediate size
+</code></pre>
+<p>输入与输出一般是：</p>
+<pre><code class="hljs language-text">input:  [T, H]
+output: [T, H]
+</code></pre>
+<p>中间需要执行两个大矩阵乘法。模型想获得更强的容量时，一个直接办法是增大 <code>H</code> 或 <code>I</code>，
+但这会让每个 token 的计算量一起上升。</p>
+<hr>
+<h2 id="二、moe-的核心想法：准备多套-ffn，但只激活少数几套">二、MoE 的核心想法：准备多套 FFN，但只激活少数几套</h2>
+<p>MoE 将一套 FFN 换成 <code>E</code> 套 FFN。每一套 FFN 就叫一个 expert：</p>
+<pre><code class="hljs language-text">expert 0 = 一套独立 FFN 参数
+expert 1 = 一套独立 FFN 参数
+...
+expert E-1 = 一套独立 FFN 参数
+</code></pre>
+<p>最容易误解的地方是：expert 通常不是一个完整 Transformer，也不是一个会独立思考的
+Agent。它往往只是 MoE 层中的一套 FFN 权重。</p>
+<p>如果对所有 expert 都计算，再把结果加权求和：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">y</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:3.0954em;vertical-align:-1.2671em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.8283em;"><span style="top:-1.8829em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">e</span><span class="mrel mtight">=</span><span class="mord mtight">1</span></span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span><span class="mop op-symbol large-op">∑</span></span></span><span style="top:-4.3em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0576em;">E</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.2671em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">e</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mop"><span class="mord mathrm">Expert</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.0573em;"><span style="top:-2.4559em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">e</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2441em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span></span></span></span></span></p>
+<p>这叫稠密混合。参数量增加了，计算量也随 expert 数线性增加，代价很高。</p>
+<p>稀疏 MoE 的关键是：对每个 token 只选择少数 <code>K</code> 个 expert：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">y</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.566em;vertical-align:-1.516em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.05em;"><span style="top:-1.809em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">e</span><span class="mrel mtight">∈</span><span class="mord mathnormal mtight" style="margin-right:0.0576em;">S</span><span class="mopen mtight">(</span><span class="mord mathnormal mtight">x</span><span class="mclose mtight">)</span></span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span><span class="mop op-symbol large-op">∑</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.516em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">e</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mop"><span class="mord mathrm">Expert</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.0573em;"><span style="top:-2.4559em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">e</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2441em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">∣</span><span class="mord mathnormal" style="margin-right:0.0576em;">S</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mord">∣</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.7224em;vertical-align:-0.0391em;"></span><span class="mord mathnormal" style="margin-right:0.0715em;">K</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">≪</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">E</span></span></span></span></span></p>
+<p>例如模型有 256 个 expert，但每个 token 只经过 8 个。模型拥有 256 套 FFN 参数，单个
+token 却只执行其中 8 套。</p>
+<p>这就是 MoE 常说的“扩大参数容量，同时保持稀疏计算”的来源。它并不意味着 MoE 免费：
+参数仍要存储，expert 之间的数据调度和多卡通信也可能非常昂贵。</p>
+<hr>
+<h2 id="三、router：谁来决定-token-去哪个-expert">三、Router：谁来决定 token 去哪个 expert</h2>
+<p>MoE 层需要一个 router，也常被称为 gate。最简单的 router 是一个线性投影：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal" style="margin-right:0.044em;">z</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord mathnormal">x</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.1389em;">W</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.1389em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0278em;">r</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span></p>
+<p>其中：</p>
+<pre><code class="hljs language-text">x:   [T, H]
+W_r: [H, E]
+z:   [T, E]
+</code></pre>
+<p><code>z[t, e]</code> 是 token <code>t</code> 对 expert <code>e</code> 的 logit。它不是 expert 的输出，而是路由器对
+“这个 token 应该去哪个 expert”的打分。</p>
+<p>之后通常通过 softmax 或 sigmoid 得到 scores：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop"><span class="mord mathrm">softmax</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.044em;">z</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:-0.044em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose"><span class="mclose">)</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">e</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span></p>
+<p>或者：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mop"><span class="mord mathrm">sigmoid</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.044em;">z</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:-0.044em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">e</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span></span></p>
+<p>两者的差别是：</p>
+<ul>
+<li>softmax 让同一 token 的所有 expert 共享一个概率总量，彼此竞争；</li>
+<li>sigmoid 独立地给每个 expert 打分，最终通常还会对选中权重归一化。</li>
+</ul>
+<p>Router 只负责产生分数。真正把候选缩小到 <code>K</code> 个 expert 的步骤，是后面的 Top-K
+routing。</p>
+<hr>
+<h2 id="四、top-k-路由到底输出什么">四、Top-K 路由到底输出什么</h2>
+<p>假设：</p>
+<pre><code class="hljs language-text">T = 3 tokens
+E = 4 experts
+K = 2
+</code></pre>
+<p>router scores 可能是：</p>
+<pre><code class="hljs language-text">          expert 0  expert 1  expert 2  expert 3
+token 0      .10       .60       .20       .10
+token 1      .40       .15       .35       .10
+token 2      .05       .10       .15       .70
+</code></pre>
+<p>对每行执行 Top-2：</p>
+<pre><code class="hljs language-text">topk_ids:
+token 0 → [1, 2]
+token 1 → [0, 2]
+token 2 → [3, 2]
+
+topk_weights:
+token 0 → [.60, .20]
+token 1 → [.40, .35]
+token 2 → [.70, .15]
+</code></pre>
+<p>输出 shape 是：</p>
+<pre><code class="hljs language-text">topk_ids:     [T, K]
+topk_weights: [T, K]
+</code></pre>
+<p>如果要求重新归一化，那么 token 0 的权重会变成：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:2.4em;vertical-align:-0.95em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size3">[</span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3214em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">0.60</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">0.20</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">0.60</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7693em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3214em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">0.60</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">0.20</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">0.20</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7693em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size3">]</span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord">0.75</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0.25</span><span class="mclose">]</span></span></span></span></span></p>
+<p>Top-K 输出的 ID 决定数据去哪里；weights 决定各 expert 输出最终占多大比例。算子开发
+中必须同时保证两者正确，不能只比较权重。</p>
+<hr>
+<h2 id="五、选择之后发生什么：dispatch、expert-compute、combine">五、选择之后发生什么：Dispatch、Expert Compute、Combine</h2>
+<p>Top-K 只完成了路由决策。完整 MoE 层还要经历三步。</p>
+<h3 id="51-dispatch：把-token-发给对应-expert">5.1 Dispatch：把 token 发给对应 expert</h3>
+<p>每个 token 被复制或逻辑映射成 <code>K</code> 个 token-expert pair：</p>
+<pre><code class="hljs language-text">(token 0, expert 1)
+(token 0, expert 2)
+(token 1, expert 0)
+(token 1, expert 2)
+(token 2, expert 3)
+(token 2, expert 2)
+</code></pre>
+<p>pair 总数是：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0715em;">K</span></span></span></span></span></p>
+<p>为了高效执行 expert GEMM，系统通常按 expert ID 对这些 pair 分桶和排序：</p>
+<pre><code class="hljs language-text">expert 0: token 1
+expert 1: token 0
+expert 2: token 0, token 1, token 2
+expert 3: token 2
+</code></pre>
+<p>这样同一个 expert 收到的 token 可以组成一个小矩阵，统一执行矩阵乘法。</p>
+<h3 id="52-expert-compute：运行被选中的-ffn">5.2 Expert Compute：运行被选中的 FFN</h3>
+<p>每个 expert 对属于自己的 token 子集执行 FFN：</p>
+<pre><code class="hljs language-text">x_e
+  → gate/up projection
+  → activation × up
+  → down projection
+  → expert output
+</code></pre>
+<p>不同 expert 收到的 token 数可能很不均匀，因此 GEMM 的 <code>M</code> 维也是动态的。这会带来大量
+小 GEMM、padding 和负载不均衡问题。</p>
+<h3 id="53-combine：按路由权重合并输出">5.3 Combine：按路由权重合并输出</h3>
+<p>每个 token 的多个 expert 输出按 <code>topk_weights</code> 加权求和：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">y</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:3.1304em;vertical-align:-1.3021em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.8283em;"><span style="top:-1.8479em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span><span class="mrel mtight">=</span><span class="mord mtight">1</span></span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span><span class="mop op-symbol large-op">∑</span></span></span><span style="top:-4.3em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0715em;">K</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.3021em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">y</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.0315em;">k</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span></span></p>
+<p>最终重新得到 <code>[T, H]</code>，继续进入 Transformer 的下一部分。</p>
+<p>完整链路可以画成：</p>
+<pre><code class="hljs language-text">hidden_states [T, H]
+       │
+       ▼
+router projection [T, E]
+       │
+       ▼
+Top-K / GroupedTopK
+       │ ids [T,K], weights [T,K]
+       ▼
+dispatch + expert grouping
+       │
+       ▼
+expert FFN compute
+       │
+       ▼
+weighted combine [T, H]
+</code></pre>
+<hr>
+<h2 id="六、为什么要把-expert-分组">六、为什么要把 expert 分组</h2>
+<p>如果所有 expert 都在一张卡上，普通全局 Top-K 很自然。但大规模 MoE 通常会把 expert
+分散在多张卡或多个节点上：</p>
+<pre><code class="hljs language-text">device 0: expert 0–31
+device 1: expert 32–63
+device 2: expert 64–95
+device 3: expert 96–127
+...
+</code></pre>
+<p>一个 token 的 Top-K expert 如果分布在许多设备上，hidden state 就要被发往多个设备，
+之后 expert 输出还要返回原位置。这类 all-to-all 数据交换可能成为 MoE 的主要瓶颈。</p>
+<p>GroupedTopK 先把 expert 划分为组，再限制每个 token 只能从少数几个高分组中选择最终
+expert：</p>
+<pre><code class="hljs language-text">全部 E 个 expert
+       │
+       ├── 计算每个 group 的代表分数
+       ├── 选择 Top-Kg 个 group
+       └── 只在保留组中选择最终 Top-K expert
+</code></pre>
+<p>如果 group 与设备或通信域的布局存在对应关系，限制候选 group 就有机会减少一个 token
+涉及的通信范围。</p>
+<p>需要谨慎表述的是：分组本身不自动保证通信一定减少。真实收益取决于：</p>
+<ul>
+<li>expert 如何映射到设备；</li>
+<li>一个 group 是否对应一个或少数设备；</li>
+<li><code>topk_group</code> 设置多大；</li>
+<li>token 的路由分布是否均衡；</li>
+<li>通信库和并行策略如何实现 dispatch。</li>
+</ul>
+<p>从模型语义看，GroupedTopK 是结构化候选筛选；从系统角度看，它为控制通信范围提供了
+一个抓手。</p>
+<hr>
+<h2 id="七、groupedtopk-与普通-top-k-的区别">七、GroupedTopK 与普通 Top-K 的区别</h2>
+<p>假设 8 个 expert 分成 4 组：</p>
+<pre><code class="hljs language-text">group 0: expert 0, 1
+group 1: expert 2, 3
+group 2: expert 4, 5
+group 3: expert 6, 7
+</code></pre>
+<p>某个 token 的分数为：</p>
+<pre><code class="hljs language-text">expert:  0    1    2    3    4    5    6    7
+score:  .1   .8   .4   .3   .9   .7   .2   .6
+</code></pre>
+<p>普通 Top-3 会直接选择：</p>
+<pre><code class="hljs language-text">expert 4 (.9), expert 1 (.8), expert 5 (.7)
+</code></pre>
+<p>GroupedTopK 如果规定先选 2 个 group，并用组内最大值作为组分数：</p>
+<pre><code class="hljs language-text">group 0 → .8
+group 1 → .4
+group 2 → .9
+group 3 → .6
+</code></pre>
+<p>保留 group 2 和 group 0，再从这两个组中选 Top-3，结果仍然是 4、1、5。</p>
+<p>但如果最终需要 Top-4，普通 Top-K 会继续选择 expert 7；GroupedTopK 因为 group 3 已被
+屏蔽，只能从 group 0 和 group 2 中选择 expert 0。由此可见，分组约束可能改变最终
+路由结果，而不仅是更快地近似普通 Top-K。</p>
+<hr>
+<h2 id="八、路由系统还有哪些问题">八、路由系统还有哪些问题</h2>
+<h3 id="81-负载不均衡">8.1 负载不均衡</h3>
+<p>如果大量 token 都选择同一个 expert：</p>
+<ul>
+<li>热门 expert 计算排队；</li>
+<li>其他 expert 闲置；</li>
+<li>多卡执行时间由最慢设备决定；</li>
+<li>padding 和容量限制可能浪费计算或丢弃 token。</li>
+</ul>
+<p>因此训练 MoE 时通常还会引入负载均衡损失、expert bias、capacity factor 等机制。这些
+机制不一定属于 GroupedTopK 算子本身，但会影响它接收到的 score 分布。</p>
+<h3 id="82-top-k-的离散性">8.2 Top-K 的离散性</h3>
+<p>Top-K 选择是离散操作。ID 的微小变化会让 token 去往完全不同的 expert，因此数值误差
+不仅影响一个浮点权重，还可能改变后续整条计算路径。</p>
+<h3 id="83-tie-breaking">8.3 Tie-breaking</h3>
+<p>当多个 expert 分数相同，返回哪个 ID、以什么顺序返回，必须和 reference 保持一致。
+随机输入很少产生完全相同的值，所以专门的 tie 测试非常重要。</p>
+<h3 id="84-router-精度">8.4 Router 精度</h3>
+<p>即使 hidden state 和 expert FFN 使用 FP16/BF16，router logits 与 softmax 统计常常会用
+FP32，以减少排序边界附近的数值误差。</p>
+<hr>
+<h2 id="九、从模型概念切换到算子视角">九、从模型概念切换到算子视角</h2>
+<p>理解模型后，再来看算子优化关注什么。</p>
+<p>对于一个框架用户，GroupedTopK 是下面这些 PyTorch 操作：</p>
+<pre><code class="hljs language-text">softmax / sigmoid
+reshape
+group max
+group topk
+scatter mask
+masked_fill
+expert topk
+renormalize
+dtype conversion
+</code></pre>
+<p>对于 kernel 开发者，要问的是：</p>
+<pre><code class="hljs language-text">输入在显存中如何排列？
+一个 program 负责多少 token 和 expert？
+group max 能否留在寄存器中？
+是否真的需要物化 mask？
+两级 Top-K 能否在一次 kernel launch 中完成？
+最终只写 weights 和 ids 是否足够？
+softmax 是否可以利用单调性化简？
+不同后端的并行粒度与片上资源有什么限制？
+</code></pre>
+<p>这是一种重要的思维切换：PyTorch reference 定义可观察语义，不代表自定义 kernel 必须
+逐行模仿它的数据流。</p>
+<hr>
+<h2 id="十、把概念映射到-kernelswift-task01">十、把概念映射到 KernelSwift Task01</h2>
+<p>KernelSwift GroupedTopK 的官方默认配置是：</p>
+<pre><code class="hljs language-text">num_tokens        = 83
+num_experts       = 256
+num_expert_group  = 8
+experts_per_group = 32
+topk_group        = 4
+topk              = 8
+scoring_func      = softmax
+renormalize       = True
+</code></pre>
+<p>因此每个 token 的路由过程是：</p>
+<pre><code class="hljs language-text">256 logits
+   ↓ softmax
+8 个 group，每组 32 个 expert
+   ↓ 每组取最大值
+选择 4 个 group
+   ↓ 屏蔽其余 4 组
+从 128 个候选 expert 中选择 8 个
+   ↓ 重新归一化
+8 weights + 8 ids
+</code></pre>
+<p>官方输入还有一个 <code>[83, 7168]</code> 的 <code>hidden_states</code>，但它在 reference 中只用于检查 token
+数，并不参与路由计算。这个事实对性能实现很重要：不应该因为接口里存在这块 tensor 就
+读取它的全部数据。</p>
+<p>进一步的正式接口、数学化简、Triton program 映射与正确性测试，可以继续阅读：</p>
+<p><a href="../2026-07-27-grouped-topk-operator-optimization/grouped-topk-operator-optimization.html">GroupedTopK 算子优化入门：从 MoE 路由到 Triton 融合思路</a></p>
+<hr>
+<h2 id="十一、学习这类算子时的推荐顺序">十一、学习这类算子时的推荐顺序</h2>
+<p>如果和我一样是第一次系统做算子优化，可以按下面的顺序建立知识：</p>
+<ol>
+<li><strong>模型语义</strong>：先理解 expert、router、Top-K、dispatch 和 combine。</li>
+<li><strong>Tensor 语义</strong>：为每一步写出 shape、dtype、stride 和输出不变量。</li>
+<li><strong>PyTorch reference</strong>：观察中间张量，建立可信的正确性基准。</li>
+<li><strong>GPU 执行模型</strong>：理解 program、grid、block、mask、warp 和 reduction。</li>
+<li><strong>朴素融合 kernel</strong>：先保证 ID 和权重正确。</li>
+<li><strong>性能分析</strong>：区分 launch-bound、memory-bound 和 compute-bound。</li>
+<li><strong>定向优化</strong>：根据真实 shape 与目标芯片调整实现，而不是盲目 autotune。</li>
+</ol>
+<p>这条路线看起来慢，却能避免最常见的问题：在尚未确认语义时就优化错误的计算，或者在没有
+profiling 证据时把 kernel 复杂化。</p>
+<hr>
+<h2 id="十二、总结">十二、总结</h2>
+<p>MoE 的核心不是简单地“增加很多 FFN”，而是通过稀疏路由把模型容量和单 token 计算量部分
+解耦：</p>
+<pre><code class="hljs language-text">多套 expert 参数提供容量
+router 为每个 token 打分
+Top-K 只激活少数 expert
+dispatch 将 token 按 expert 重排
+expert FFN 执行实际计算
+combine 按路由权重恢复 token 输出
+</code></pre>
+<p>GroupedTopK 在普通 Top-K 前加入 group 级筛选。它既改变模型的候选约束，也可能帮助系统
+控制跨设备路由范围。</p>
+<p>从算子优化角度看，它的价值在于：输入不大、步骤很多、中间 tensor 明显，非常适合练习
+kernel fusion、归约、Top-K、数值稳定性和 launch overhead 分析。</p>
+<p>下一步，就是把这套模型语义落实成逐项可验证的 reference 测试，再开始写第一个 Triton
+baseline。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
