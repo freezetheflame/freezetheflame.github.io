@@ -39,5 +39,8 @@ Thumbs.db
 .env.development.local
 .env.test.local
 .env.production.local
+# Serena config
+.serena/
+
 # CocoIndex Code (ccc)
 /.cocoindex_code/

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三省六部制 Multi-Agent：可换装的制度化智能体组织 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-08-02</p>
+        <h1>三省六部制 Multi-Agent：可换装的制度化智能体组织</h1>
+        <div class="post-meta">
+          <span>2026-08-02</span>
+          <span class="tag">agent</span><span class="tag">multi-agent</span><span class="tag">架构设计</span><span class="tag">idea</span>
+        </div>
+        <h2 id="核心-idea">核心 Idea</h2>
+<p>把<strong>古代政治制度的组织结构</strong>直接当作 multi-agent 系统的编排架构。Agent 必须严格遵循职位职责，不能越权；用户扮演&quot;皇帝&quot;，只负责下达任务（上谕）、审批（朱批/驳回）、阅取汇报（奏章）。</p>
+<p>与常规 multi-agent 系统（随意拆几个 role 拼一个 pipeline）的本质区别：</p>
+<ol>
+<li><strong>制度是一等公民</strong>：系统支持多种制度&quot;换装&quot;，每种制度定义完整的角色体系、职权边界、通信协议、汇报链路。</li>
+<li><strong>权力制衡内置</strong>：不是&quot;流水线式&quot;的接力，而是有审核、有驳回、有复审的真实治理结构。</li>
+<li><strong>职位即约束</strong>：Agent 的行为边界由制度严格限定，越权在系统层面被拦截，而不是靠提示词自觉。</li>
+</ol>
+<h2 id="制度一：唐代三省六部制">制度一：唐代三省六部制</h2>
+<h3 id="组织映射">组织映射</h3>
+<pre><code>                 ┌─────────────────┐
+                 │    皇 帝 (用户)   │ ← 上谕 / 朱批 / 阅奏章
+                 └────────┬────────┘
+                 ┌────────▼────────┐
+                 │  中书省 · 拟旨   │ ← Planner：把上谕变成可执行方案（只负责想）
+                 └────────┬────────┘
+                 ┌────────▼────────┐
+                 │  门下省 · 封驳   │ ← Reviewer：审核方案，有权打回重拟（只负责审）
+                 └────────┬────────┘
+                 ┌────────▼────────┐
+                 │  尚书省 · 奉旨   │ ← Orchestrator：拆解任务、分派六部（只负责派）
+                 └────────┬────────┘
+      ┌──────────┬────────┼────────┬──────────┬──────────┐
+   ┌──▼───┐  ┌──▼───┐  ┌──▼───┐  ┌──▼───┐  ┌──▼───┐  ┌──▼───┐
+   │ 吏部  │  │ 户部  │  │ 礼部  │  │ 兵部  │  │ 刑部  │  │ 工部  │
+   │人事调配│  │资源预算│  │文档规范│  │部署安全│  │测试质检│  │实现构建│
+   └──────┘  └──────┘  └──────┘  └──────┘  └──────┘  └──────┘
+      └──────────┴────────┴────────┴──────────┴──────────┘
+                          │ 复奏（结果上行）
+                 ┌────────▼────────┐
+                 │   皇帝阅示 (用户) │
+                 └─────────────────┘
+</code></pre>
+<h3 id="制度机制-→-现代对应">制度机制 → 现代对应</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>唐代机制</th>
+<th>现代对应</th>
+<th>价值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>事权分离（中书拟/门下审/尚书行）</td>
+<td>Plan → Review → Execute 三权分立</td>
+<td>杜绝&quot;自写自审&quot;，低质量方案进不了执行</td>
+</tr>
+<tr>
+<td>封驳权（门下省驳回诏令）</td>
+<td>硬性 quality gate + 驳回理由</td>
+<td>审核不只是打勾，必须给出结构化反馈</td>
+</tr>
+<tr>
+<td>职位边界（各司其职）</td>
+<td>每职位独立 system prompt + IO schema</td>
+<td>越权被系统拦截，而非靠模型自觉</td>
+</tr>
+<tr>
+<td>奏章/敕令格式</td>
+<td>上下行固定协议（结构化消息）</td>
+<td>通信协议即制度的一部分</td>
+</tr>
+<tr>
+<td>政事堂会议（三省长官合议）</td>
+<td>顶层多 agent 会商（廷议模式）</td>
+<td>重大事项先辩论再上报</td>
+</tr>
+<tr>
+<td>品级官阶</td>
+<td>模型 tiering（决策用强模型，执行用快模型）</td>
+<td>决策贵精、执行贵快</td>
+</tr>
+</tbody></table></div>
+<h2 id="制度二：郡县制（研究方向--管理内容即郡县）">制度二：郡县制（研究方向 / 管理内容即郡县）</h2>
+<p>用户已有方向：<strong>把研究方向和日常管理内容当作&quot;郡县&quot;来治理</strong>。</p>
+<ul>
+<li>每个研究方向（LLM 算子 / Agent 测试 / 博客 / 政务报送 / 数学项目…）= 一个郡/县</li>
+<li>郡县有自己的&quot;太守/县令&quot;Agent，负责该方向日常事务自治</li>
+<li>郡县之间<strong>平级、不相隶属</strong>（郡县制的核心），需要跨郡协调时上报中央（皇帝）</li>
+<li>皇帝只关注：郡县自治不了的大事、跨郡冲突、最终成果汇报</li>
+<li>优点：天然贴合&quot;多个并行研究项目&quot;的组织方式，每个方向有专职 Agent 长期跟踪，不必每次都从零开始</li>
+</ul>
+<h2 id="动态制度核心设计（未来要做的事）">动态制度核心设计（未来要做的事）</h2>
+<ul>
+<li><strong>制度定义层</strong>：每种制度 = 一份结构化定义（角色清单 / 层级关系 / 职权边界 / 消息协议 / 汇报链 / 审批节点）</li>
+<li><strong>运行层</strong>：通用的流程引擎读取制度定义，驱动 Agent 流转</li>
+<li><strong>换装能力</strong>：同一套 Agent 底层，换一份制度定义就换一套组织方式</li>
+<li><strong>约束强制</strong>：职位边界、汇报链路在运行层强制校验，违反即拦截</li>
+<li><strong>皇帝视图</strong>：用户只看最终汇报 + 关键审批点，过程全程留痕可查</li>
+</ul>
+<h2 id="待定问题（下次继续）">待定问题（下次继续）</h2>
+<ul>
+<li>底层实现：自研 Python 编排引擎 / 基于 Hermes delegate_task / 基于 NanoHarness</li>
+<li>第一个落地场景：代码任务全流程验证（需求→设计→评审→实现→测试）</li>
+<li>皇帝参与度：每步朱批 vs 只审最终奏章</li>
+</ul>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
