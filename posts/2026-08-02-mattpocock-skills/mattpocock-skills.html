@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mattpocock/skills：20 万星的 Agent 技能仓库到底做了什么 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-08-02</p>
+        <h1>mattpocock/skills：20 万星的 Agent 技能仓库到底做了什么</h1>
+        <div class="post-meta">
+          <span>2026-08-02</span>
+          <span class="tag">agent</span><span class="tag">ai-coding</span><span class="tag">claude-code</span><span class="tag">skills</span><span class="tag">最佳实践</span>
+        </div>
+        <h2 id="一句话总结">一句话总结</h2>
+<p>Matt Pocock（Total TypeScript 作者）把自己的 <code>.agents</code> 目录开源成了 <a href="https://github.com/mattpocock/skills">mattpocock/skills</a>，目前近 20 万 star。它是一套&quot;小而可组合、可随意修改&quot;的 Agent 技能集合，覆盖从代码实现、代码评审、调试、领域建模到&quot;被 AI 拷问&quot;的完整研发工作流。核心理念是：<strong>不拥有你的流程，只给你可拼接的积木</strong>。</p>
+<h2 id="它为什么这么火">它为什么这么火</h2>
+<p>仓库 README 里有一段话点明了立场：</p>
+<blockquote>
+<p>开发真实应用很难。GSD、BMAD、Spec-Kit 这类方案试图通过&quot;接管整个流程&quot;来帮你，但代价是夺走你的控制权，而且流程里的 bug 极难排查。
+这些 skills 刻意做得小、易改造、可组合。它们和任何模型都能配合。基于几十年的工程经验。随便 hack，改造成你自己的。</p>
+</blockquote>
+<p>这是当前 Agent 工程领域两条路线的典型分野：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>路线</th>
+<th>代表</th>
+<th>哲学</th>
+<th>弱点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>流程框架</td>
+<td>GSD、BMAD、Spec-Kit</td>
+<td>拥有流程，agent 按既定流程走</td>
+<td>流程 bug 难排查，失去控制权</td>
+</tr>
+<tr>
+<td>技能积木</td>
+<td>mattpocock/skills</td>
+<td>小而可组合，随时修改</td>
+<td>需要自己组装、理解</td>
+</tr>
+</tbody></table></div>
+<p><strong>&quot;Skills For Real Engineers - not vibe coding&quot;</strong> 是它的定位宣言：不是给演示项目用的，是给真实工程用的。</p>
+<h2 id="仓库结构">仓库结构</h2>
+<pre><code>skills/
+├── engineering/    # 每日代码工作流（17 个，主力）
+├── productivity/   # 通用工作流，与代码无关（5 个）
+├── misc/           # 少用但有用的工具（4 个）
+├── personal/       # Matt 个人 setup，不在插件里推广（2 个）
+├── deprecated/     # 废弃
+└── in-progress/    # 开发中
+</code></pre>
+<p>外加 <code>CONTEXT.md</code>（统一领域词汇表）、<code>AGENTS.md</code>、<code>.agents/adr/</code>（架构决策记录）。</p>
+<h2 id="核心设计：user-invoked-vs-model-invoked">核心设计：user-invoked vs model-invoked</h2>
+<p>这是整套体系最精妙的设计之一。每个 skill 明确标注调用方式：</p>
+<ul>
+<li><strong>User-invoked</strong>：只有你主动输入命令才触发（Claude Code 用 <code>disable-model-invocation: true</code>，Codex 用 <code>policy.allow_implicit_invocation: false</code>）。比如 <code>/triage</code>、<code>/to-spec</code>、<code>/grill-me</code>。</li>
+<li><strong>Model-invoked</strong>：模型可以根据场景自行调用，但 description 里写了丰富的触发措辞，防止误触发。</li>
+</ul>
+<p><strong>为什么这么分？</strong> 流程控制权在人手里。像&quot;把对话变成 spec 发到 issue tracker&quot;这种动作，绝不能让模型自己悄悄干。这跟&quot;技能是积木不是框架&quot;的理念一脉相承——<strong>人决定何时用哪块积木</strong>。</p>
+<h2 id="重点技能解析">重点技能解析</h2>
+<h3 id="🧱-tdd--最值得读的一个">🧱 tdd —— 最值得读的一个</h3>
+<p>不是简单喊&quot;red-green-refactor&quot;口号，而是把 TDD 变成有纪律的工程实践，最亮的概念是 <strong>Seam（接缝）</strong>：</p>
+<blockquote>
+<p><strong>Seam</strong> 是你测试所在的公共边界：观察行为而不用伸进内部的接口。测试只写在预先约定好的 seams 上——写任何测试之前，先把要测的 seams 写下来和用户确认。没确认的 seam 不写测试。</p>
+</blockquote>
+<p>一句话点破 TDD 实践中的最大误区：<strong>测试写在哪比测试怎么写更重要</strong>。它还包含 tests.md、mocking.md 两个参考文件，规范了&quot;什么算好测试&quot;（测公共接口行为，不测实现细节）。</p>
+<h3 id="🔍-code-review--双轴并行子代理评审">🔍 code-review —— 双轴并行子代理评审</h3>
+<p>把 diff 评审拆成两条正交的轴，用<strong>并行子代理</strong>分别执行（互不污染上下文），再汇总：</p>
+<ul>
+<li><strong>Standards 轴</strong>：代码是否符合仓库文档化的编码规范 + Fowler 坏味道基线</li>
+<li><strong>Spec 轴</strong>：代码是否忠实实现了源头 issue/PRD</li>
+</ul>
+<p>这个设计跟 Hermes 的 <code>subagent-driven-development</code> 技能的&quot;spec compliance review + code quality review 两阶段评审&quot;异曲同工，但它是并行的，且固定在 diff 上。</p>
+<h3 id="🗣️-grilling--grill-me--被-ai-穷追不舍地拷问">🗣️ grilling / grill-me —— 被 AI 穷追不舍地拷问</h3>
+<p>一句话描述就很有冲击力：</p>
+<blockquote>
+<p>关于你的计划、决策或想法，无情地拷问你，直到决策树的每个分支都被解决。</p>
+</blockquote>
+<p>规则也写得很细：<strong>一次只问一个问题</strong>（&quot;一次问多个问题让人困惑&quot;）、每个问题给出推荐答案、能查环境的事实不问用户、只问决策（决策权在用户）、未达成共识前不行动。</p>
+<p>这是把&quot;AI 追问式设计评审&quot;变成可复用 skill 的范本。配合 <code>wayfinder</code>（大块工作的决策票地图）和 <code>grill-with-docs</code>（拷问的同时构建领域模型），覆盖了从模糊想法到可执行计划的全过程。</p>
+<h3 id="🎯-to-tickets--to-spec--计划到工单的流水线">🎯 to-tickets / to-spec —— 计划到工单的流水线</h3>
+<ul>
+<li><code>to-spec</code>：把当前对话变成 spec，发布到 issue tracker</li>
+<li><code>to-tickets</code>：把计划/spec/对话拆成 <strong>tracer-bullet（曳光弹）工单</strong>，每个工单声明自己的阻塞边（blocking edges）——本地文本文件或真实 tracker 的原生阻塞链接</li>
+</ul>
+<p>&quot;曳光弹&quot;这个词很妙：不追求一次性完美的分解，而是先打出一批能照亮路径的工单，让依赖关系显式化。</p>
+<h3 id="📚-其他值得一提的">📚 其他值得一提的</h3>
+<ul>
+<li><code>setup-matt-pocock-skills</code>：每个仓库跑一次，配置 issue tracker、triage 标签、文档存放位置——<strong>skills 的引导安装器本身也是 skill</strong></li>
+<li><code>diagnosing-bugs</code>：有纪律的调试循环 reproduce → minimise → hypothesise → instrument → fix → regression-test</li>
+<li><code>research</code>：以高信任度一手资料调研问题，结果写成带引用的 Markdown 存进仓库，<strong>作为后台 agent 运行</strong></li>
+<li><code>handoff</code>：把当前对话压缩成交接文档，让另一个 agent 继续</li>
+<li><code>writing-great-skills</code>：教你怎么写好 skill 的参考——元技能</li>
+</ul>
+<h2 id="contextmd：领域词汇表是工程的隐性成本">CONTEXT.md：领域词汇表是工程的隐性成本</h2>
+<p>仓库里的 <code>CONTEXT.md</code> 值得单独讲。它是一份<strong>统一术语表</strong>，例如：</p>
+<ul>
+<li><strong>Issue tracker</strong>：托管 repo issue 的工具（GitHub Issues / Linear / 本地 markdown 约定）——&quot;backlog&quot; 曾同时指工具和存量工作，已解决，不再作为领域术语</li>
+<li><strong>Decision ticket</strong>：wayfinder 的单元，承载&quot;一个决策&quot;而非&quot;一段实现&quot;</li>
+</ul>
+<p><strong>为什么重要？</strong> 多 skill 协作时，术语不一致会导致 agent 之间鸡同鸭讲。用一份 CONTEXT.md 锁定词汇，是所有 skill 共享的语义地基。这也是为什么 <code>domain-modeling</code>、<code>grill-with-docs</code> 都在&quot;内联更新 CONTEXT.md 和 ADR&quot;——<strong>领域模型是活的，要随项目演进</strong>。</p>
+<h2 id="安装方式（30-秒）">安装方式（30 秒）</h2>
+<p>两种哲学二选一，别都装（会重复）：</p>
+<pre><code class="hljs language-bash"><span class="hljs-comment"># 1. Claude Code 插件：托管、只读、自动更新（订阅而非 fork）</span>
+claude plugins install mattpocock-skills
+
+<span class="hljs-comment"># 2. skills.sh：把技能文件复制进你的仓库，随意修改（tinkerer 路线）</span>
+npx skills@latest add mattpocock/skills
+</code></pre>
+<p>装完跑一次 <code>/setup-matt-pocock-skills</code> 完成仓库级配置。注意：<strong>任何模型都能配合</strong>——它不绑定 Claude Code，Codex 等 agent 用 <code>npx skills</code> 安装即可。</p>
+<h2 id="对-hermes-技能体系的启发">对 Hermes 技能体系的启发</h2>
+<p>对照 Hermes 的 skills（<code>~/.hermes/skills/</code>），有几个点很值得吸收：</p>
+<ol>
+<li><strong>调用权限分级</strong>：Hermes 技能目前是&quot;相关就加载&quot;，可以借鉴 user-invoked / model-invoked 的分级，把破坏性流程（如推送、重构、发工单）设为仅用户触发。</li>
+<li><strong>共享术语表</strong>：<code>CONTEXT.md</code> 模式可以直接移植——给项目的 agent 工作流建一份术语/决策记录文档，让多个 skill 共享同一套语义。</li>
+<li><strong>skill 的 skill</strong>：<code>writing-great-skills</code>、<code>setup-matt-pocock-skills</code> 这类&quot;元技能&quot;让技能体系自举，值得推广。</li>
+<li><strong>grilling 的提问纪律</strong>：&quot;一次一个问题 + 给推荐答案 + 决策归用户&quot;是极好的需求澄清范式，可以直接改进日常交互。</li>
+</ol>
+<h2 id="总结">总结</h2>
+<p>mattpocock/skills 的走红不是偶然：它回答了 Agent 工程里一个根本问题——<strong>流程控制权该归谁</strong>。框架派说&quot;归框架&quot;，它说&quot;归你，我只是积木&quot;。20 万 star 证明了这个答案有广泛共鸣。对于想自己搭 Agent 工作流的人，它既是现成的工具箱，更是一份极好的&quot;如何设计技能&quot;的教材——尤其值得读 <code>tdd</code>（seam 概念）、<code>code-review</code>（双轴并行）、<code>grilling</code>（提问纪律）和 <code>CONTEXT.md</code>（术语管理）。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
