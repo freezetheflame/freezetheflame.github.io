@@ -41,6 +41,11 @@ marked.setOptions({
     return hljs.highlight(code, { language }).value;
   },
   langPrefix: 'hljs language-',
+  // mangle:false — deterministic output. marked v4's default mangle obfuscates
+  // emails with Math.random() (hex vs decimal entities), so every rebuild
+  // produced different HTML for the same .md → recurring dirty files + CI
+  // auto-commit conflicts. Disabling makes builds reproducible.
+  mangle: false,
 });
 
 function parseFrontmatter(content) {
