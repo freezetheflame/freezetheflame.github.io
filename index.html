@@ -498,6 +498,7 @@
           <button class="tag-pill" data-tag="framework">framework<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="fusion">fusion<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="GroupedTopK">GroupedTopK<span class="tag-count">2</span></button>
+          <button class="tag-pill" data-tag="llm">llm<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="MLIR">MLIR<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="mlp">mlp<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="PL理论">PL理论<span class="tag-count">2</span></button>
@@ -520,6 +521,7 @@
           <button class="tag-pill" data-tag="2PC">2PC<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="activation">activation<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Agentless">Agentless<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="agent安全">agent安全<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="ai-coding">ai-coding<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AI-coding">AI-coding<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AI编译">AI编译<span class="tag-count">1</span></button>
@@ -570,7 +572,6 @@
           <button class="tag-pill" data-tag="layernorm">layernorm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Lean">Lean<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Linux相关">Linux相关<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="llm">llm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="LLM4Code">LLM4Code<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="LLM推理">LLM推理<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="MCP">MCP<span class="tag-count">1</span></button>
@@ -595,6 +596,7 @@
           <button class="tag-pill" data-tag="ROCm">ROCm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Rust">Rust<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Serena">Serena<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="skill">skill<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Skill">Skill<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="SkillOpt">SkillOpt<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="skills">skills<span class="tag-count">1</span></button>
@@ -610,11 +612,13 @@
           <button class="tag-pill" data-tag="TVM">TVM<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="TypeScript/JavaScript">TypeScript/JavaScript<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="xAI">xAI<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="供应链安全">供应链安全<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="入门教程">入门教程<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="最佳实践">最佳实践<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="最短路">最短路<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="博客">博客<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="多 Agent 编排">多 Agent 编排<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="安全测试">安全测试<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="定理证明">定理证明<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="小模型">小模型<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="工程">工程<span class="tag-count">1</span></button>
@@ -666,7 +670,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 172 篇文章
+      共 173 篇文章
     </div>
   </aside>
 
@@ -690,12 +694,23 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 172</span>
+        <span class="section-count" id="visibleCount">15 / 173</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="agent安全,llm,skill,供应链安全,安全测试">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-09-01-agent-skill-runtime-risk/agent-skill-runtime-risk.html">Agent Skill 的运行时动态风险分析</a></h3>
+              <p class="post-preview">背景：Skill 成为新的软件供应链对象 2025 年以来，Agent 生态出现了一个明显的趋势：能力不再以单一工具或插件的形式分发，而是打包成 Skill——一个面向智能体的可分发&quot;能力包&quot;。Claude Code 的 、DeepS...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-09-01</span>
+                <span class="post-card-tags"><span class="post-tag">agent安全</span><span class="post-tag">llm</span><span class="post-tag">skill</span><span class="post-tag">供应链安全</span><span class="post-tag">安全测试</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-09-01-agent-skill-runtime-risk/agent-skill-runtime-risk.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="agent,multi-agent,架构设计,idea">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-08-02-dynasty-multiagent-system/dynasty-multiagent-system.html">三省六部制 Multi-Agent：可换装的制度化智能体组织</a></h3>
@@ -850,20 +865,9 @@
             </div>
             <a href="posts/2026-07-06-huang-yiping-ai-macro/huang-yiping-ai-macro.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="经济,宏观,北京大学,转载">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-07-06-huang-yiping-economy/huang-yiping-economy.html">黄益平：中国经济压力的本质与战略应对</a></h3>
-              <p class="post-preview">本文转载自北京大学数字金融研究中心「专家观点」栏目</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-07-06</span>
-                <span class="post-card-tags"><span class="post-tag">经济</span><span class="post-tag">宏观</span><span class="post-tag">北京大学</span><span class="post-tag">转载</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-07-06-huang-yiping-economy/huang-yiping-economy.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 172 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 173 篇文章 →</a>
     </section>
   </main>
 
