@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>安全分类框架的本质：每根轴回答一个不同的问题 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-09-01</p>
+        <h1>安全分类框架的本质：每根轴回答一个不同的问题</h1>
+        <div class="post-meta">
+          <span>2026-09-01</span>
+          <span class="tag">安全</span><span class="tag">威胁建模</span><span class="tag">agent安全</span><span class="tag">llm</span><span class="tag">框架</span>
+        </div>
+        <h2 id="一个框架--选一根轴--在轴上枚举">一个框架 = 选一根轴 + 在轴上枚举</h2>
+<p>安全领域有一批公认的分类框架，但很少有人停下来想：<strong>它们之间的本质区别是什么？</strong></p>
+<p>答案是：<strong>每根框架都是选了一根&quot;轴&quot;来切分风险空间，然后在轴上枚举元素</strong>。轴选得不同，框架回答的问题就不同，适用场景也不同：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>框架</th>
+<th>轴</th>
+<th>轴上枚举什么</th>
+<th>回答什么问题</th>
+<th>典型用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CIA 三元组</td>
+<td>被破坏的安全属性</td>
+<td>机密性 / 完整性 / 可用性</td>
+<td>&quot;系统要保护什么？&quot;</td>
+<td>最底层，一切分析的出发点</td>
+</tr>
+<tr>
+<td>STRIDE</td>
+<td>威胁破坏的属性</td>
+<td>Spoofing / Tampering / Repudiation / Info Disclosure / DoS / Elevation</td>
+<td>&quot;攻击会以什么方式伤害系统？&quot;</td>
+<td>微软威胁建模标准，设计期系统过一遍</td>
+</tr>
+<tr>
+<td>DREAD</td>
+<td>风险度量维度</td>
+<td>Damage / Reproducibility / Exploitability / Affected Users / Discoverability</td>
+<td>&quot;风险有多大、怎么排序？&quot;</td>
+<td>给发现的风险打分排优先级</td>
+</tr>
+<tr>
+<td>MITRE ATT&amp;CK</td>
+<td>攻击者的战术阶段</td>
+<td>战术（Tactic）→ 技术（Technique）→ 子技术</td>
+<td>&quot;攻击者实际怎么打的？&quot;</td>
+<td>威胁情报、红蓝对抗、检测覆盖度</td>
+</tr>
+<tr>
+<td>OWASP Top 10</td>
+<td>常见漏洞类别</td>
+<td>注入 / 失效访问控制 / 敏感数据泄露…</td>
+<td>&quot;应用层最常见的病是什么？&quot;</td>
+<td>合规基线、开发自查</td>
+</tr>
+</tbody></table></div>
+<p>注意几个关键区别：</p>
+<ul>
+<li><strong>CIA 和 STRIDE 看着像，但方向相反</strong>。CIA 从防御者视角问&quot;我要保护什么属性&quot;，STRIDE 从攻击者视角问&quot;我的哪个属性会被哪种威胁破坏&quot;——STRIDE 的每个字母都对应 CIA 的破坏方式（Spoofing 破坏 Authenticity、Tampering 破坏 Integrity、Info Disclosure 破坏 Confidentiality……），所以 STRIDE 常被说成是 CIA 的可操作化。</li>
+<li><strong>DREAD 不是分类轴，是打分轴</strong>。它不告诉你风险长什么样，只给你五个维度去量化一个已知风险。分类框架用来&quot;认得出&quot;，DREAD 用来&quot;排得清&quot;。</li>
+<li><strong>ATT&amp;CK 是唯一以&quot;攻击者时间线&quot;为轴的</strong>。其他框架都是静态快照，ATT&amp;CK 按战术阶段组织，天然能表达&quot;攻击链&quot;——这使它成为检测/响应类工作的基础设施。</li>
+<li><strong>OWASP Top 10 是经验轴，不是理论轴</strong>。它按&quot;社区投票出的最常见漏洞&quot;排，会随时代变化（每几年换一版），本质是风险清单而不是完备分类。</li>
+</ul>
+<h2 id="轴思维的方法论">轴思维的方法论</h2>
+<p>理解了&quot;轴&quot;，威胁建模就变成两步：</p>
+<ol>
+<li><strong>选轴</strong>：先问&quot;我这个阶段要回答什么问题&quot;——设计期防漏 → STRIDE；评估期排优先级 → DREAD；对抗检测 → ATT&amp;CK；合规自查 → OWASP。</li>
+<li><strong>枚举</strong>：在轴上把元素列全，逐个过一遍，确认每个都有对应措施。</li>
+</ol>
+<p>选错轴是常见失误：拿 OWASP 清单去做攻击检测（它根本不按攻击过程组织），或者拿 ATT&amp;CK 当漏洞清单（它的粒度是行为不是缺陷）。<strong>每根轴都只能照亮风险空间的一个切面。</strong></p>
+<h2 id="新领域的轴已经在长出来">新领域的轴已经在长出来</h2>
+<p>这套思维迁移到 LLM / Agent 安全时，社区其实已经在&quot;抄轴&quot;了：</p>
+<ul>
+<li><strong>MITRE ATLAS</strong>（Adversarial Threat Landscape for AI Systems）直接抄了 ATT&amp;CK 的轴——战术阶段 → 技术 → 子技术。2026 年 7 月数据版已有 16 个战术、101 个技术、77 个子技术、68 个案例，并且已经长出 agentic AI 专属技术（agent 工具调用、从 agent 配置窃取凭据、基于 agent 的 C2）。</li>
+<li><strong>OWASP LLM Top 10</strong>（2026 版）抄的是&quot;常见风险清单&quot;这根轴；它的延伸 <strong>OWASP Agentic Top 10</strong>（2025 年 12 月发布）把榜首给了 <strong>ASI01 Agent Goal Hijacking（目标劫持）</strong>——因为 agent 无法可靠区分指令与数据，一条恶意输入就能劫持合法工具链。</li>
+<li><strong>CompoSkill</strong>（组合技能链攻击）事实上也在贡献一根新轴：威胁目标轴——数据窃取 / 内存篡改 / 权限提升 / 多智能体劫持 / 资源耗尽。它和 STRIDE 的对应关系几乎可以逐条画出来。</li>
+</ul>
+<p>这印证了一点：<strong>给一个新领域建安全框架，第一步不是发明新概念，而是想清楚该抄哪根轴、在哪根轴上需要新建</strong>。</p>
+<h2 id="agent--skill-安全缺什么轴">Agent / Skill 安全缺什么轴</h2>
+<p>结合前两篇（<a href="posts/2026-09-01-composkill-skill-chain/composkill-skill-chain.html">CompoSkill 论文解读</a> 和 <a href="posts/2026-09-01-agent-skill-runtime-risk/agent-skill-runtime-risk.html">Agent Skill 的运行时动态风险分析</a>），我认为 agent/skill 安全有三根轴是现有框架没覆盖好的：</p>
+<p><strong>① 粒度轴：节点 vs 路径。</strong> 传统扫描器（SkillsGuard、Cisco AI Defense、NVIDIA SkillSpector）都在&quot;节点&quot;粒度上工作——每个 skill 单独打分。CompoSkill 证明风险本质是<strong>路径级</strong>的：单个技能全 SAFE，串成 source → bridge → terminal 就泄露。STRIDE 枚举的是单点威胁，无法表达&quot;组合后才出现&quot;的风险。这需要一根新轴：风险存在于哪个粒度（单点 / 组合路径 / 跨 agent 传播）。</p>
+<p><strong>② 能力轴：I/O 字母表。</strong> CompoSkill 用 <code>Σ = {file, net, cmd, mem, cfg, db, msg}</code> 给每个 skill 标输入/输出能力，然后在能力空间里找&quot;读敏感源 → 外发终端&quot;的路径。这本质是给 skill 生态建立一张<strong>能力拓扑图</strong>——类似于给微服务画数据流图。这根轴的价值是让&quot;组合风险&quot;变成可计算的图问题。</p>
+<p><strong>③ 时间轴：静态声明 vs 运行时行为。</strong> 静态分析看 skill 的文档和代码声明了能做什么；但 agent 场景下行为依赖上下文（用户输入、工具返回值、环境状态），声明 ≠ 执行。运行时动态风险分析（沙箱监控、污点追踪、策略引擎）是在时间轴上补上&quot;实际执行&quot;这一维——这也是 CompoSkill 自己承认没做的防御缺口。</p>
+<p>如果把这三根轴和经典框架拼起来，一个 agent 安全分析可以这样走：用能力轴建模 → 在粒度轴上找路径级风险 → 用时间轴决定在哪个阶段拦截（静态筛查 / 部署前构图 / 运行时监控）。</p>
+<h2 id="总结">总结</h2>
+<p>安全分类框架的本质是<strong>选轴</strong>。CIA 选属性轴、STRIDE 选破坏方式轴、DREAD 选打分轴、ATT&amp;CK 选攻击时间线轴、OWASP 选经验清单轴——每根轴照亮一个切面，回答一个不同的问题。到了 agent/skill 安全这个新领域，MITRE ATLAS 和 OWASP Agentic Top 10 已经在抄经典框架的轴，但真正的新机会在于补上经典轴表达不了的维度：<strong>路径级粒度、能力拓扑、运行时行为</strong>。选对这三根轴，才有资格谈 agent 安全的完备分类。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
