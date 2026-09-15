@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>从最短路到路径构建：图是怎么被定义出来的 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-09-11</p>
+        <h1>从最短路到路径构建：图是怎么被定义出来的</h1>
+        <div class="post-meta">
+          <span>2026-09-11</span>
+          <span class="tag">算法与数据结构</span><span class="tag">图论</span><span class="tag">路径规划</span><span class="tag">AI Agent</span>
+        </div>
+        <h2 id="三个词不是并列关系">三个词不是并列关系</h2>
+<p>最短路径、寻路、路径构建，看起来是同一类话题的三个说法。实际上它们是同一个问题在三层抽象上的展开，而这三层的难度和成熟度差异极大：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>层次</th>
+<th>要回答的问题</th>
+<th>图的状态</th>
+<th>核心难点</th>
+<th>成熟度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>最短路</td>
+<td>给定图，求最优解</td>
+<td>已知、静态</td>
+<td>基本已解决（1959）</td>
+<td>教科书</td>
+</tr>
+<tr>
+<td>寻路</td>
+<td>图太大 / 未知 / 会变</td>
+<td>隐式、动态</td>
+<td>启发式从哪来</td>
+<td>工程化</td>
+</tr>
+<tr>
+<td>路径构建</td>
+<td>图本身还没定义</td>
+<td>要你自己构造</td>
+<td>什么是节点？什么是边？</td>
+<td>开放</td>
+</tr>
+</tbody></table></div>
+<p>这个分层有一个很重要的推论：<strong>绝大多数路径规划项目的瓶颈从来不是最短路算法，而是图怎么定义。</strong></p>
+<p>选 Dijkstra 还是 A*，通常只影响 10% 的运行时间；而节点、边、边权的定义方式，直接决定整个系统的上限。下面逐层展开。</p>
+<hr>
+<h2 id="一、最短路：算法选择由约束唯一决定">一、最短路：算法选择由约束唯一决定</h2>
+<p>先把算法家族摆清楚。真正决定用哪个算法的不是&quot;哪个更快&quot;，而是三个约束：<strong>边权的符号、图的结构、查询的频率</strong>。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>约束</th>
+<th>算法</th>
+<th>复杂度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>无权图</td>
+<td>BFS</td>
+<td>O(V+E)</td>
+</tr>
+<tr>
+<td>非负权</td>
+<td>Dijkstra + 二叉堆</td>
+<td>O((V+E)logV)</td>
+</tr>
+<tr>
+<td>可含负权</td>
+<td>Bellman-Ford</td>
+<td>O(VE)</td>
+</tr>
+<tr>
+<td><strong>DAG</strong></td>
+<td>拓扑序 DP</td>
+<td><strong>O(V+E)</strong></td>
+</tr>
+<tr>
+<td>全源、稠密</td>
+<td>Floyd-Warshall</td>
+<td>O(V³)</td>
+</tr>
+<tr>
+<td>全源、稀疏</td>
+<td>Johnson</td>
+<td>O(V²logV + VE)</td>
+</tr>
+<tr>
+<td>次短路 / k 短路</td>
+<td>Yen、Eppstein</td>
+<td>—</td>
+</tr>
+</tbody></table></div>
+<h3 id="反直觉点一：堆优化不是永远更快">反直觉点一：堆优化不是永远更快</h3>
+<p>通常的叙述是&quot;Dijkstra 用堆优化到 O((V+E)logV)&quot;，好像堆优化是标配。但在<strong>稠密图</strong>（E ≈ V²）上，朴素的 O(V²) 线性扫描实现反而更快——堆的 log 因子白白付出，还带来额外的常数开销和缓存不友好。</p>
+<p>结论：<strong>图密度决定实现方式</strong>，而不是&quot;堆优化就是好的&quot;。</p>
+<h3 id="反直觉点二：dag-上不需要-dijkstra">反直觉点二：DAG 上不需要 Dijkstra</h3>
+<p>如果图是有向无环的，拓扑序一遍扫描就能算出所有单源最短路，<strong>而且是线性的</strong>，<strong>并且天然支持负权</strong>。</p>
+<p>所以在动手之前，先问一句&quot;我的图有环吗&quot;，往往比问&quot;该用哪个算法&quot;价值大得多。很多真实问题的图结构其实自带很强的约束（依赖关系、流水线阶段、时间展开），这些约束直接消掉了大部分算法选择。</p>
+<h3 id="工业界真正的答案：预处理，而不是更快的搜索">工业界真正的答案：预处理，而不是更快的搜索</h3>
+<p>一个常被忽略的事实：高德、Google Maps 这类导航系统每天要处理几十亿次路径查询。每次跑一遍 Dijkstra 是完全不可想象的。</p>
+<p>它们用的是<strong>「预处理 + 极快查询」</strong>的路线：</p>
+<ul>
+<li><strong>Contraction Hierarchies（CH）</strong>：按&quot;重要性&quot;给节点排序，依次把不重要的节点&quot;收缩&quot;掉，并为被绕过的路径补上捷径边。查询时只在剩下的高层图上搜索，再展开捷径还原成真实路径。</li>
+<li><strong>Hub Labeling</strong>：预计算每个节点到一组 hub 的距离标签，查询时只做标签交集。</li>
+<li><strong>CRP（Customizable Route Planning）</strong>：把预处理拆成&quot;拓扑预处理&quot;和&quot;权重定制&quot;两阶段，从而支持路况实时更新。</li>
+</ul>
+<p>这些方法在大陆级路网上能把查询从秒级压到毫秒乃至微秒级，<strong>三到五个数量级的加速</strong>。</p>
+<p>背后的结构性先验非常朴素：<strong>几乎所有的长距离出行都是「先上主干道或高速，到接近目的地时再下来」</strong>。把这个先验预计算进索引，搜索空间就从百万节点掉到几百节点。</p>
+<blockquote>
+<p>这里的关键洞察是：<strong>最短路的真正瓶颈是「重复查询」，而不是「单次查询」。</strong> 只查一次，Dijkstra 就够；要查十亿次，预处理才划得来。这是一个典型的&quot;用空间和预处理换查询时间&quot;的工程权衡，而不是算法理论问题。</p>
+</blockquote>
+<hr>
+<h2 id="二、寻路：当图不可知或巨大">二、寻路：当图不可知或巨大</h2>
+<p>A* 的骨架是 <code>f(n) = g(n) + h(n)</code>：已走代价加上对剩余距离的估计。真正有讨论价值的是 <strong>h 从哪来</strong>：</p>
+<ul>
+<li><strong>几何启发式</strong>：欧氏距离、曼哈顿距离。简单，但在有障碍物时很松。</li>
+<li><strong>地标法（ALT）</strong>：预先挑若干 landmark 节点，利用三角不等式 <code>|d(A,L) − d(L,B)| ≤ d(A,B)</code> 构造下界。这是&quot;用预处理换启发式强度&quot;的又一例。</li>
+<li><strong>学出来的启发式</strong>：Neural A*、用 GNN 直接从图结构预测 h。近年的研究热点。</li>
+</ul>
+<h3 id="反直觉点三：h-不是越准越好">反直觉点三：h 不是越准越好</h3>
+<p>这是我觉得最值得反复咀嚼的一点。</p>
+<ul>
+<li><strong>h 高估真实距离 → 不再 admissible → 失去最优性保证</strong>。搜索会变快，但可能返回次优解。</li>
+<li><strong>h 过强 → 退化成纯贪心</strong>。搜索变得近视，&quot;看起来近&quot;的节点被优先展开，全局结构被忽略。</li>
+</ul>
+<p>你要的其实是：<strong>刚好乐观</strong>。宁可低估，不可高估。这个&quot;乐观性&quot;约束是 A* 正确性的全部来源。</p>
+<p>与之配套的另一个概念是 <strong>consistency（一致性）</strong>：满足 <code>h(n) ≤ c(n,n&#39;) + h(n&#39;)</code>。一致性比可采纳性更强，它保证节点不需要被重新打开。<strong>可采纳性保证最优，一致性保证效率</strong>——两者容易混淆，但作用完全不同。</p>
+<h3 id="网格地图上的两个必要技巧">网格地图上的两个必要技巧</h3>
+<ul>
+<li><strong>JPS（Jump Point Search）</strong>：网格上存在大量对称路径，JPS 利用这一点，一次跳跃掠过整段直线，把搜索规模砍掉一个数量级。</li>
+<li>**Theta***：允许任意角度的路径段，避免路径被网格&quot;咬&quot;成锯齿。这类方法统称 any-angle path planning。</li>
+</ul>
+<h3 id="连续空间：干脆不建图">连续空间：干脆不建图</h3>
+<p>机器人领域的大量问题（机械臂、无人机、自动驾驶的局部规划）根本没有离散图。做法是<strong>采样</strong>：</p>
+<ul>
+<li>**RRT / RRT***：从起点长一棵随机树，向采样点扩展，RRT* 额外做重连优化。</li>
+<li><strong>PRM（概率路线图）</strong>：预先在自由空间撒点连边，建成一张稀疏图，之后在其上反复查询。</li>
+</ul>
+<p>关键共同点：<strong>从不构建全局图</strong>，只在需要的地方生成局部结构。</p>
+<h3 id="环境会变：增量修复而非重算">环境会变：增量修复而非重算</h3>
+<p><strong>D* Lite</strong> 是这一类问题的代表：当环境发生变化（新障碍物出现），它不重新规划，而是<strong>增量修复</strong>受影响的局部子图。火星车、仓储机器人用的就是这一族算法。</p>
+<hr>
+<h2 id="三、图构建：真正的难点在这里">三、图构建：真正的难点在这里</h2>
+<p>前面两层都有成熟解法。到了这一层，问题变成&quot;图从哪来&quot;，而这几乎总是项目成败的分水岭。</p>
+<h3 id="31-定义节点和边，本身就是建模决策">3.1 定义节点和边，本身就是建模决策</h3>
+<p><strong>节点选什么？</strong></p>
+<ul>
+<li><strong>路口图</strong>（node = 交叉路口）：最直观，但<strong>转向代价无处安放</strong>。左转和直行在图上都是&quot;两条边的连接&quot;，可实际代价能差十倍。要塞进转向代价，就只能给每条边挂上入口边的信息，或者给每个转向建一个节点——图迅速膨胀。</li>
+<li><strong>路段图</strong>（node = 路段）：转向代价变成节点代价，干净利落，代价是节点数上升。</li>
+<li><strong>线图（line graph）</strong>：把原图的边提升为节点，是处理转向代价的标准做法。</li>
+</ul>
+<p>这几种选择没有绝对优劣，只有&quot;你的代价模型是什么&quot;。</p>
+<p><strong>边权是什么？</strong></p>
+<p>距离？时间？拥堵概率？能耗？景观？一旦涉及多个目标，**&quot;最短路&quot;这个概念本身就不存在了**——剩下的只有 <strong>Pareto 前沿</strong>：在所有目标上都不被支配的解集合。</p>
+<p>更麻烦的是<strong>时变图</strong> <code>w(e, t)</code>，见下一节。</p>
+<h3 id="32-图从数据里长出来">3.2 图从数据里长出来</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>数据源</th>
+<th>建图方式</th>
+<th>典型脏数据</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>OpenStreetMap</td>
+<td>拓扑路网提取</td>
+<td>断头路、单行道方向、禁转关系、道路等级误标</td>
+</tr>
+<tr>
+<td>激光 / 视觉</td>
+<td>occupancy grid → 图</td>
+<td>动态障碍、传感器噪声、标定误差</td>
+</tr>
+<tr>
+<td>轨迹数据</td>
+<td>从实际行驶路径反推边权</td>
+<td>采样稀疏、异常轨迹、隐私脱敏</td>
+</tr>
+<tr>
+<td>路况数据</td>
+<td>给已有边赋时变权重</td>
+<td>覆盖不均、延迟、口径不一</td>
+</tr>
+</tbody></table></div>
+<p>最后一行值得特别强调：<strong>从人的实际选择反推边权</strong>，会得到一个和&quot;理论最短路&quot;很不一样的图。这是第四节最后一条的伏笔。</p>
+<h3 id="33-隐式图：不构建，按需展开">3.3 隐式图：不构建，按需展开</h3>
+<p>这是我最想推荐的一个技巧。</p>
+<p>有些状态空间根本不可能存下来：</p>
+<ul>
+<li>八数码：约 1.8×10⁵ 个可达状态，勉强能存，但已经不小</li>
+<li><strong>魔方：4.3×10¹⁹ 个状态</strong>——无论用什么硬件都存不下。人类最终的解法是双向 BFS 配合<strong>模式数据库</strong>，用几十年时间算出了&quot;上帝之数 = 20&quot;（任意状态 20 步内可解）</li>
+</ul>
+<p>但注意：这些问题的图<strong>在数学上真实存在，在程序里从不落地</strong>。你只需要提供一个生成函数：</p>
+<pre><code class="hljs language-python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">neighbors</span>(<span class="hljs-params">state</span>):
+    <span class="hljs-string">&quot;&quot;&quot;返回从 state 一步可达的所有后继状态&quot;&quot;&quot;</span>
+    ...
+</code></pre>
+<p>搜索算法只和这个函数打交道。整张图是&quot;按需展开&quot;的。</p>
+<p><strong>这个技巧在处理 agent 问题时是刚需</strong>，因为 agent 的状态空间同样是组合爆炸且无法枚举的。</p>
+<h3 id="34-图是构造出来的，不是发现的">3.4 图是&quot;构造&quot;出来的，不是&quot;发现&quot;的</h3>
+<p>&quot;构建&quot;二字真正的重量在这里。</p>
+<p><strong>层次图</strong>：先建骨架层（高速、主干），再挂细节层。CH 本质上就是把层次结构预计算出来。这类&quot;分而治之 + 层次抽象&quot;的思想在几乎所有大规模图问题上都会重现。</p>
+<p><strong>图嵌入</strong>：node2vec、DeepWalk 把节点映射到向量空间，让&quot;相似&quot;变成&quot;距离&quot;。这一步把<strong>建图问题转化成了表示学习问题</strong>——边不再需要显式定义，而是在嵌入空间里隐式存在。</p>
+<p><strong>超图（hypergraph）</strong>：普通图的边只能连两个点。但&quot;三位作者合写一篇论文&quot;是一个三元关系，用普通图表示就必须拆成三条两两的边，信息就失真了。超图允许一条边连任意多个节点。</p>
+<p><strong>AND-OR 图</strong>：化学逆合成路径的典型结构。一步反应需要<strong>多个前体同时满足</strong>，是<strong>乘法关系而不是加法关系</strong>。这意味着<strong>最优子结构不成立</strong>——&quot;到达某个中间产物的最优代价&quot;无法独立定义，标准最短路算法直接失效。</p>
+<p><strong>多层图 / 时序图</strong>：边带类型（地铁、公交、步行可换乘）或带时间戳。城市多模态出行规划就是典型的多层图问题。</p>
+<hr>
+<h2 id="四、跳出路这个框架">四、跳出&quot;路&quot;这个框架</h2>
+<p>&quot;路径构建&quot;是一个比道路导航宽得多的抽象。以下五个领域共享几乎完全相同的底层结构。</p>
+<h3 id="41-agent-的工具调用--图上的一条路">4.1 Agent 的工具调用 = 图上的一条路</h3>
+<p>把 agent 的决策过程形式化：</p>
+<ul>
+<li><strong>节点</strong> = (当前状态, 已调用的工具集合)</li>
+<li><strong>边</strong> = 一次工具调用</li>
+<li><strong>最短路</strong> = 以最少步数 / 最低代价完成任务</li>
+</ul>
+<p>这与 A* <strong>严格同构</strong>：<code>f = 已花代价 + h(离完成的距离估计)</code>。</p>
+<p>而所有难点都落在图构建上：</p>
+<ul>
+<li><strong>状态空间组合爆炸</strong> → 是隐式图，必须提供生成函数而不是显式图</li>
+<li><strong>边权是动态的</strong>：工具成功率、token 成本、延迟、是否触发人工审批</li>
+<li><strong>节点不可逆</strong>：有副作用的操作不能&quot;回退&quot;，图是有向的但带&quot;毒&quot;——走错一步的代价不是重新搜索，而是造成了真实世界的改变</li>
+</ul>
+<p>这也解释了为什么工具编排（skill chain、工作流组合）本质上是<strong>在技能图上找路</strong>；而对这类系统做故障注入（mutation testing），本质上是<strong>给这张图注入边故障</strong>——两者研究的是同一个对象的两面。</p>
+<h3 id="42-llm-推理--隐式图上的启发式搜索">4.2 LLM 推理 = 隐式图上的启发式搜索</h3>
+<p>这个类比我认为是本节最有价值的一条：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>LLM 范式</th>
+<th>图搜索中的对应物</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Chain-of-Thought</td>
+<td>贪心 / 随机游走</td>
+</tr>
+<tr>
+<td>Tree-of-Thought</td>
+<td>beam search</td>
+</tr>
+<tr>
+<td>ReAct</td>
+<td>动作图上的交错搜索</td>
+</tr>
+<tr>
+<td>o1 / R1 的长思维链</td>
+<td><strong>学出来的启发式函数 h</strong></td>
+</tr>
+</tbody></table></div>
+<p>如果接受这个映射，那么一个有意思的结论自然浮现：</p>
+<blockquote>
+<p><strong>&quot;幻觉&quot;在搜索的语言里，就是 h 不可采纳——模型高估了&quot;当前推理到正确答案&quot;的距离。</strong></p>
+</blockquote>
+<p>于是&quot;模型过度自信&quot;和&quot;启发式过强&quot;变成了<strong>同一个失效模式</strong>：h 骗过了搜索，把它导向一条看起来短、实际不存在或通向错误终点的路。这个统一视角在讨论推理可靠性时相当有用，因为它把&quot;模型能力问题&quot;翻译成了&quot;搜索正确性问题&quot;，而后者有几十年的理论工具可用。</p>
+<h3 id="43-肉鸽的通路：未知图--预算约束">4.3 肉鸽的通路：未知图 + 预算约束</h3>
+<p>Roguelike / 集成战略这类玩法，把路径问题的难度直接拉满：</p>
+<ul>
+<li>节点 = 房间 / 事件，边 = 可选路线，但<strong>图和代价都藏在战争迷雾里</strong></li>
+<li>这是<strong>未知图上的在线搜索</strong>，天然包含 explore / exploit 权衡</li>
+<li>资源上限（希望、源石锭）构成<strong>预算约束</strong> → 属于 <strong>Resource Constrained Shortest Path</strong>，<strong>NP-hard</strong></li>
+<li>更根本的是：因为路线本身不确定，<strong>目标函数不是&quot;路径最短&quot;，而是&quot;期望收益最大&quot;</strong> → 问题从最短路退化成 MDP 求策略</li>
+</ul>
+<p>这是一个很好的例子，说明<strong>一旦引入不确定性，最短路框架就不够用了</strong>，必须升级到决策过程。</p>
+<h3 id="44-gpu-计算图">4.4 GPU 计算图</h3>
+<p>在编译器和 kernel 优化里：</p>
+<ul>
+<li><strong>算子融合</strong> = 在数据流图上找&quot;合并收益最大&quot;的路径</li>
+<li>融合的约束（显存占用、寄存器压力、shape 对齐）就是图上不可行的边</li>
+<li>代价函数高度非线性，<strong>可加性不成立</strong>（融合两个算子的收益不是各自收益之和）</li>
+</ul>
+<p>所以这不是最短路问题，而是<strong>带约束的图划分 / 图重写</strong>问题。把它当成最短路来做会直接跑偏。</p>
+<h3 id="45-制度与审批流">4.5 制度与审批流</h3>
+<p>一个组织里，一份文件过哪些环节，本质上是一条路径，边权 = 时效 / 权限 / 风险。</p>
+<p>但这里有个关键差异：<strong>当规则本身可以在运行时改变时，图是动态的</strong>。制度即插件的系统里，节点和边都会在运行过程中增删——静态最短路算法需要升级为动态图上的增量维护。</p>
+<p>而且这里想要的<strong>根本不是&quot;最短路&quot;<strong>：真正的目标是&quot;最合法、最不容易被驳回、最经得起追溯的路径&quot;——</strong>天然多目标</strong>。</p>
+<hr>
+<h2 id="五、几个反复出现的怪物">五、几个反复出现的&quot;怪物&quot;</h2>
+<p>以下六个坑我倾向于反复提醒自己：</p>
+<p><strong>1. 时变图破坏 FIFO 假设</strong></p>
+<p>如果边权随时间变化，且不满足 FIFO（早出发一定不晚到），<strong>Dijkstra 的正确性直接崩塌</strong>。而现实中这恰恰很常见：高峰期出发反而更慢、某条路的拥堵随时间演化、班次表本身就是时变的。</p>
+<p>理论上很干净，实践上非常脏。这是几乎所有真实导航系统都要专门处理的坑。</p>
+<p><strong>2. AND-OR 结构：最优子结构不成立</strong></p>
+<p>一旦某个&quot;步骤&quot;需要多个前提同时满足，代价结构就从加法变成乘法或更复杂的组合，&quot;到达某个中间状态的最优代价&quot;这个中间量根本无法独立定义。<strong>动态规划的地基被抽掉了。</strong></p>
+<p><strong>3. 资源受限最短路是 NP-hard</strong></p>
+<p>既要求路径代价最优，又要求资源（时间、油量、预算）不超限，属于 Resource Constrained Shortest Path，NP-hard。<strong>在实际工程中，近似算法和解的&quot;够好性&quot;比精确最优重要得多。</strong></p>
+<p><strong>4. 脏数据才是主要矛盾</strong></p>
+<p>路径规划项目真实的成本结构大致是：<strong>90% 的时间在清理和校验数据，10% 的时间在跑算法。</strong></p>
+<p>拓扑错误、坐标漂移、属性缺失、口径不一致——这些才是让项目失败的东西。算法选型错误几乎从来不是。</p>
+<p><strong>5. 用户要的不是最短</strong></p>
+<p>人的实际选路系统性偏离最短路假设。人们偏好熟悉的路、少转向的路、景观好的路、不容易走错的路。</p>
+<p>于是导航系统有时会<strong>故意推荐次优路径</strong>，因为用户&quot;觉得&quot;它更快，或者因为它更容易被理解和跟随。</p>
+<blockquote>
+<p><strong>一条可解释的次优路，往往胜过一次不可解释的最优路。</strong></p>
+</blockquote>
+<p><strong>6. 图的定义比图的算法重要</strong></p>
+<p>这是贯穿全文的主线。当你发现某个路径规划效果不好时，先别急着换算法——回去看看节点是怎么定义的、边权代表什么、哪些真实约束没有被编码进去。</p>
+<hr>
+<h2 id="六、如果动手，建议的顺序">六、如果动手，建议的顺序</h2>
+<p>按&quot;手感 → 震撼 → 理论 → 迁移&quot;四步走：</p>
+<p><strong>第一步（约半天）：建立图长什么样的手感</strong></p>
+<p>用 OSMnx 拉一个真实城市的路网，转成 NetworkX 图，跑一遍 Dijkstra 和 A*。重点不是学会 API，而是观察真实路网的度数分布、边权分布、连通性——<strong>真实图和数据结构的课本图相差很远</strong>。</p>
+<p><strong>第二步（约 2~3 天）：亲手实现一次 CH，感受结构化先验的价值</strong></p>
+<p>自己写一遍节点收缩和捷径添加，然后对比查询耗时。当你看到几万倍加速时，会对&quot;预处理换查询&quot;这件事产生完全不同的直觉——<strong>这是全文最值钱的一课</strong>。</p>
+<p><strong>第三步（约 1 天）：八数码，理解隐式图与启发式强度</strong></p>
+<p>用同一份 <code>neighbors()</code> 生成函数，分别跑 BFS、A*（弱 h）、A*（强 h）、IDA*，对比展开节点数和结果质量。<strong>亲手体会一次&quot;h 太强会破坏最优性&quot;，比读十遍定义管用。</strong></p>
+<p><strong>第四步：迁移到 agent 场景</strong></p>
+<p>把一次 agent 执行的工具调用日志构造成图（节点 = 状态，边 = 调用），跑最短路问&quot;理论上最少几步能完成&quot;，再和实际路径对比。<strong>实际的冗余步数就是优化空间，而偏离最优的位置就是编排逻辑的薄弱点。</strong></p>
+<hr>
+<h2 id="结语">结语</h2>
+<p>最短路径、寻路、路径构建这三个词，本质上描述的是同一件事在不同抽象层上的样子。往下走到最短路，问题已经在 1959 年被解决，剩下的只是工程优化；往上走到路径构建，问题变成&quot;什么才是一个节点&quot;——<strong>而这从来不是算法问题，是建模问题</strong>。</p>
+<p>同一套结构在导航、机器人、LLM 推理、agent 编排、GPU 编译、组织流程中反复出现，而且每次都是<strong>图的定义方式决定上限，算法选择只影响常数</strong>。</p>
+<p>所以下次面对一个&quot;找路&quot;问题时，值得先问的不是&quot;该用什么算法&quot;，而是：</p>
+<blockquote>
+<p><strong>我的节点是什么？我的边是什么？我漏掉了哪些真实约束？</strong></p>
+</blockquote>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
