@@ -6,6 +6,16 @@ const katex = require('katex');
 
 // Render display math ($$...$$) and inline math ($...$) with KaTeX
 function renderMath(content) {
+  // Park code segments first. marked.parse() runs AFTER renderMath, so fenced
+  // blocks and inline code would otherwise be scanned by the $...$ regexes.
+  // Real-world breakages this prevents: ${template literals}, $(make vars),
+  // $inc/$set (Mongo), $1 (gdb), ${{ matrix.x }} (GitHub Actions).
+  const parked = [];
+  const park = (m) => `\u0000KATEX${parked.push(m) - 1}\u0000`;
+  content = content.replace(/```[\s\S]*?```/g, park);
+  content = content.replace(/~~~[\s\S]*?~~~/g, park);
+  content = content.replace(/`[^`\n]+`/g, park);
+
   // Display math: $$...$$ - must be on its own lines
   content = content.replace(/\$\$([\s\S]+?)\$\$/g, (_, formula) => {
     try {
@@ -32,6 +42,9 @@ function renderMath(content) {
       return `<span class="katex-error">${formula.trim()}</span>`;
     }
   });
+
+  // Restore parked code verbatim
+  content = content.replace(/\u0000KATEX(\d+)\u0000/g, (_, i) => parked[Number(i)]);
   return content;
 }
 

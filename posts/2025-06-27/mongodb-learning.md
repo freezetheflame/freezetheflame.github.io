@@ -103,23 +103,25 @@ update支持partial的更新，而replace是直接替换
 
 **修改器**| **作用**  
 ---|---  
-$inc| 递增  
-$rename| 重命名列  
-$set| 修改列值  
-$unset| 删除列  
+`$inc` | 递增  
+`$rename` | 重命名列  
+`$set` | 修改列值  
+`$unset` | 删除列  
 
 db.集合名.update(条件, 新数据 [,是否新增, 是否修改多条])
 
 任务：修改gcc的username为bareth，age+11，sex字段重命名为sexuality，删除address字段
 
 
-    
+```javascript
     db.people.update({username:"gcc"},{
-\t$set:{username:"bareth"},
-\t$inc:{age:11},
-\t$rename:{sex:"sexuality"},
-\t$unset:{address:true}
+  $set:{username:"bareth"},
+  $inc:{age:11},
+  $rename:{sex:"sexuality"},
+  $unset:{address:true}
 })
+```
+
 
 对于查询而言，可以采取如下两种语法进行
 
@@ -138,13 +140,13 @@ db.集合名.find(条件 [,查询的列]).pretty() _#格式化查看_
 
 **运算符**| **作用**  
 ---|---  
-$gt| 大于  
-$gte| 大于等于  
-$lt| 小于  
-$lte| 小于等于  
-$ne| 不等于  
-$in| in  
-$nin| not in  
+`$gt` | 大于  
+`$gte` | 大于等于  
+`$lt` | 小于  
+`$lte` | 小于等于  
+`$ne` | 不等于  
+`$in` | in  
+`$nin` | not in  
 
 分页查询也是内置的一种方法（可通过find,sort,skip和limit来实现）
 
@@ -184,36 +186,40 @@ aggregate查询语法如下：
 \t...
 ])
 
-$group| 将集合中的文档分组，用于统计结果  
+`$group` | 将集合中的文档分组，用于统计结果  
 ---|---  
-$match| 过滤数据，只输出符合条件的文档  
-$sort| 聚合数据进一步排序  
-$skip| 跳过指定文档数  
-$limit| 限制集合数据返回文档数  
+`$match` | 过滤数据，只输出符合条件的文档  
+`$sort` | 聚合数据进一步排序  
+`$skip` | 跳过指定文档数  
+`$limit` | 限制集合数据返回文档数  
 
-$sum| 总和（$num:1同count表示统计）  
+`$sum` | 总和（`$num:1`同count表示统计）  
 ---|---  
-$avg| 平均  
-$min| 最小值  
-$max| 最大值  
+`$avg` | 平均  
+`$min` | 最小值  
+`$max` | 最大值  
 
 比如有以下这些数据：
 
 
-    
+```javascript
     db.people.insertOne({_id:1,name:"a",sex:"男",age:21})
 db.people.insertOne({_id:2,name:"b",sex:"男",age:20})
 db.people.insertOne({_id:3,name:"c",sex:"女",age:20})
 db.people.insertOne({_id:4,name:"d",sex:"女",age:18})
 db.people.insertOne({_id:5,name:"e",sex:"男",age:19})
+```
+
 
 就可以用如下办法进行聚合查询
 
 
-    
+```javascript
     db.people.aggregate([
-\t{$group:{_id:"$sex",age_sum:{$sum:"$age"}}}
+  {$group:{_id:"$sex",age_sum:{$sum:"$age"}}}
 ])
+```
+
 
 结果是这样的：
 

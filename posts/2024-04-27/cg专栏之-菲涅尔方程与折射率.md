@@ -28,8 +28,8 @@ tags: [CG]
 我们假设入射光与法线的夹角为 𝜃𝑖 ，折射光与法线的夹角为 𝜃𝑡 。由于折射还和介质的折射率有关，例如空气中的光射入水中，我们需要知道空气和水分别对应的折射率，我们再假设入射光所在介质的折射率为 𝑛1 ，物体的折射率为 𝑛2 。由于**光的偏振** （极化）现象，我们可以得到**S偏振光** 和 **P偏振光** 分别对应的菲涅尔方程，如下：
 
 [latex]
-$$R_s = \\\left| \\\frac{n_1\\\cos\\\theta_i -n_2\\\cos\\\theta_t}{n_1\\\cos\\\theta_i +n_2\\\cos\\\theta_t}\\\right|^2$$
-$$R_p = \\\left| \\\frac{n_1\\\cos\\\theta_t -n_2\\\cos\\\theta_i}{n_1\\\cos\\\theta_t +n_2\\\cos\\\theta_i}\\\right|^2$$
+$$R_s = \left| \frac{n_1\cos\theta_i -n_2\cos\theta_t}{n_1\cos\theta_i +n_2\cos\theta_t}\right|^2$$
+$$R_p = \left| \frac{n_1\cos\theta_t -n_2\cos\theta_i}{n_1\cos\theta_t +n_2\cos\theta_i}\right|^2$$
 
 这里我们先停一停，以上是我跟着知乎[菲涅尔方程（Fresnel Equation） - 知乎 (zhihu.com)](<https://zhuanlan.zhihu.com/p/375746359>)进行的思考流程，不过对于这里的偏振概念似乎还要进一步探究
 
@@ -79,13 +79,13 @@ In other words, The component of the E-field that lies in the xz plane is contin
 所以这个时候我们可以试着使用反射定律修改上面的菲涅尔方程
 
 [latex]
-$$R_s = \\\left| \\\frac{n_1\\\cos\\\theta_i -n_2\\\sqrt{1-\\\left(\\\frac{n_1}{n_2}\\\sin\\\theta_i\\\right)^2}}{n_1\\\cos\\\theta_i +n_2\\\cos\\\theta_t}\\\right|^2$$
-$$R_p = \\\left| \\\frac{n_1\\\sqrt{1-\\\left(\\\frac{n_1}{n_2}\\\sin\\\theta_i\\\right)^2} -n_2\\\cos\\\theta_i}{n_1\\\sqrt{1-\\\left(\\\frac{n_1}{n_2}\\\sin\\\theta_i\\\right)^2} +n_2\\\cos\\\theta_i}\\\right|^2$$
+$$R_s = \left| \frac{n_1\cos\theta_i -n_2\sqrt{1-\left(\frac{n_1}{n_2}\sin\theta_i\right)^2}}{n_1\cos\theta_i +n_2\cos\theta_t}\right|^2$$
+$$R_p = \left| \frac{n_1\sqrt{1-\left(\frac{n_1}{n_2}\sin\theta_i\right)^2} -n_2\cos\theta_i}{n_1\sqrt{1-\left(\frac{n_1}{n_2}\sin\theta_i\right)^2} +n_2\cos\theta_i}\right|^2$$
 
 如果我们不考虑偏振的情况，那么菲涅尔方程即是上面两者的平均值：
 
 [latex]
-$$R= \\\frac{R_s+R_p}{2}$$
+$$R= \frac{R_s+R_p}{2}$$
 
 通过理论计算以及实验证明，在通常情况下，我们在反射光垂直于折射光时，**反射光中平行于入射面的振动会完全消失，只剩下垂直于入射面的振动** 。也就是说此时反射光变成了振动方向垂直于入射面的线偏振光。
 
@@ -94,7 +94,7 @@ $$R= \\\frac{R_s+R_p}{2}$$
 由图，根据折射定律可知
 
 [latex]
-$$\\\frac{n_1}{n_2} = \\\frac{\\\sin i_B}{\\\sin i_\\\gamma}=\\\frac{\\\sin i_B}{\\\cos i_B}=\\\tan i_B$$
+$$\frac{n_1}{n_2} = \frac{\sin i_B}{\sin i_\gamma}=\frac{\sin i_B}{\cos i_B}=\tan i_B$$
 
 利用菲涅尔方程，我们就可以根据不同的反射率画出 R 与 𝜃𝑖 的对应关系图，如下：
 
@@ -117,9 +117,9 @@ $$\\\frac{n_1}{n_2} = \\\frac{\\\sin i_B}{\\\sin i_\\\gamma}=\\\frac{\\\sin i_B}
 其中基础反射率的值我们很好求得，因为此时 cos⁡𝜃𝑖=1 ，带入前面的公式可得：
 
 [latex]
-$$R_0 = \\\left( \\\frac{n_1-n_2}{n_1+n_2}\\\right)^2$$
+$$R_0 = \left( \frac{n_1-n_2}{n_1+n_2}\right)^2$$
 
 例如水的折射率为1.333，对应的 𝑅0 即为(0.333/2.333)²=0.02。接下来的问题就是怎么用一个简单的函数使得反射率能随着 𝜃𝑖 的增长以类似某种指数增长的方式从基础反射率变为1，这里**Schlick为我们提供了一种近似方程** ：
 
 [latex]
-$$R=R_0 + (1-R_0)(1-\\\cos\\\theta_i)^5$$
+$$R=R_0 + (1-R_0)(1-\cos\theta_i)^5$$

@@ -118,31 +118,31 @@
 </tr>
 </thead>
 <tbody><tr>
-<td>$inc</td>
+<td><code>$inc</code></td>
 <td>递增</td>
 </tr>
 <tr>
-<td>$rename</td>
+<td><code>$rename</code></td>
 <td>重命名列</td>
 </tr>
 <tr>
-<td>$set</td>
+<td><code>$set</code></td>
 <td>修改列值</td>
 </tr>
 <tr>
-<td>$unset</td>
+<td><code>$unset</code></td>
 <td>删除列</td>
 </tr>
 </tbody></table></div>
 <p>db.集合名.update(条件, 新数据 [,是否新增, 是否修改多条])</p>
 <p>任务：修改gcc的username为bareth，age+11，sex字段重命名为sexuality，删除address字段</p>
-<pre><code>db.people.update({username:&quot;gcc&quot;},{
+<pre><code class="hljs language-javascript">    db.<span class="hljs-property">people</span>.<span class="hljs-title function_">update</span>({<span class="hljs-attr">username</span>:<span class="hljs-string">&quot;gcc&quot;</span>},{
+  <span class="hljs-attr">$set</span>:{<span class="hljs-attr">username</span>:<span class="hljs-string">&quot;bareth&quot;</span>},
+  <span class="hljs-attr">$inc</span>:{<span class="hljs-attr">age</span>:<span class="hljs-number">11</span>},
+  <span class="hljs-attr">$rename</span>:{<span class="hljs-attr">sex</span>:<span class="hljs-string">&quot;sexuality&quot;</span>},
+  <span class="hljs-attr">$unset</span>:{<span class="hljs-attr">address</span>:<span class="hljs-literal">true</span>}
+})
 </code></pre>
-<p>\t$set:{username:&quot;bareth&quot;},
-\t$inc:{age:11},
-\t$rename:{sex:&quot;sexuality&quot;},
-\t$unset:{address:true}
-})</p>
 <p>对于查询而言，可以采取如下两种语法进行</p>
 <p>db.集合名.find(条件 [,查询的列])<br>db.集合名.find(条件 [,查询的列]).pretty() <em>#格式化查看</em></p>
 <p>查询的列是通过0,1分别指定的。</p>
@@ -162,31 +162,31 @@
 </tr>
 </thead>
 <tbody><tr>
-<td>$gt</td>
+<td><code>$gt</code></td>
 <td>大于</td>
 </tr>
 <tr>
-<td>$gte</td>
+<td><code>$gte</code></td>
 <td>大于等于</td>
 </tr>
 <tr>
-<td>$lt</td>
+<td><code>$lt</code></td>
 <td>小于</td>
 </tr>
 <tr>
-<td>$lte</td>
+<td><code>$lte</code></td>
 <td>小于等于</td>
 </tr>
 <tr>
-<td>$ne</td>
+<td><code>$ne</code></td>
 <td>不等于</td>
 </tr>
 <tr>
-<td>$in</td>
+<td><code>$in</code></td>
 <td>in</td>
 </tr>
 <tr>
-<td>$nin</td>
+<td><code>$nin</code></td>
 <td>not in</td>
 </tr>
 </tbody></table></div>
@@ -226,40 +226,59 @@
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>$group</th>
+<th><code>$group</code></th>
 <th>将集合中的文档分组，用于统计结果</th>
 </tr>
 </thead>
 <tbody><tr>
-<td>$match</td>
+<td><code>$match</code></td>
 <td>过滤数据，只输出符合条件的文档</td>
 </tr>
 <tr>
-<td>$sort</td>
+<td><code>$sort</code></td>
 <td>聚合数据进一步排序</td>
 </tr>
 <tr>
-<td>$skip</td>
+<td><code>$skip</code></td>
 <td>跳过指定文档数</td>
 </tr>
 <tr>
-<td>$limit</td>
+<td><code>$limit</code></td>
 <td>限制集合数据返回文档数</td>
 </tr>
 </tbody></table></div>
-<p><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">s</span><span class="mord mathnormal">u</span><span class="mord mathnormal">m</span><span class="mord">∣</span><span class="mord cjk_fallback">总和（</span></span></span></span>num:1同count表示统计）<br>---|---<br>$avg| 平均<br>$min| 最小值<br>$max| 最大值  </p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th><code>$sum</code></th>
+<th>总和（<code>$num:1</code>同count表示统计）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>$avg</code></td>
+<td>平均</td>
+</tr>
+<tr>
+<td><code>$min</code></td>
+<td>最小值</td>
+</tr>
+<tr>
+<td><code>$max</code></td>
+<td>最大值</td>
+</tr>
+</tbody></table></div>
 <p>比如有以下这些数据：</p>
-<pre><code>db.people.insertOne({_id:1,name:&quot;a&quot;,sex:&quot;男&quot;,age:21})
+<pre><code class="hljs language-javascript">    db.<span class="hljs-property">people</span>.<span class="hljs-title function_">insertOne</span>({<span class="hljs-attr">_id</span>:<span class="hljs-number">1</span>,<span class="hljs-attr">name</span>:<span class="hljs-string">&quot;a&quot;</span>,<span class="hljs-attr">sex</span>:<span class="hljs-string">&quot;男&quot;</span>,<span class="hljs-attr">age</span>:<span class="hljs-number">21</span>})
+db.<span class="hljs-property">people</span>.<span class="hljs-title function_">insertOne</span>({<span class="hljs-attr">_id</span>:<span class="hljs-number">2</span>,<span class="hljs-attr">name</span>:<span class="hljs-string">&quot;b&quot;</span>,<span class="hljs-attr">sex</span>:<span class="hljs-string">&quot;男&quot;</span>,<span class="hljs-attr">age</span>:<span class="hljs-number">20</span>})
+db.<span class="hljs-property">people</span>.<span class="hljs-title function_">insertOne</span>({<span class="hljs-attr">_id</span>:<span class="hljs-number">3</span>,<span class="hljs-attr">name</span>:<span class="hljs-string">&quot;c&quot;</span>,<span class="hljs-attr">sex</span>:<span class="hljs-string">&quot;女&quot;</span>,<span class="hljs-attr">age</span>:<span class="hljs-number">20</span>})
+db.<span class="hljs-property">people</span>.<span class="hljs-title function_">insertOne</span>({<span class="hljs-attr">_id</span>:<span class="hljs-number">4</span>,<span class="hljs-attr">name</span>:<span class="hljs-string">&quot;d&quot;</span>,<span class="hljs-attr">sex</span>:<span class="hljs-string">&quot;女&quot;</span>,<span class="hljs-attr">age</span>:<span class="hljs-number">18</span>})
+db.<span class="hljs-property">people</span>.<span class="hljs-title function_">insertOne</span>({<span class="hljs-attr">_id</span>:<span class="hljs-number">5</span>,<span class="hljs-attr">name</span>:<span class="hljs-string">&quot;e&quot;</span>,<span class="hljs-attr">sex</span>:<span class="hljs-string">&quot;男&quot;</span>,<span class="hljs-attr">age</span>:<span class="hljs-number">19</span>})
 </code></pre>
-<p>db.people.insertOne({_id:2,name:&quot;b&quot;,sex:&quot;男&quot;,age:20})
-db.people.insertOne({_id:3,name:&quot;c&quot;,sex:&quot;女&quot;,age:20})
-db.people.insertOne({_id:4,name:&quot;d&quot;,sex:&quot;女&quot;,age:18})
-db.people.insertOne({_id:5,name:&quot;e&quot;,sex:&quot;男&quot;,age:19})</p>
 <p>就可以用如下办法进行聚合查询</p>
-<pre><code>db.people.aggregate([
+<pre><code class="hljs language-javascript">    db.<span class="hljs-property">people</span>.<span class="hljs-title function_">aggregate</span>([
+  {<span class="hljs-attr">$group</span>:{<span class="hljs-attr">_id</span>:<span class="hljs-string">&quot;$sex&quot;</span>,<span class="hljs-attr">age_sum</span>:{<span class="hljs-attr">$sum</span>:<span class="hljs-string">&quot;$age&quot;</span>}}}
+])
 </code></pre>
-<p>\t{<span class="katex-error" title="ParseError: KaTeX parse error: Expected &#x27;}&#x27;, got &#x27;EOF&#x27; at end of input: group:{_id:&quot;" style="color:#cc0000">group:{_id:&quot;</span>sex&quot;,age_sum:{<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">s</span><span class="mord mathnormal">u</span><span class="mord mathnormal">m</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">:</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord">&quot;</span></span></span></span>age&quot;}}}
-])</p>
 <p>结果是这样的：</p>
 <pre><code>[
 </code></pre>
