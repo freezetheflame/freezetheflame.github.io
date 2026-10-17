@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Benchmark 与金标：术语地图和一套可执行的标注方案 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-10-17</p>
+        <h1>Benchmark 与金标：术语地图和一套可执行的标注方案</h1>
+        <div class="post-meta">
+          <span>2026-10-17</span>
+          <span class="tag">benchmark</span><span class="tag">评测</span><span class="tag">标注</span><span class="tag">LLM</span>
+        </div>
+        <h2 id="这篇解决什么问题">这篇解决什么问题</h2>
+<p>做抽取类任务（从文档、代码里抽结构化标签）时，有两件事最容易被含糊带过：**&quot;金标&quot;到底指什么<strong>，以及</strong>一个 benchmark 究竟由哪些部件组成**。含糊的后果很具体——报告里的 precision 和 recall 其实是在拿模型输出跟另一份模型输出比（循环论证），或者用测试集调完 prompt 再报测试集分数（数据泄漏）。</p>
+<p>这篇先把术语钉死，再给一套能直接执行的标注方案：分层抽样、双标盲标、算一致性、仲裁、逐字段算指标、冻结测试集。</p>
+<h2 id="一、什么叫金标">一、什么叫&quot;金标&quot;</h2>
+<p>&quot;金标&quot;是 <strong>gold standard</strong> 的中文叫法，最早来自医学：有一种被公认最可靠的检查，作为判断其他检查准不准的参照。</p>
+<p>在 NLP 和 benchmark 语境里，它通常指：</p>
+<blockquote>
+<p>由人按明确规范标注、并对分歧做过仲裁的一批参考标签，用来评价模型输出，而不是由模型自己生成。</p>
+</blockquote>
+<p>更严谨的称呼是 <strong>reference standard</strong>（参考标准）或 <strong>adjudicated labels</strong>（仲裁后标签），而不是 ground truth。原因很简单：人的标注也不是绝对真理，只是当前可复核的参考。写论文时用&quot;ground truth&quot;容易被审稿人抓——你凭什么说它是 truth？</p>
+<p>三个层次要分清：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>谁产的</th>
+<th>能用来干什么</th>
+<th>不能用来干什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>模型标签</td>
+<td>LLM 或规则抽取</td>
+<td>发现、建图、召回、预筛</td>
+<td>当评测真值</td>
+</tr>
+<tr>
+<td>银标（silver labels）</td>
+<td>模型 + 启发式自动生成</td>
+<td>预训练、弱监督、扩充候选</td>
+<td>当评测真值（会循环论证）</td>
+</tr>
+<tr>
+<td>金标（gold labels）</td>
+<td>人逐条判定 + 分歧仲裁</td>
+<td>算 precision/recall、比较 prompt 与模型、报论文</td>
+<td>声称是绝对真理</td>
+</tr>
+</tbody></table></div>
+<h2 id="二、术语地图">二、术语地图</h2>
+<h3 id="1）数据与集合">1）数据与集合</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>名词</th>
+<th>含义</th>
+<th>落到具体任务上</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>task</td>
+<td>要模型做的事</td>
+<td>从 SKILL.md 与代码里抽访问效果</td>
+</tr>
+<tr>
+<td>dataset</td>
+<td>一批样本 + 标签</td>
+<td>几百个 Skill 的抽取结果</td>
+</tr>
+<tr>
+<td>train / dev / test</td>
+<td>训练 / 开发 / 测试划分</td>
+<td>不训练模型时，dev 调 prompt，test 只报结果</td>
+</tr>
+<tr>
+<td>held-out / frozen test set</td>
+<td>留出 / 冻结测试集</td>
+<td>先冻结 60 个样本，调 prompt 期间不许看</td>
+</tr>
+<tr>
+<td>data leakage</td>
+<td>测试信息泄漏进调参</td>
+<td>用 test 改完 prompt 再报 test 分数</td>
+</tr>
+<tr>
+<td>sampling frame</td>
+<td>抽样框：从哪个总体抽</td>
+<td>全部 Skill，或某个主题的候选池</td>
+</tr>
+</tbody></table></div>
+<h3 id="2）标注与质量">2）标注与质量</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>名词</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>annotation</td>
+<td>人给样本打标签</td>
+</tr>
+<tr>
+<td>annotator</td>
+<td>做标注的人</td>
+</tr>
+<tr>
+<td>annotation guideline / codebook</td>
+<td>标注规范：字段定义、边界案例、正反例</td>
+</tr>
+<tr>
+<td>annotation unit</td>
+<td>标注单元：一条样本标什么（一条记录？一个文件？一条边？）</td>
+</tr>
+<tr>
+<td>double annotation</td>
+<td>两个人独立标同一批样本</td>
+</tr>
+<tr>
+<td>adjudication</td>
+<td>两人不一致时讨论，或由第三人定最终标签</td>
+</tr>
+<tr>
+<td>inter-annotator agreement</td>
+<td>标注者一致性</td>
+</tr>
+<tr>
+<td>Cohen&#39;s κ</td>
+<td>两个标注者、类别标签的一致性，扣掉随机一致的部分</td>
+</tr>
+<tr>
+<td>Krippendorff&#39;s α</td>
+<td>多标注者、多标签、缺失值场景下更通用的一致性指标</td>
+</tr>
+<tr>
+<td>adjudicated gold</td>
+<td>分歧解决后的最终标签</td>
+</tr>
+<tr>
+<td>silver labels</td>
+<td>模型或规则生成的标签，不是金标</td>
+</tr>
+</tbody></table></div>
+<p>关于 κ 的两个实操提醒：</p>
+<ul>
+<li>经验分档（Landis &amp; Koch）：0.41–0.60 中等，0.61–0.80 较好，0.81 以上几乎完全一致。低于 0.6 通常说明<strong>规范写得不够清楚</strong>，而不是标注者不行。</li>
+<li>别只报一个总体 κ。对&quot;字段抽取&quot;这类任务，<strong>逐字段算 κ</strong> 才有诊断价值：整体 0.8 可能掩盖了 <code>target</code> 字段只有 0.45 的事实。</li>
+</ul>
+<h3 id="3）评价指标">3）评价指标</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>名词</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>positive / negative</td>
+<td>正例 / 负例，例如&quot;确有该访问&quot; vs &quot;没有&quot;</td>
+</tr>
+<tr>
+<td>TP / FP / FN / TN</td>
+<td>真阳 / 假阳 / 假阴 / 真阴</td>
+</tr>
+<tr>
+<td>precision</td>
+<td>模型说有的里面有多少是真的：<code>TP/(TP+FP)</code></td>
+</tr>
+<tr>
+<td>recall</td>
+<td>真的里面模型找到了多少：<code>TP/(TP+FN)</code></td>
+</tr>
+<tr>
+<td>F1</td>
+<td>precision 与 recall 的调和平均</td>
+</tr>
+<tr>
+<td>confusion matrix</td>
+<td>每类判对判错的分布</td>
+</tr>
+<tr>
+<td>micro / macro</td>
+<td>micro 按样本汇总；macro 先按类算再平均</td>
+</tr>
+<tr>
+<td>precision@k / recall@k</td>
+<td>排序任务里前 k 个的精确率 / 召回率</td>
+</tr>
+<tr>
+<td>field-level / exact match</td>
+<td>逐字段比对：资源类型、操作、细节、对象分别算</td>
+</tr>
+<tr>
+<td>evidence faithfulness</td>
+<td>引用的原文是否真的支持该标签（不是&quot;存在&quot;就算）</td>
+</tr>
+<tr>
+<td>coverage</td>
+<td>覆盖了多少样本 / 文件；空标签和缺失要单列</td>
+</tr>
+<tr>
+<td>calibration</td>
+<td>模型置信度与真实正确率是否匹配（ECE、Brier）</td>
+</tr>
+</tbody></table></div>
+<p>这里有两个容易被忽略的口径问题：</p>
+<ul>
+<li>**空标签不是&quot;没有标签&quot;**。模型输出空集，可能是&quot;确实没有效果&quot;，也可能是&quot;漏标了&quot;。这两者在指标上完全不同，必须让标注者显式区分，否则 recall 会算错。</li>
+<li><strong>evidence faithfulness 要单独报</strong>。标签抽对了但引文不支持，说明模型在编理由；这类错误在只看 F1 时完全看不见。</li>
+</ul>
+<h3 id="4）benchmark-的组成">4）Benchmark 的组成</h3>
+<p>一个 benchmark 不只是一个数据集，通常包括：</p>
+<ul>
+<li><strong>任务定义</strong>：输入什么、输出什么、允许什么、禁止什么；</li>
+<li><strong>数据集 + 划分</strong>：dev / test、冻结版本、版本号；</li>
+<li><strong>评价指标</strong>：precision / recall / F1、κ、faithfulness 等；</li>
+<li><strong>评测协议</strong>：怎么跑、跑几次、怎么报置信区间；</li>
+<li><strong>baseline</strong>：简单规则、旧版本、论文方法；</li>
+<li><strong>ablation</strong>：去掉某个模块看指标变化；</li>
+<li><strong>oracle / human ceiling</strong>：理论上限或人工水平，用来解释差距；</li>
+<li><strong>leaderboard / SOTA</strong>：排行榜与当前最好结果（学术场景）。</li>
+</ul>
+<p>缺了&quot;评测协议&quot;和&quot;baseline&quot;的，通常只能叫数据集，不能叫 benchmark。</p>
+<h3 id="5）统计与实验">5）统计与实验</h3>
+<ul>
+<li><strong>random sampling</strong>：随机抽样；</li>
+<li><strong>stratified sampling</strong>：分层抽样（按空标签 / 非空、含代码 / 纯文档、资源类型分层）；</li>
+<li><strong>sample size</strong>：样本量，太小则结论不稳；</li>
+<li><strong>confidence interval</strong>：置信区间，例如 precision 的 95% CI；</li>
+<li><strong>bootstrap</strong>：重采样估计 CI，适合非正态指标，也是小样本下最省事的做法；</li>
+<li><strong>significance test</strong>：显著性检验，判断两个 prompt / 模型是否真的不同；</li>
+<li><strong>pre-registration</strong>：先冻结假设、指标、样本，再看结果，防止&quot;先看结果再编指标&quot;。</li>
+</ul>
+<h2 id="三、金标怎么建：五步">三、金标怎么建：五步</h2>
+<p>先区分两类金标，别混在一起：</p>
+<ol>
+<li><strong>标签金标</strong>：人检查&quot;这条样本有没有这个标签、字段对不对&quot;；</li>
+<li><strong>链条金标</strong>：人判断&quot;这条组合是否真实、是否值得复核&quot;，或者用运行时轨迹作为行为真值。</li>
+</ol>
+<p>先做第一类。下面以&quot;从 Skill 文档与代码里抽访问效果（edge）&quot;为例，这是最近在做的任务。</p>
+<h3 id="第-1-步：定义标注单元与字段">第 1 步：定义标注单元与字段</h3>
+<p>以一条 edge 为单元，人逐条判断：</p>
+<ul>
+<li>是否存在这个效果：是 / 否 / 证据不足；</li>
+<li><code>resource_type</code> 是否正确；</li>
+<li><code>operation_type</code> 与 <code>operation_detail</code> 是否正确；</li>
+<li><code>target</code> 是否准确；</li>
+<li><code>evidence</code> 是否真的支持这个效果；</li>
+<li>是否漏掉了明显效果（漏标）。</li>
+</ul>
+<p>&quot;证据不足&quot;必须单列——把它硬塞进&quot;否&quot;会让 recall 虚高。</p>
+<h3 id="第-2-步：分层抽样">第 2 步：分层抽样</h3>
+<p>从总体里分层抽 <strong>60 个 Skill</strong>：</p>
+<ul>
+<li>20 个空标签；</li>
+<li>20 个含代码 / 脚本；</li>
+<li>20 个纯文档且非空标签；</li>
+<li>覆盖不同资源类型（FILE / NETWORK / DATASTORE / MESSAGE / PROCESS 等）。</li>
+</ul>
+<p>这样每个分层都有自己的样本量，能分别报指标；否则一个 90% 都是&quot;空标签&quot;的集合，accuracy 会好看得没有意义。</p>
+<h3 id="第-3-步：双标--仲裁">第 3 步：双标 + 仲裁</h3>
+<ul>
+<li>两个人<strong>独立、盲标</strong>：不先看模型标签，避免确认偏误；</li>
+<li>先共同标 5 个样本做校准，把规范里含糊的地方补进 codebook；</li>
+<li>全量双标后，逐字段算 Cohen&#39;s κ；</li>
+<li>不一致的样本讨论，必要时第三人仲裁，形成最终金标。</li>
+</ul>
+<p>只有一个人标，就无法估计一致性，也无法知道金标本身有多 noisy。</p>
+<h3 id="第-4-步：评模型">第 4 步：评模型</h3>
+<ul>
+<li>按 skill + edge 把模型标签与金标对齐；</li>
+<li>报每个字段的 precision / recall / F1（micro 为主，macro 作参考）；</li>
+<li>单列 evidence faithfulness、空标签准确率、漏标率；</li>
+<li>用 bootstrap 报 95% CI；</li>
+<li>做错误分类：漏访问、操作错、对象错、引文不支持、过度标注。</li>
+</ul>
+<p>错误分类比总分有用得多：它能直接告诉你下一版 prompt 该改哪里。</p>
+<h3 id="第-5-步：冻结与使用">第 5 步：冻结与使用</h3>
+<ul>
+<li>把金标 JSONL、标注规范、抽样清单、版本号一起冻结；</li>
+<li><strong>test 集只用于最终报告，不允许拿它调 prompt</strong>；</li>
+<li>以后比较模型、prompt 版本、代码感知抽取，都用同一个 test 集。</li>
+</ul>
+<h2 id="四、九个常见坑">四、九个常见坑</h2>
+<ul>
+<li><strong>只标容易的样本</strong>：高估模型；</li>
+<li><strong>标注者先看模型输出</strong>：被带偏，一致性虚高；</li>
+<li><strong>只有一个人标</strong>：无法估一致性，金标噪声不可知；</li>
+<li><strong>只算 accuracy</strong>：类别不平衡时会骗人；</li>
+<li><strong>把模型标签当金标</strong>：循环论证；</li>
+<li><strong>用 test 调 prompt</strong>：数据泄漏；</li>
+<li><strong>没有仲裁</strong>：金标本身就是噪声源；</li>
+<li><strong>样本太小、不报 CI</strong>：结论不稳；</li>
+<li><strong>把标签金标和链条金标混在一起</strong>：指标口径混乱，数字没法解释。</li>
+</ul>
+<h2 id="五、一句话总结">五、一句话总结</h2>
+<p><strong>金标 = 人按规范、双标、仲裁后得到的参考标签集；benchmark = 任务 + 数据划分 + 指标 + 评测协议 + 基线。</strong></p>
+<p>第一步不需要很大的 benchmark：<strong>60 个样本的分层金标 + 双标 κ + 逐字段 P/R/F1 + evidence faithfulness</strong>，就足以判断当前抽取方式靠不靠谱，并给后续 prompt 与代码感知改进提供基线。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>

@@ -469,8 +469,8 @@
           <button class="tag-pill" data-tag="计算机基础">计算机基础<span class="tag-count">13</span></button>
           <button class="tag-pill" data-tag="C++">C++<span class="tag-count">12</span></button>
           <button class="tag-pill" data-tag="CG">CG<span class="tag-count">12</span></button>
+          <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">12</span></button>
           <button class="tag-pill" data-tag="服务器后端内容">服务器后端内容<span class="tag-count">12</span></button>
-          <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">11</span></button>
           <button class="tag-pill" data-tag="深度学习">深度学习<span class="tag-count">11</span></button>
           <button class="tag-pill" data-tag="GPU 编程">GPU 编程<span class="tag-count">9</span></button>
           <button class="tag-pill" data-tag="Java">Java<span class="tag-count">9</span></button>
@@ -536,6 +536,7 @@
           <button class="tag-pill" data-tag="autotune">autotune<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="AWQ">AWQ<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="backend">backend<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="benchmark">benchmark<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="CI">CI<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Claude">Claude<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="claude-code">claude-code<span class="tag-count">1</span></button>
@@ -642,6 +643,7 @@
           <button class="tag-pill" data-tag="数据库">数据库<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据结构">数据结构<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="架构分析">架构分析<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="标注">标注<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="框架">框架<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="模型架构">模型架构<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="注意力机制">注意力机制<span class="tag-count">1</span></button>
@@ -661,6 +663,7 @@
           <button class="tag-pill" data-tag="融合算子">融合算子<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="计网">计网<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="设计模式">设计模式<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="评测">评测<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="课程学习">课程学习<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="调度器">调度器<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="调试工具">调试工具<span class="tag-count">1</span></button>
@@ -674,7 +677,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 176 篇文章
+      共 177 篇文章
     </div>
   </aside>
 
@@ -698,12 +701,23 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 176</span>
+        <span class="section-count" id="visibleCount">15 / 177</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="benchmark,评测,标注,LLM">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-10-17-benchmark-gold-standard/benchmark-gold-standard.html">Benchmark 与金标：术语地图和一套可执行的标注方案</a></h3>
+              <p class="post-preview">这篇解决什么问题 做抽取类任务（从文档、代码里抽结构化标签）时，有两件事最容易被含糊带过：&quot;金标&quot;到底指什么，以及一个 benchmark 究竟由哪些部件组成。含糊的后果很具体——报告里的 precision 和 recall 其实是...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-10-17</span>
+                <span class="post-card-tags"><span class="post-tag">benchmark</span><span class="post-tag">评测</span><span class="post-tag">标注</span><span class="post-tag">LLM</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-10-17-benchmark-gold-standard/benchmark-gold-standard.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="算法与数据结构,图论,路径规划,AI Agent">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-09-11-path-construction/path-construction.html">从最短路到路径构建：图是怎么被定义出来的</a></h3>
@@ -858,20 +872,9 @@
             </div>
             <a href="posts/2026-07-15-rl-for-llms-basics/rl-for-llms-basics.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="einops,PyTorch,tensor,deep-learning,attention,CNN">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-07-12-einops-guide/einops-guide.html">einops 实用指南：用可读的方式重排、归约和重复张量</a></h3>
-              <p class="post-preview">是一个用于张量变换的 Python 库，它把 、、、、、、 等操作统一成一种接近数学记号的字符串表达式。它的核心价值不是&quot;能做原生框架做不到的事&quot;，而是让张量操作更可读、更难写错、更容易维护</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-07-12 10:00:00 +0800</span>
-                <span class="post-card-tags"><span class="post-tag">einops</span><span class="post-tag">PyTorch</span><span class="post-tag">tensor</span><span class="post-tag">deep-learning</span><span class="post-tag">attention</span><span class="post-tag">CNN</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-07-12-einops-guide/einops-guide.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 176 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 177 篇文章 →</a>
     </section>
   </main>
 
