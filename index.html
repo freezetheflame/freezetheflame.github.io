@@ -464,7 +464,7 @@
       <div class="tag-list" id="tagList">
         <button class="tag-pill" data-tag="Windows相关">Windows相关<span class="tag-count">25</span></button>
           <button class="tag-pill" data-tag="AI">AI<span class="tag-count">17</span></button>
-          <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">14</span></button>
+          <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">15</span></button>
           <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">13</span></button>
           <button class="tag-pill" data-tag="计算机基础">计算机基础<span class="tag-count">13</span></button>
           <button class="tag-pill" data-tag="C++">C++<span class="tag-count">12</span></button>
@@ -547,6 +547,7 @@
           <button class="tag-pill" data-tag="CUTLASS">CUTLASS<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="debugging">debugging<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="deep-learning">deep-learning<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="deepseek">deepseek<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="dual-channel">dual-channel<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="einops">einops<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="eval">eval<span class="tag-count">1</span></button>
@@ -600,6 +601,7 @@
           <button class="tag-pill" data-tag="ROCm">ROCm<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Rust">Rust<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Serena">Serena<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="sglang">sglang<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="Skill">Skill<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="SkillOpt">SkillOpt<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="skills">skills<span class="tag-count">1</span></button>
@@ -638,6 +640,7 @@
           <button class="tag-pill" data-tag="推测解码">推测解码<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="推理加速">推理加速<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="推理引擎">推理引擎<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="推理系统">推理系统<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="教程">教程<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据增强">数据增强<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据库">数据库<span class="tag-count">1</span></button>
@@ -648,6 +651,7 @@
           <button class="tag-pill" data-tag="模型架构">模型架构<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="注意力机制">注意力机制<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="测试生成">测试生成<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="源码分析">源码分析<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="研究笔记">研究笔记<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="研究综述">研究综述<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="硬件适配">硬件适配<span class="tag-count">1</span></button>
@@ -677,7 +681,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 177 篇文章
+      共 178 篇文章
     </div>
   </aside>
 
@@ -701,12 +705,23 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 177</span>
+        <span class="section-count" id="visibleCount">15 / 178</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="AI Infra,推理系统,sglang,deepseek,源码分析">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-10-20-deepinfer-vs-sglang/deepinfer-vs-sglang.html">DeepInfer vs SGLang：源码级的系统边界比较</a></h3>
+              <p class="post-preview">这份对比想解决什么问题 把 DeepInfer 和 SGLang 放在一起，最常见的两类结论都不太有用：一类是&quot;DeepInfer 是 DeepSeek 官方的高性能框架，肯定更强&quot;；另一类是&quot;SGLang 生态大、功能全，肯定更成熟...</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-10-20</span>
+                <span class="post-card-tags"><span class="post-tag">AI Infra</span><span class="post-tag">推理系统</span><span class="post-tag">sglang</span><span class="post-tag">deepseek</span><span class="post-tag">源码分析</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-10-20-deepinfer-vs-sglang/deepinfer-vs-sglang.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="benchmark,评测,标注,LLM">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-10-17-benchmark-gold-standard/benchmark-gold-standard.html">Benchmark 与金标：术语地图和一套可执行的标注方案</a></h3>
@@ -861,20 +876,9 @@
             </div>
             <a href="posts/2026-07-15-pico-dual-channel/pico-dual-channel.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="rl,llm">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-07-15-rl-for-llms-basics/rl-for-llms-basics.html">RL for LLMs：从零到完整训练流程</a></h3>
-              <p class="post-preview">本文从基本概念开始，逐步构建 LLM 强化学习的完整图景</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-07-15</span>
-                <span class="post-card-tags"><span class="post-tag">rl</span><span class="post-tag">llm</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-07-15-rl-for-llms-basics/rl-for-llms-basics.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 177 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 178 篇文章 →</a>
     </section>
   </main>
 
