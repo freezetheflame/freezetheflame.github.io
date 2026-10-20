@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>推荐系统业务岗：12 周准备路线（知识地图 + 项目 + 面试） | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-10-20</p>
+        <h1>推荐系统业务岗：12 周准备路线（知识地图 + 项目 + 面试）</h1>
+        <div class="post-meta">
+          <span>2026-10-20</span>
+          <span class="tag">推荐系统</span><span class="tag">求职</span><span class="tag">学习路线</span><span class="tag">AI Infra</span>
+        </div>
+        <h2 id="先想清楚：业务岗考的不是论文">先想清楚：业务岗考的不是论文</h2>
+<p>我把它压缩成一句话：<strong>你改了什么、指标动了多少、代价是什么、怎么证明不是噪声。</strong></p>
+<p>研究和业务的差别不在“模型高不高级”，而在<strong>约束</strong>：业务方有供给上限、有延迟预算、有生态规则、有审核压力，任何一个改动都要在 AB 里证明自己。所以准备的重点不是多读几篇论文，而是<strong>攒出一条能讲完整因果链的项目</strong>。</p>
+<p>三个必须先内化的“业务真相”：</p>
+<ol>
+<li><strong>离线涨 ≠ 线上涨</strong>。样本偏差、位置偏差、特征穿越，任何一样都能把离线 AUC 的提升变成线上的负收益。</li>
+<li><strong>模型不是唯一杠杆</strong>。重排打散、多样性配额、生态扶持，在真实业务里经常比换模型收益更大。</li>
+<li><strong>冷启动和成本决定天花板</strong>。新用户/新 item 怎么活、QPS 乘以延迟再乘机器成本能不能扛，比“用了什么结构”更常被追问。</li>
+</ol>
+<h2 id="一、先选赛道：四类岗位">一、先选赛道：四类岗位</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>岗位</th>
+<th>日常</th>
+<th>需要的能力</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>推荐算法（召回/排序/多目标）</td>
+<td>建模、特征、离线评估、AB</td>
+<td>模型 + 指标感 + 实验设计</td>
+</tr>
+<tr>
+<td>推荐系统工程/后端</td>
+<td>特征平台、训练/推理链路、延迟、存储</td>
+<td>分布式、性能、稳定性</td>
+</tr>
+<tr>
+<td>生态/风控/内容安全算法</td>
+<td>作弊检测、生态治理、评价体系</td>
+<td>对抗评测、指标设计、系统视角</td>
+</tr>
+<tr>
+<td>LLM4Rec / 生成式推荐</td>
+<td>生成式召回、语义 ID、Scaling</td>
+<td>模型 + 大规模训练</td>
+</tr>
+</tbody></table></div>
+<p>我的打法是<strong>主打“系统工程 + 生态治理”，算法能力作为第二条腿</strong>：这条路人少、竞争不挤，而且“会评测 + 会压延迟”是稀缺组合。</p>
+<h2 id="二、知识地图（四层）">二、知识地图（四层）</h2>
+<h3 id="第-1-层：模型要能白板上推出来">第 1 层：模型——要能白板上推出来</h3>
+<ul>
+<li>协同过滤 → 矩阵分解 → <strong>FM / FFM</strong> → <strong>双塔（DSSM）</strong></li>
+<li>GBDT + LR（要能解释它为什么被深度模型取代）</li>
+<li>排序：<strong>DIN / DIEN / SIM</strong>（长序列）、<strong>MMoE / PLE</strong>（多任务）、<strong>ESMM</strong>（CVR 的样本选择偏差）</li>
+<li>序列：<strong>SASRec / BERT4Rec</strong></li>
+<li>召回：i2i / u2i、向量检索（Faiss、HNSW）、<strong>语义 ID（TIGER）</strong></li>
+<li>重排：DPP / MMR（多样性）</li>
+<li>前沿：<strong>HSTU</strong>（Meta 的生成式推荐）、<strong>OneRec</strong>（快手，统一召回与排序）</li>
+</ul>
+<p>判断标准不是“知道名字”，而是能在白板上画出结构图，并说清<strong>它解决了上一个方法的什么缺陷</strong>。</p>
+<h3 id="第-2-层：系统要能画链路图">第 2 层：系统——要能画链路图</h3>
+<ul>
+<li>全链路：日志 → 样本拼接 → 特征 → 训练 → 模型服务 → 召回/粗排/精排/重排 → 返回</li>
+<li><strong>特征平台</strong>：离线、近线、在线三份特征如何保证一致（这是工程岗最高频的追问）</li>
+<li>训练：大规模 embedding（PS/worker）、稀疏梯度、增量训练</li>
+<li>推理：延迟预算（看 P99，不看均值）、批处理、量化/蒸馏、降级、缓存</li>
+<li>向量检索：索引选型、召回率与延迟的权衡、增量更新</li>
+</ul>
+<h3 id="第-3-层：业务与实验要能算账">第 3 层：业务与实验——要能算账</h3>
+<ul>
+<li>指标：AUC / <strong>GAUC</strong>、NDCG@k、HR@k、覆盖率、多样性、时长、GMV、留存</li>
+<li><strong>AB 实验</strong>：分流、样本量、CUPED 方差缩减、多重比较、新奇效应与长期效应</li>
+<li>冷启动、探索利用（ε-greedy / UCB / Thompson）、供给约束、生态配额</li>
+<li>偏差：位置偏差与去偏（PAL、蒸馏）、样本选择偏差（ESMM 的思路）</li>
+</ul>
+<h3 id="第-4-层：前沿加分，不是必需">第 4 层：前沿——加分，不是必需</h3>
+<p>生成式推荐、LLM 做特征与召回、长序列建模、推荐系统的 Scaling。面试里能提一句“我看到 HSTU 把推荐当序列生成任务”，就够了。</p>
+<h2 id="三、必读清单">三、必读清单</h2>
+<p>书两本：王喆《深度学习推荐系统》（业务视角最好的一本）、项亮《推荐系统实践》（老，但当历史读）。</p>
+<p>论文十篇，按顺序读，每篇只回答一个问题：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>论文</th>
+<th>读完要能回答</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>YouTubeDNN (2016)</td>
+<td>工业界两阶段召回+排序的骨架长什么样</td>
+</tr>
+<tr>
+<td>DIN (2018)</td>
+<td>为什么要对用户历史做 attention，而不是直接 pooling</td>
+</tr>
+<tr>
+<td>DIEN (2019)</td>
+<td>兴趣为什么会漂移，GRU + attention 怎么建模</td>
+</tr>
+<tr>
+<td>SIM (2020)</td>
+<td>长序列（上万条）怎么在延迟内用起来</td>
+</tr>
+<tr>
+<td>SASRec (2018)</td>
+<td>序列推荐为什么能用 Transformer 做</td>
+</tr>
+<tr>
+<td>MMoE (2018)</td>
+<td>多目标为什么会互相拉扯，门控怎么分</td>
+</tr>
+<tr>
+<td>PLE (2020)</td>
+<td>MMoE 的跷跷板效应怎么缓解</td>
+</tr>
+<tr>
+<td>ESMM (2018)</td>
+<td>CVR 训练样本缺失怎么用全空间建模</td>
+</tr>
+<tr>
+<td>TIGER (2023)</td>
+<td>语义 ID 怎么把召回变成生成</td>
+</tr>
+<tr>
+<td>HSTU (2024)</td>
+<td>把推荐当序列生成任务，和传统范式差在哪</td>
+</tr>
+</tbody></table></div>
+<h2 id="四、四个项目">四、四个项目</h2>
+<h3 id="项目-a：端到端两阶段推荐（4-周，必须有）">项目 A：端到端两阶段推荐（4 周，必须有）</h3>
+<ul>
+<li>数据：Amazon Beauty（更接近电商业务）或 MovieLens-1M</li>
+<li>链路：多路召回（双塔 + i2i 协同 + 热门兜底）→ 精排（DIN）→ 重排（DPP 多样性）</li>
+<li>必须做的细节：<strong>全库评估</strong>（不是负采样评估）、GAUC、覆盖率、P99 延迟</li>
+<li>交付：repo + README，写清“每个决策为什么、指标动了多少”</li>
+<li>面试怎么讲：先说约束（数据量、延迟预算），再说取舍（为什么双塔而不是交叉特征），最后说结果与失败尝试</li>
+</ul>
+<h3 id="项目-b：一个真实业务问题（2-周）">项目 B：一个真实业务问题（2 周）</h3>
+<p>选<strong>冷启动</strong>：新 item 的曝光怎么分配。搭一个 bandit 模拟器（用户响应模型 + 曝光反馈），对比 ε-greedy / UCB / Thompson，报三个数：新 item 的 7 日 CTR、曝光占比、整体 NDCG 的损失。</p>
+<p>这个项目的价值在于它是<strong>有取舍的</strong>：探索必然损害短期指标，业务方关心的正是“损失多少、换回多少”。</p>
+<h3 id="项目-c：系统化（2-周）">项目 C：系统化（2 周）</h3>
+<p>FastAPI + Faiss + Redis 特征，做三件事：压测 P99、杀掉一个依赖演示降级、写一个特征一致性检查脚本（离线特征与在线特征逐字段比对）。</p>
+<p>这一段直接对上系统工程岗，也是面试里最能体现“你上过生产”的部分。</p>
+<h3 id="项目-d：差异化（可选，2-周）">项目 D：差异化（可选，2 周）</h3>
+<p>做<strong>推荐系统的鲁棒性评测</strong>：注入/投毒检测，或 LLM 推荐 agent 的记忆污染测量。对口生态治理、内容安全岗，而且绝大多数候选人没有这个视角。</p>
+<h2 id="五、12-周执行表">五、12 周执行表</h2>
+<h3 id="第-12-周：地基">第 1–2 周：地基</h3>
+<ul>
+<li><input disabled="" type="checkbox"> 读 YouTubeDNN、DIN、SASRec，各写 300 字笔记（解决什么问题 / 结构 / 指标）</li>
+<li><input disabled="" type="checkbox"> 下载 Amazon Beauty，用 RecBole 跑通 BPR baseline</li>
+<li><input disabled="" type="checkbox"> 记录基线数字：HR@10、NDCG@10（这是后面所有对比的原点）</li>
+</ul>
+<h3 id="第-34-周：项目-a-主体">第 3–4 周：项目 A 主体</h3>
+<ul>
+<li><input disabled="" type="checkbox"> 双塔召回训练 + Faiss 建索引，实现全库评估</li>
+<li><input disabled="" type="checkbox"> DIN 精排，复现论文里的 attention 结构</li>
+<li><input disabled="" type="checkbox"> 对比：热门召回 / i2i / 双塔，报 Recall@50、Recall@200</li>
+</ul>
+<h3 id="第-56-周：消融">第 5–6 周：消融</h3>
+<ul>
+<li><input disabled="" type="checkbox"> 序列特征（最近 N 次交互）加与不加的对比</li>
+<li><input disabled="" type="checkbox"> 负采样比例对排序指标的影响（并解释为什么采样评估会骗人）</li>
+<li><input disabled="" type="checkbox"> MMoE 或 PLE 加一个辅助目标（如点击 + 时长），看是否跷跷板</li>
+</ul>
+<h3 id="第-78-周：项目-b">第 7–8 周：项目 B</h3>
+<ul>
+<li><input disabled="" type="checkbox"> 写 bandit 模拟器（用户偏好 + 噪声 + 曝光反馈）</li>
+<li><input disabled="" type="checkbox"> 跑 ε-greedy / UCB / Thompson 三组，产出“探索率与长期收益”曲线</li>
+<li><input disabled="" type="checkbox"> 写一页结论：什么条件下该多探索</li>
+</ul>
+<h3 id="第-910-周：项目-c">第 9–10 周：项目 C</h3>
+<ul>
+<li><input disabled="" type="checkbox"> 在线服务：召回 + 排序串起来，压测 P99</li>
+<li><input disabled="" type="checkbox"> 降级：向量库不可用时回落到热门</li>
+<li><input disabled="" type="checkbox"> 特征一致性检查脚本，找出至少一处偏差</li>
+</ul>
+<h3 id="第-11-周：整理">第 11 周：整理</h3>
+<ul>
+<li><input disabled="" type="checkbox"> 三个 repo 的 README 改写成“问题—方案—指标—反思”</li>
+<li><input disabled="" type="checkbox"> 简历改成一页，每条经历都带数字</li>
+<li><input disabled="" type="checkbox"> 把 12 周的失败记录整理成一页（面试最爱问“你踩过什么坑”）</li>
+</ul>
+<h3 id="第-12-周：面试冲刺">第 12 周：面试冲刺</h3>
+<ul>
+<li><input disabled="" type="checkbox"> 手撕：LR、GBDT、Attention、负采样、Top-K 堆、AUC（含并列）</li>
+<li><input disabled="" type="checkbox"> 系统设计：白板画一遍“首页推荐系统”</li>
+<li><input disabled="" type="checkbox"> 业务 case：准备三个（留存下降、多样性下降、AB 不显著）</li>
+</ul>
+<h2 id="六、面试四类题">六、面试四类题</h2>
+<h3 id="1-手撕">1. 手撕</h3>
+<p>LR 与 GBDT 的推导、Attention、负采样、Top-K 用堆、AUC 计算（并列分数怎么处理）。这些是门槛题，答错直接出局。</p>
+<h3 id="2-系统设计">2. 系统设计</h3>
+<p>“设计一个首页推荐系统”是必考题。答题顺序：</p>
+<ol>
+<li>先问约束：日活多少、QPS、延迟预算、有没有冷启动压力；</li>
+<li>画链路：多路召回 → 粗排 → 精排 → 重排；</li>
+<li>讲一致性：特征离线/在线怎么对齐；</li>
+<li>讲降级：依赖挂了怎么办；</li>
+<li>讲实验：怎么验证改动有效。</li>
+</ol>
+<p><strong>画图 + 讲取舍</strong>，不要背结构。</p>
+<h3 id="3-业务-case">3. 业务 case</h3>
+<p>“新用户次日留存掉了 3% 怎么排查”这类题，答法是固定套路：</p>
+<ol>
+<li>分层拆解（人群、场景、端、供给）；</li>
+<li>提出假设（新用户变多导致冷启动占比上升？某个渠道质量下降？）；</li>
+<li>说清需要什么数据（漏斗、分渠道留存、供给覆盖率）；</li>
+<li>给验证方案（灰度、AB、样本量与观察周期）；</li>
+<li>说风险（指标互相拉扯、长期效应）。</li>
+</ol>
+<h3 id="4-八股清单">4. 八股清单</h3>
+<ul>
+<li>GAUC 和 AUC 的区别，为什么线上看 GAUC</li>
+<li>负采样比例怎么选，采样评估为什么虚高</li>
+<li>位置偏差怎么产生、怎么去偏（PAL / 蒸馏）</li>
+<li>特征穿越与样本泄漏的典型例子</li>
+<li>实时特征与离线特征不一致会怎样</li>
+<li>embedding 冲突、哈希冲突怎么处理</li>
+<li>多目标融合：加权、约束、Pareto 各适合什么场景</li>
+<li>冷启动的三条路：内容侧、探索、迁移</li>
+<li>延迟预算怎么拆（召回/排序/网络/序列化）</li>
+<li>AB 不显著时怎么办（功效不足、指标选错、长期效应）</li>
+</ul>
+<h2 id="七、简历怎么写">七、简历怎么写</h2>
+<p>对比一下同一件事的两种写法：</p>
+<blockquote>
+<p>差：基于 DIN 实现了推荐排序模型，提升了效果。</p>
+</blockquote>
+<blockquote>
+<p>好：在 Amazon Beauty 上实现双塔召回 + DIN 精排，全库评估 HR@10 从 0.xx 到 0.xx；推理 P99 从 xx ms 降到 xx ms（批处理 + 量化）；上线前做特征一致性校验，发现并修复 3 处离线/在线偏差。</p>
+</blockquote>
+<p>差别不在技术，在于<strong>有没有数字、有没有规模、有没有代价</strong>。</p>
+<h2 id="八、两个差异化优势">八、两个差异化优势</h2>
+<ol>
+<li><strong>Infra 能力</strong>：推理优化、延迟与成本、批处理、加速器后端。业务方最缺“能把模型压进延迟预算的人”。</li>
+<li><strong>评测与安全</strong>：会设计指标、会做对抗评测、懂注入与投毒。生态治理、内容安全算法岗的候选人里，受过系统评测训练的人极少。</li>
+</ol>
+<p>这两条不需要额外包装，只要在项目里真的做过，写出来就是差异。</p>
+<h2 id="九、这周就动手的三件事">九、这周就动手的三件事</h2>
+<ol>
+<li>读 YouTubeDNN 和 DIN，各写 300 字笔记；</li>
+<li>下载 Amazon Beauty，用 RecBole 跑 BPR，记下 HR@10 与 NDCG@10 当基线；</li>
+<li>决定项目 A 的数据集与延迟预算（比如 P99 小于 100 ms），把它写进 README 第一行。</li>
+</ol>
+<h2 id="十、几个坑">十、几个坑</h2>
+<ul>
+<li><strong>只做模型不做系统</strong>：面试一问特征一致性就露馅；</li>
+<li><strong>只报离线指标</strong>：没有代价和延迟的指标，业务方不信；</li>
+<li><strong>项目没有失败记录</strong>：讲不出踩过的坑，说明没真跑过；</li>
+<li><strong>追新模型</strong>：HSTU、OneRec 是加分项，不是主线，基础不牢时读它们只会更慌。</li>
+</ul>
+<p>计划是给人用的，不是给人看的。12 周里允许两周掉链子，但<strong>项目 A 必须完整跑完一遍</strong>——它是所有面试话题的载体。</p>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
