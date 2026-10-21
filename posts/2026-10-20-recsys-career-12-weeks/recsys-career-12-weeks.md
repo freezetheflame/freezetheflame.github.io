@@ -320,7 +320,7 @@ tags: ["推荐系统", "求职", "学习路线", "AI Infra"]
 
 | 数据 | 用途 | 备注 |
 |---|---|---|
-| KuaiRec 2.0 | bandit、曝光偏差、AB | 有 full exposure matrix，项目 B 首选 |
+| KuaiRec | bandit、曝光偏差、AB | 有 full exposure matrix，项目 B 首选 |
 | Tenrec | 多场景、短视频 | 曝光 + 点击 + 时长齐全 |
 | Ali-CCP | CTR / CVR 多目标 | 练 ESMM / MMoE / PLE |
 | Criteo | 大规模 CTR | 练特征工程与稀疏模型 |
