@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>推荐系统业务岗：12 周准备路线（知识地图 + 项目 + 面试） | Freeze the Flame</title>
+  <title>推荐系统业务岗：12 周准备路线 v2（从学习清单到投递闭环） | Freeze the Flame</title>
   <link rel="stylesheet" href="../../assets/site.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -26,255 +26,622 @@
     <main>
       <article class="panel article">
         <p class="eyebrow">2026-10-20</p>
-        <h1>推荐系统业务岗：12 周准备路线（知识地图 + 项目 + 面试）</h1>
+        <h1>推荐系统业务岗：12 周准备路线 v2（从学习清单到投递闭环）</h1>
         <div class="post-meta">
           <span>2026-10-20</span>
           <span class="tag">推荐系统</span><span class="tag">求职</span><span class="tag">学习路线</span><span class="tag">AI Infra</span>
         </div>
-        <h2 id="先想清楚：业务岗考的不是论文">先想清楚：业务岗考的不是论文</h2>
-<p>我把它压缩成一句话：<strong>你改了什么、指标动了多少、代价是什么、怎么证明不是噪声。</strong></p>
-<p>研究和业务的差别不在“模型高不高级”，而在<strong>约束</strong>：业务方有供给上限、有延迟预算、有生态规则、有审核压力，任何一个改动都要在 AB 里证明自己。所以准备的重点不是多读几篇论文，而是<strong>攒出一条能讲完整因果链的项目</strong>。</p>
-<p>三个必须先内化的“业务真相”：</p>
+        <blockquote>
+<p>2026-10-21 修订：v1 把&quot;学什么&quot;写清楚了，但漏了&quot;什么时候拿 offer&quot;。这一版重排了时间线（4 周 MVP + 8 周迭代）、给每个项目补了完成定义和验收口径、把&quot;实验与评测&quot;从三条 bullet 扩成一章，并修正了&quot;主打系统工程岗&quot;这个不太现实的定位。</p>
+</blockquote>
+<p>先把三句话钉在墙上（v1 这三条是对的，是全文地基）：</p>
 <ol>
-<li><strong>离线涨 ≠ 线上涨</strong>。样本偏差、位置偏差、特征穿越，任何一样都能把离线 AUC 的提升变成线上的负收益。</li>
-<li><strong>模型不是唯一杠杆</strong>。重排打散、多样性配额、生态扶持，在真实业务里经常比换模型收益更大。</li>
-<li><strong>冷启动和成本决定天花板</strong>。新用户/新 item 怎么活、QPS 乘以延迟再乘机器成本能不能扛，比“用了什么结构”更常被追问。</li>
+<li>业务岗考的不是论文，是<strong>你改了什么、指标动了多少、代价是什么、怎么证明不是噪声</strong>。</li>
+<li><strong>离线涨不等于线上涨</strong>。样本偏差、位置偏差、特征穿越，任何一个都能把 AUC 的 +2% 变成负收益。</li>
+<li><strong>模型不是唯一杠杆</strong>。重排打散、多样性配额、生态扶持，经常比换模型收益更大。</li>
 </ol>
-<h2 id="一、先选赛道：四类岗位">一、先选赛道：四类岗位</h2>
+<h2 id="0-v1-缺什么（这次改了哪八处）">0. v1 缺什么（这次改了哪八处）</h2>
+<ol>
+<li><strong>终点错了。</strong> v1 的终点是&quot;第 12 周学完&quot;，简历整理在第 11 周、投递在第 12 周之后。求职计划的终点是 offer；正确做法是第 4 周末就有一份能投的简历。</li>
+<li><strong>没有岗位画像。</strong> 四类岗位只是分类，没落到&quot;目标公司 JD 出现频率 → 我拿什么证据回应&quot;。</li>
+<li><strong>没有时间锚点。</strong> 10 月 20 日往后排 12 周就是 1 月中。秋招补招、春招实习、在职转岗，三种情形策略完全不同，v1 默认了&quot;我在全职学习&quot;。</li>
+<li><strong>项目没有完成定义。</strong> 只写了做什么，没写&quot;做到什么算过&quot;：口径冻结没有、泄漏检查没有、能不能复现、追问接不接得住。</li>
+<li><strong>数据集偏旧偏小。</strong> 只有 Amazon Beauty / MovieLens。缺带曝光反馈的数据（bandit 和 AB 必须有），也缺 CTR/CVR 多目标数据（精排和多任务必须有）。</li>
+<li><strong>评测只有口号。</strong> &quot;全库评估、GAUC&quot;写了，但没写显著性、多种子、口径对比——而这三个恰恰是业务岗面你的原因。</li>
+<li><strong>系统项目偏 demo。</strong> 压测没有口径，降级没有超时预算，没有灰度、没有热更新，离&quot;上过生产&quot;还差一截。</li>
+<li><strong>面试准备不能排练。</strong> 缺三档讲述、追问清单、mock、复盘表。</li>
+</ol>
+<p>所以 v2 的结构是：<strong>定靶 → 4 周做出可投版本 → 8 周边投边补</strong>。</p>
+<h2 id="1-先定靶：你要投什么、什么时候投">1. 先定靶：你要投什么、什么时候投</h2>
+<p>三种情形，三种倒排。先对号入座，再往下看：</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-<th>岗位</th>
-<th>日常</th>
-<th>需要的能力</th>
+<th>情形</th>
+<th>身份</th>
+<th>投递窗口</th>
+<th>12 周怎么用</th>
+<th>关键动作</th>
 </tr>
 </thead>
 <tbody><tr>
-<td>推荐算法（召回/排序/多目标）</td>
-<td>建模、特征、离线评估、AB</td>
-<td>模型 + 指标感 + 实验设计</td>
+<td>A 春招实习</td>
+<td>研一 / 大三</td>
+<td>次年 3–4 月</td>
+<td>完整跑 12 周，W4 起投小厂练手</td>
+<td>实习转正是最稳入口</td>
 </tr>
 <tr>
-<td>推荐系统工程/后端</td>
-<td>特征平台、训练/推理链路、延迟、存储</td>
-<td>分布式、性能、稳定性</td>
+<td>B 秋招补招</td>
+<td>应届，10 月已错过主战场</td>
+<td>立刻，11 月前</td>
+<td>砍成 6 周（见第 11 节）</td>
+<td>先投&quot;稳&quot;档，边面边补</td>
 </tr>
 <tr>
-<td>生态/风控/内容安全算法</td>
-<td>作弊检测、生态治理、评价体系</td>
-<td>对抗评测、指标设计、系统视角</td>
-</tr>
-<tr>
-<td>LLM4Rec / 生成式推荐</td>
-<td>生成式召回、语义 ID、Scaling</td>
-<td>模型 + 大规模训练</td>
+<td>C 在职转岗</td>
+<td>有工作经验</td>
+<td>随时，1–2 个月</td>
+<td>12 周，但项目替代学习</td>
+<td>强调可迁移能力，别裸辞</td>
 </tr>
 </tbody></table></div>
-<p>我的打法是<strong>主打“系统工程 + 生态治理”，算法能力作为第二条腿</strong>：这条路人少、竞争不挤，而且“会评测 + 会压延迟”是稀缺组合。</p>
-<h2 id="二、知识地图（四层）">二、知识地图（四层）</h2>
-<h3 id="第-1-层：模型要能白板上推出来">第 1 层：模型——要能白板上推出来</h3>
+<p>定不下来就先按 A 走，但<strong>W4 之前必须开始投递</strong>——不管投不投得中，面试反馈是最好的需求文档。</p>
+<h2 id="2-岗位画像：从-20-份-jd-反推证据">2. 岗位画像：从 20 份 JD 反推证据</h2>
+<p>方法：拉 20 份目标 JD，把要求拆成&quot;能力 → 我有没有证据 → 证据在哪&quot;。这张表是你 12 周的验收清单，不是读书清单。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>JD 要求</th>
+<th>频率</th>
+<th>我需要的证据</th>
+<th>放在哪</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>召回 / 粗排 / 精排 / 重排链路</td>
+<td>几乎 100%</td>
+<td>项目 A 全链路 + 链路图</td>
+<td>简历第 1 条</td>
+</tr>
+<tr>
+<td>LR / GBDT / FM / DeepFM / DIN / MMoE / PLE</td>
+<td>高</td>
+<td>项目 A 消融 + 八股</td>
+<td>简历 + 面试</td>
+</tr>
+<tr>
+<td>特征工程 / 样本构造 / 实时特征</td>
+<td>高</td>
+<td>项目 C 特征一致性</td>
+<td>简历第 3 条</td>
+</tr>
+<tr>
+<td>Python + PyTorch（部分大厂仍用 TF）</td>
+<td>高</td>
+<td>仓库可读性</td>
+<td>GitHub 置顶</td>
+</tr>
+<tr>
+<td>Spark / Hive / SQL</td>
+<td>中高</td>
+<td>至少一次大数据量处理</td>
+<td>项目 B</td>
+</tr>
+<tr>
+<td>AB 实验设计与分析</td>
+<td>高</td>
+<td>项目 B 的 AB notebook</td>
+<td>简历第 2 条</td>
+</tr>
+<tr>
+<td>业务指标与归因</td>
+<td>中高</td>
+<td>业务 case 三件套</td>
+<td>面试</td>
+</tr>
+<tr>
+<td>论文 / 竞赛 / 开源</td>
+<td>加分</td>
+<td>一篇论文精读笔记</td>
+<td>博客</td>
+</tr>
+</tbody></table></div>
+<blockquote>
+<p>这张表里的&quot;频率&quot;是我看 JD 归纳的，<strong>你需要用自己的 20 份替换</strong>。不同公司差很多：字节重规模和 AB，美团重场景和供给，小红书重内容和多样性，快手重长序列。</p>
+</blockquote>
+<h2 id="3-总路线：4-周-mvp--8-周迭代，双轨并行">3. 总路线：4 周 MVP + 8 周迭代，双轨并行</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>周</th>
+<th>项目线</th>
+<th>面试线</th>
+<th>对外产出</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>定靶</td>
+<td>W0</td>
+<td>环境、基线、口径冻结</td>
+<td>拉 JD、建题库</td>
+<td>实验台账</td>
+</tr>
+<tr>
+<td>MVP</td>
+<td>W1–W2</td>
+<td>项目 A：双塔召回 + Faiss + 全库评估</td>
+<td>手撕 A 级</td>
+<td>—</td>
+</tr>
+<tr>
+<td>可投版</td>
+<td>W3</td>
+<td>项目 A：DIN 精排 + 消融</td>
+<td>系统设计模板</td>
+<td><strong>简历 v1 + 开始投递</strong></td>
+</tr>
+<tr>
+<td>差异化</td>
+<td>W4–W5</td>
+<td>项目 B：曝光反馈 + bandit + AB</td>
+<td>业务 case 模板</td>
+<td>简历 v2 + 第二篇博客</td>
+</tr>
+<tr>
+<td>深化</td>
+<td>W6–W7</td>
+<td>项目 A 深化 + 项目 C</td>
+<td>八股分组</td>
+<td>项目 README 定稿</td>
+</tr>
+<tr>
+<td>系统化</td>
+<td>W8</td>
+<td>项目 C：压测 / 降级 / 灰度</td>
+<td>系统设计 mock</td>
+<td>降级录屏</td>
+</tr>
+<tr>
+<td>冲刺</td>
+<td>W9–W12</td>
+<td>项目 D（可选）</td>
+<td>手撕 + mock + 复盘</td>
+<td>offer</td>
+</tr>
+</tbody></table></div>
+<p>原则只有一条：<strong>项目线永远领先面试线两周</strong>，因为面试问的是项目，不是知识点。</p>
+<h2 id="4-项目设计（每个都补了完成定义）">4. 项目设计（每个都补了完成定义）</h2>
+<h3 id="项目-a：端到端两阶段推荐（脊柱，45-周）">项目 A：端到端两阶段推荐（脊柱，4–5 周）</h3>
 <ul>
-<li>协同过滤 → 矩阵分解 → <strong>FM / FFM</strong> → <strong>双塔（DSSM）</strong></li>
-<li>GBDT + LR（要能解释它为什么被深度模型取代）</li>
-<li>排序：<strong>DIN / DIEN / SIM</strong>（长序列）、<strong>MMoE / PLE</strong>（多任务）、<strong>ESMM</strong>（CVR 的样本选择偏差）</li>
-<li>序列：<strong>SASRec / BERT4Rec</strong></li>
-<li>召回：i2i / u2i、向量检索（Faiss、HNSW）、<strong>语义 ID（TIGER）</strong></li>
-<li>重排：DPP / MMR（多样性）</li>
-<li>前沿：<strong>HSTU</strong>（Meta 的生成式推荐）、<strong>OneRec</strong>（快手，统一召回与排序）</li>
+<li>数据：KuaiRec（带曝光反馈）或 Amazon Beauty；别只用 MovieLens-1M</li>
+<li>链路：多路召回（双塔 + i2i + 热门兜底）→ 精排（DIN）→ 重排（DPP / MMR）</li>
+<li><strong>完成定义（DoD）</strong>：<ol>
+<li>评估口径冻结（第 5 节模板），README 第一屏能看见</li>
+<li>三种召回对比、精排增益、重排对多样性的影响，各一张表</li>
+<li>每个数字有 3 个种子 + 95% bootstrap CI</li>
+<li>至少一次完整的负结果记录：哪个改动没涨、为什么</li>
+<li>P99 延迟有真实数字（写清硬件和并发）</li>
+</ol>
+</li>
+<li><strong>必须能接住的 5 个追问</strong>：<ul>
+<li>为什么用双塔而不是交叉特征？代价是什么？</li>
+<li>全库评估和负采样评估差多少？为什么差？</li>
+<li>负采样比例怎么定的？对它敏感吗？</li>
+<li>你的增益是噪声吗？怎么证明？</li>
+<li>如果线上延迟砍一半，你砍哪里？</li>
 </ul>
-<p>判断标准不是“知道名字”，而是能在白板上画出结构图，并说清<strong>它解决了上一个方法的什么缺陷</strong>。</p>
-<h3 id="第-2-层：系统要能画链路图">第 2 层：系统——要能画链路图</h3>
+</li>
+</ul>
+<h3 id="项目-b：曝光反馈、探索与-ab（差异化，2-周）">项目 B：曝光反馈、探索与 AB（差异化，2 周）</h3>
 <ul>
-<li>全链路：日志 → 样本拼接 → 特征 → 训练 → 模型服务 → 召回/粗排/精排/重排 → 返回</li>
-<li><strong>特征平台</strong>：离线、近线、在线三份特征如何保证一致（这是工程岗最高频的追问）</li>
-<li>训练：大规模 embedding（PS/worker）、稀疏梯度、增量训练</li>
-<li>推理：延迟预算（看 P99，不看均值）、批处理、量化/蒸馏、降级、缓存</li>
+<li>数据：KuaiRec 2.0。它同时记录&quot;曝光了什么&quot;和&quot;没曝光什么&quot;（full exposure matrix），是少数能做 bandit 和曝光偏差实验的公开数据</li>
+<li>做什么：bandit 模拟器（用户响应模型 + 噪声 + 曝光反馈），对比 ε-greedy / UCB / Thompson；再做一个 AB 分析 notebook</li>
+<li><strong>AB notebook 必须包含</strong>：SRM 检查、样本量估算、CUPED 方差缩减、多重比较校正、护栏指标、新奇效应讨论</li>
+<li>产出：一页结论——&quot;什么条件下该多探索、代价多少、换回多少&quot;</li>
+</ul>
+<h3 id="项目-c：在线服务（2-周）">项目 C：在线服务（2 周）</h3>
+<ul>
+<li>栈：FastAPI + Faiss + Redis + Docker</li>
+<li>必须做：P99 压测（wrk / locust，写清并发、QPS、错误率口径）、超时预算拆解、限流、缓存击穿、依赖超时降级、特征一致性脚本、模型版本与灰度</li>
+<li>DoD：一条录屏——杀掉向量库 → 自动回落热门 → P99 恢复 → 告警触发</li>
+</ul>
+<h3 id="项目-d：差异化（可选，2-周）">项目 D：差异化（可选，2 周）</h3>
+<p>三选一：推荐鲁棒性评测（注入 / 投毒）、LLM4Rec 小实验（语义 ID 检索）、生态指标（多样性 / 流量集中度）。选和投递岗位最接近的那个，不要贪多。</p>
+<h2 id="5-评测与实验：这才是业务岗的护城河">5. 评测与实验：这才是业务岗的护城河</h2>
+<h3 id="51-冻结评估口径（直接抄这个模板）">5.1 冻结评估口径（直接抄这个模板）</h3>
+<ul>
+<li>数据版本 + 划分方式：按时间切，留最后 N 天做测试</li>
+<li>候选集：全库 or 采样 K（K 值写死）</li>
+<li>是否过滤已交互</li>
+<li>指标实现与版本</li>
+<li>随机种子：至少 3 个</li>
+<li>报告格式：mean ± std + 95% bootstrap CI</li>
+</ul>
+<blockquote>
+<p>口径不冻结，数字就没有意义。面试官第一句通常就是&quot;你这个 0.xx 是怎么算出来的&quot;。</p>
+</blockquote>
+<h3 id="52-显著性">5.2 显著性</h3>
+<ul>
+<li>论文里的 +2% 很可能是噪声。用 paired bootstrap 或置换检验，别只看均值</li>
+<li>多种子跑、报方差；单次结果不要写进简历</li>
+<li>差值不显著时，诚实写&quot;不显著&quot;，这比硬编一个提升更值钱</li>
+</ul>
+<h3 id="53-离线涨、线上不涨的六个来源">5.3 离线涨、线上不涨的六个来源</h3>
+<ol>
+<li>样本选择偏差：只统计有曝光的样本</li>
+<li>位置偏差：越靠前越容易被点</li>
+<li>特征穿越 / 泄漏</li>
+<li>目标错位：离线 logloss 对齐不了线上的时长 / GMV</li>
+<li>反馈循环：模型改变了未来的数据分布</li>
+<li>口径差异：离线全库 vs 线上候选集</li>
+</ol>
+<h3 id="54-ab-的六个检查项">5.4 AB 的六个检查项</h3>
+<ol>
+<li>SRM：分流比例对不对（卡方检验）</li>
+<li>样本量：n ≈ 16σ²/δ²（80% 功效，α = 0.05）</li>
+<li>方差缩减：CUPED（用实验前指标做协变量）</li>
+<li>多重比较：Bonferroni / BH</li>
+<li>新奇效应：看 7 日曲线，别看首日</li>
+<li>护栏：延迟、错误率、负反馈率、多样性</li>
+</ol>
+<h2 id="6-知识地图（四层--每层验收问题）">6. 知识地图（四层 + 每层验收问题）</h2>
+<p>四层保留 v1 的骨架，补上漏的，并给每层加了验收问题——答不出来就是没过。</p>
+<h3 id="第-1-层-模型：要能白板上推出来">第 1 层 模型：要能白板上推出来</h3>
+<ul>
+<li>协同过滤 → 矩阵分解 → FM / FFM → 双塔（DSSM）</li>
+<li>GBDT + LR；要能解释它为什么被深度模型取代</li>
+<li>精排：DeepFM、DCN、DIN、DIEN、SIM、ETA、TWIN、MMoE、PLE、ESMM、AITM</li>
+<li>序列：SASRec、BERT4Rec、BST；对比学习（S3-Rec）</li>
+<li>召回：i2i / u2i、Faiss / HNSW、语义 ID（TIGER）</li>
+<li>重排：PRM、DPP / MMR</li>
+<li>图：LightGCN（知道为什么比 GCN 好用就行）</li>
+<li>前沿：HSTU、OneRec（加分，不是主线）</li>
+</ul>
+<p><strong>验收</strong>：能不能画结构图并说清&quot;它解决了上一个方法的什么缺陷&quot;？能不能手推 FM 的 O(nk) 化简？</p>
+<h3 id="第-2-层-系统：要能画链路图">第 2 层 系统：要能画链路图</h3>
+<ul>
+<li>全链路：日志 → 样本拼接 → 特征 → 训练 → 服务 → 多路召回 → 粗排 → 精排 → 重排 → 返回</li>
+<li>特征平台：离线 / 近线 / 在线三份特征怎么保证一致（工程岗最高频追问）</li>
+<li>训练：大规模 embedding（PS / worker）、稀疏梯度、增量训练</li>
+<li>推理：延迟预算（看 P99）、批处理、量化 / 蒸馏、降级、缓存</li>
 <li>向量检索：索引选型、召回率与延迟的权衡、增量更新</li>
+<li>补：日志到样本的时间对齐、训练-服务 skew、模型热更新与灰度</li>
 </ul>
-<h3 id="第-3-层：业务与实验要能算账">第 3 层：业务与实验——要能算账</h3>
+<p><strong>验收</strong>：能不能画出一个请求的完整超时预算，并说清哪一层超时该丢弃、哪一层该降级？</p>
+<h3 id="第-3-层-业务与实验：要能算账">第 3 层 业务与实验：要能算账</h3>
 <ul>
-<li>指标：AUC / <strong>GAUC</strong>、NDCG@k、HR@k、覆盖率、多样性、时长、GMV、留存</li>
-<li><strong>AB 实验</strong>：分流、样本量、CUPED 方差缩减、多重比较、新奇效应与长期效应</li>
-<li>冷启动、探索利用（ε-greedy / UCB / Thompson）、供给约束、生态配额</li>
-<li>偏差：位置偏差与去偏（PAL、蒸馏）、样本选择偏差（ESMM 的思路）</li>
+<li>指标：AUC / GAUC、NDCG@k、HR@k、覆盖率、多样性、时长、GMV、留存</li>
+<li>补：延迟转化与归因窗口、曝光未点击、pointwise / pairwise / listwise、校准</li>
+<li>AB：分流、样本量、CUPED、多重比较、新奇效应与长期效应</li>
+<li>冷启动、探索利用、供给约束、生态配额</li>
+<li>偏差：位置偏差与去偏（PAL、特权特征蒸馏）、样本选择偏差（ESMM）</li>
 </ul>
-<h3 id="第-4-层：前沿加分，不是必需">第 4 层：前沿——加分，不是必需</h3>
-<p>生成式推荐、LLM 做特征与召回、长序列建模、推荐系统的 Scaling。面试里能提一句“我看到 HSTU 把推荐当序列生成任务”，就够了。</p>
-<h2 id="三、必读清单">三、必读清单</h2>
-<p>书两本：王喆《深度学习推荐系统》（业务视角最好的一本）、项亮《推荐系统实践》（老，但当历史读）。</p>
-<p>论文十篇，按顺序读，每篇只回答一个问题：</p>
+<p><strong>验收</strong>：给你一个&quot;离线 AUC 涨 0.5% 但 AB 不显著&quot;的场景，能不能在 5 分钟内说出三种排查方向？</p>
+<h3 id="第-4-层-前沿：加分，不是必需">第 4 层 前沿：加分，不是必需</h3>
+<p>读工业论文的 20 分钟法：<strong>标题摘要 → 架构图 → 实验设置（数据规模、基线、延迟）→ 结论和适用边界 → 只记三句话</strong>。判断值不值得读只问一句：它解决了什么约束（规模 / 延迟 / 冷启动 / 多目标）？</p>
+<h2 id="7-12-周执行表（周粒度，含验收）">7. 12 周执行表（周粒度，含验收）</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>周</th>
+<th>目标</th>
+<th>产出物</th>
+<th>验收（做到算过）</th>
+<th>时间</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>W0</td>
+<td>定靶 + 基线</td>
+<td>JD 表、口径模板、实验台账、BPR 基线</td>
+<td>能跑出 HR@10 基线，口径写进 README</td>
+<td>8h</td>
+</tr>
+<tr>
+<td>W1</td>
+<td>项目 A 召回</td>
+<td>双塔 + Faiss + 全库评估</td>
+<td>三种召回的 Recall@50/200 带 CI</td>
+<td>12h</td>
+</tr>
+<tr>
+<td>W2</td>
+<td>项目 A 精排</td>
+<td>DIN + 消融</td>
+<td>精排增益 + 一次负结果记录</td>
+<td>12h</td>
+</tr>
+<tr>
+<td>W3</td>
+<td>简历 + 投递</td>
+<td>简历 v1、项目 A README、系统设计模板</td>
+<td>能脱稿讲 10 分钟；投出 10 份</td>
+<td>12h</td>
+</tr>
+<tr>
+<td>W4</td>
+<td>项目 B 模拟器</td>
+<td>bandit 三算法对比</td>
+<td>探索率-收益曲线</td>
+<td>12h</td>
+</tr>
+<tr>
+<td>W5</td>
+<td>项目 B AB</td>
+<td>AB notebook</td>
+<td>SRM / 样本量 / CUPED / 多重比较齐全</td>
+<td>12h</td>
+</tr>
+<tr>
+<td>W6</td>
+<td>项目 A 深化</td>
+<td>多目标 PLE、序列特征、显著性汇总</td>
+<td>消融表 3 行以上，全带 CI</td>
+<td>12h</td>
+</tr>
+<tr>
+<td>W7</td>
+<td>项目 C 服务</td>
+<td>召回 + 排序串起来，压测</td>
+<td>P99 数字 + 压测口径</td>
+<td>12h</td>
+</tr>
+<tr>
+<td>W8</td>
+<td>项目 C 生产化</td>
+<td>降级 / 限流 / 灰度 / 一致性</td>
+<td>降级录屏 + 一致性报告</td>
+<td>12h</td>
+</tr>
+<tr>
+<td>W9</td>
+<td>项目 D 或补深</td>
+<td>二选一</td>
+<td>一个能讲透的差异化点</td>
+<td>10h</td>
+</tr>
+<tr>
+<td>W10</td>
+<td>手撕 + 系统设计</td>
+<td>白板稿、2 次 mock</td>
+<td>A 级手撕无提示通过</td>
+<td>12h</td>
+</tr>
+<tr>
+<td>W11</td>
+<td>业务 case + 八股</td>
+<td>3 个 case 稿、48 问自测</td>
+<td>每个 case 5 分钟内讲完</td>
+<td>12h</td>
+</tr>
+<tr>
+<td>W12</td>
+<td>冲刺 + 复盘</td>
+<td>面试复盘表、offer 比较</td>
+<td>至少 3 场面试复盘</td>
+<td>10h</td>
+</tr>
+</tbody></table></div>
+<p>总计约 140 小时，每周 12 小时。<strong>允许掉一周链子，优先砍 W9。</strong></p>
+<h2 id="8-面试准备（可排练版）">8. 面试准备（可排练版）</h2>
+<h3 id="81-手撕分级">8.1 手撕分级</h3>
+<ul>
+<li><strong>A 级（必须无提示写出来）</strong>：LR 梯度推导、AUC（含并列）、TopK 堆、Attention / Self-Attention、FM 交叉项化简、负采样、in-batch negative loss</li>
+<li><strong>B 级（常考）</strong>：DIN attention、交叉熵梯度、KMeans、FTRL、快排 / 归并 / 二分、链表树遍历、DP</li>
+<li><strong>C 级（加分）</strong>：Transformer block、Beam Search、分布式 AUC（分桶）</li>
+</ul>
+<h3 id="82-系统设计七步">8.2 系统设计七步</h3>
+<ol>
+<li>澄清约束：场景、DAU / QPS、延迟预算、可用性、冷启动、合规</li>
+<li>指标：北极星 + 护栏</li>
+<li>数据与日志：埋点、样本拼接、时间对齐</li>
+<li>离线链路：样本 → 特征 → 训练 → 评估 → 发布</li>
+<li>在线链路：多路召回 → 粗排 → 精排 → 重排 → 混排</li>
+<li>特征平台与一致性</li>
+<li>降级 / 容量 / 实验</li>
+</ol>
+<p><strong>画图 + 讲取舍，不要背结构。</strong> 面试官打断你的时候，往往是在问&quot;为什么不是另一种&quot;。</p>
+<h3 id="83-业务-case-五步">8.3 业务 case 五步</h3>
+<p>定义指标 → 分层拆解（人群 / 场景 / 端 / 供给）→ 假设树 → 验证方案（数据 + AB + 样本量）→ 风险与长期效应 + 决策建议</p>
+<p>三个必练：新用户次日留存跌 3%、多样性下降但时长涨了、AB 不显著。</p>
+<h3 id="84-八股四十八问">8.4 八股四十八问</h3>
+<ol>
+<li>样本与标签：曝光未点击算负样本吗；延迟转化与归因窗口怎么定；正负比例与采样对哪些指标有偏；样本权重的用法；位置偏差与 PAL；特征穿越的典型例子；训练 / 验证为什么不能随机切；冷启动样本怎么造</li>
+<li>特征与训练：类别特征编码与哈希冲突；embedding 维度怎么定；实时与离线特征一致性；特征重要性与 SHAP 的局限；归一化 / 分桶为什么很多模型不做；多值和序列特征怎么进模型；不收敛 / 过拟合怎么排查；增量训练 vs 全量重训</li>
+<li>模型结构：FM 为什么能从 O(n²) 降到 O(nk)；DeepFM 的 FM 与 DNN 怎么互补；DIN attention 和普通 attention 的区别；上万长序列怎么建模（SIM / ETA / TWIN 取舍）；多任务跷跷板与 MMoE / PLE 的区别；ESMM 解决了什么、假设了什么；重排为什么不能只看精排分（DPP / MMR）；生成式推荐改变了什么、没改变什么</li>
+<li>评估指标：AUC 的物理含义与为什么不均衡不敏感；GAUC 怎么算、线上为什么看它；AUC 涨线上差的原因；NDCG / Recall@K / HR@K 的偏置；全库评估与负采样评估的差距；排序指标怎么和业务指标对齐；校准为什么在广告 / 出价场景必须要；离线涨但 AB 不显著先查什么</li>
+<li>实验与因果：分流哈希与一致性；SRM 出现说明什么；样本量与功效不足的后果；CUPED 的前提；多重比较校正；新奇效应与长期效应怎么测；反向实验 / holdout 什么时候用；观察性数据什么条件下能说因果</li>
+<li>系统与在线：一个请求的延迟预算怎么拆；超时预算怎么传播、下游超时怎么办；缓存击穿 / 雪崩怎么防；限流放哪层、限流后返回什么；模型热更新与灰度怎么做；向量检索的召回率-延迟权衡与增量更新；训练-服务 skew 怎么系统性发现；依赖挂了怎么定降级顺序</li>
+</ol>
+<h3 id="85-三档讲述">8.5 三档讲述</h3>
+<p>同一个项目准备三个版本：<strong>30 秒（电梯）、3 分钟（一面）、10 分钟（深挖）</strong>。30 秒只讲&quot;业务问题 + 我的动作 + 结果数字&quot;；10 分钟要能讲清每一次取舍和失败。</p>
+<p><strong>录一遍自己的 3 分钟版本</strong>，回放时数&quot;嗯、然后、就是&quot;——这是最便宜的提升。</p>
+<h2 id="9-投递策略与复盘">9. 投递策略与复盘</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>档</th>
+<th>公司（示例）</th>
+<th>投递时间</th>
+<th>目的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>冲</td>
+<td>字节、快手、小红书、美团、阿里、腾讯、拼多多</td>
+<td>W6–W8</td>
+<td>拿面试</td>
+</tr>
+<tr>
+<td>稳</td>
+<td>B 站、滴滴、网易、携程、京东、得物、SHEIN、Shopee</td>
+<td>W4–W6</td>
+<td>练手 + 保底</td>
+</tr>
+<tr>
+<td>保</td>
+<td>中厂、垂直行业、初创</td>
+<td>W3–W4</td>
+<td>先拿一个 offer 定心</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>渠道优先级：内推 &gt; 官网 &gt; 招聘平台</li>
+<li>记录表字段：公司 / 岗位 / 渠道 / 投递日 / 状态 / 轮次 / 被问到的题 / 复盘链接</li>
+<li>纪律：<strong>每场面试 24 小时内写复盘</strong>；连续三场挂在同一类题，停下来补，不要继续投</li>
+</ul>
+<h2 id="10-简历与差异化">10. 简历与差异化</h2>
+<p>同一件事的两种写法：</p>
+<blockquote>
+<p>差：基于 DIN 实现了推荐排序模型，提升了效果。</p>
+</blockquote>
+<blockquote>
+<p>好：在 KuaiRec 上搭多路召回 + DIN 精排，全库评估 HR@10 从 0.041 到 0.052（3 seed，95% CI 不重叠）；推理 P99 从 42ms 降到 27ms（批处理 + 量化）；上线前做特征一致性校验，定位并修复 3 处离线 / 在线偏差。</p>
+</blockquote>
+<p>差别不在技术，在于<strong>有没有数字、有没有规模、有没有代价、有没有验证</strong>。</p>
+<p>关于差异化，v1 写&quot;主打系统工程 + 生态治理、算法作为第二腿&quot;，这个定位有风险：系统工程岗通常要求生产级后端经历（C++/Go/Java、高并发），2 周 FastAPI 撑不起来；生态治理岗 HC 少且偏策略。更现实的打法：</p>
+<ul>
+<li><strong>主线：推荐算法（业务向）</strong>——项目 A + B 直接对口</li>
+<li><strong>第一标签：评测与实验能力</strong>——这是业务岗最缺、也最容易补出差异的能力</li>
+<li><strong>第二标签：能压延迟</strong>——把模型压进延迟预算是硬通货，但别把它当主卖点</li>
+</ul>
+<h2 id="11-砍单规则：只剩-6-周--2-周--3-天">11. 砍单规则：只剩 6 周 / 2 周 / 3 天</h2>
+<p><strong>只剩 6 周</strong>：W1–2 项目 A 最小版（双塔 + 全库评估 + 一个精排 baseline）；W3–4 项目 B 的 AB notebook；W5 简历 + 投递；W6 手撕 + 系统设计。砍掉 C 和 D。</p>
+<p><strong>只剩 2 周</strong>：项目 A 只做双塔 + 全库评估 + 热门兜底对比；简历压到一页；手撕 A 级；系统设计白板走一遍。</p>
+<p><strong>面试前 3 天</strong>：只复习自己的项目 + A 级手撕 + 三个业务 case。<strong>不要读新论文。</strong></p>
+<h2 id="12-几个坑（v2-版）">12. 几个坑（v2 版）</h2>
+<ul>
+<li><strong>学到第 12 周才开始投</strong>：这是最大的坑，v1 就踩了</li>
+<li>只做模型不做系统：一面问特征一致性就露馅</li>
+<li>只报离线指标：没有代价、没有显著性</li>
+<li>数字不可复现：口径没冻结，面试官一问实现细节就崩</li>
+<li>项目没有失败记录：讲不出坑，说明没真跑过</li>
+<li>追新模型不看约束：HSTU、OneRec 是加分项，不是主线</li>
+<li>简历写&quot;熟悉&quot;不写数字</li>
+<li>面试不复盘：同样的题挂三次</li>
+</ul>
+<h2 id="13-本周就动手（三件事，6-小时）">13. 本周就动手（三件事，6 小时）</h2>
+<ol>
+<li>拉 20 份目标 JD，填完第 2 节那张表（2h）</li>
+<li>冻结评估口径 + 建实验台账（1h）</li>
+<li>用 RecBole 跑通 BPR 基线，记下 HR@10 与 NDCG@10（3h）</li>
+</ol>
+<h2 id="附：资源清单">附：资源清单</h2>
+<p><strong>论文（按优先级读，每篇只回答一个问题）</strong></p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
 <th>论文</th>
+<th>优先级</th>
 <th>读完要能回答</th>
 </tr>
 </thead>
 <tbody><tr>
 <td>YouTubeDNN (2016)</td>
-<td>工业界两阶段召回+排序的骨架长什么样</td>
+<td>P0</td>
+<td>工业两阶段召回+排序的骨架长什么样</td>
 </tr>
 <tr>
 <td>DIN (2018)</td>
-<td>为什么要对用户历史做 attention，而不是直接 pooling</td>
-</tr>
-<tr>
-<td>DIEN (2019)</td>
-<td>兴趣为什么会漂移，GRU + attention 怎么建模</td>
-</tr>
-<tr>
-<td>SIM (2020)</td>
-<td>长序列（上万条）怎么在延迟内用起来</td>
-</tr>
-<tr>
-<td>SASRec (2018)</td>
-<td>序列推荐为什么能用 Transformer 做</td>
-</tr>
-<tr>
-<td>MMoE (2018)</td>
-<td>多目标为什么会互相拉扯，门控怎么分</td>
-</tr>
-<tr>
-<td>PLE (2020)</td>
-<td>MMoE 的跷跷板效应怎么缓解</td>
+<td>P0</td>
+<td>为什么要对用户历史做 attention</td>
 </tr>
 <tr>
 <td>ESMM (2018)</td>
+<td>P0</td>
 <td>CVR 训练样本缺失怎么用全空间建模</td>
 </tr>
 <tr>
+<td>SASRec (2018)</td>
+<td>P0</td>
+<td>序列推荐为什么能用 Transformer</td>
+</tr>
+<tr>
+<td>MMoE (2018)</td>
+<td>P1</td>
+<td>多目标为什么互相拉扯、门控怎么分</td>
+</tr>
+<tr>
+<td>PLE (2020)</td>
+<td>P1</td>
+<td>MMoE 的跷跷板怎么缓解</td>
+</tr>
+<tr>
+<td>SIM (2020)</td>
+<td>P1</td>
+<td>上万条长序列怎么塞进延迟预算</td>
+</tr>
+<tr>
 <td>TIGER (2023)</td>
+<td>P1</td>
 <td>语义 ID 怎么把召回变成生成</td>
 </tr>
 <tr>
+<td>DIEN (2019)</td>
+<td>P2</td>
+<td>兴趣漂移怎么建模</td>
+</tr>
+<tr>
 <td>HSTU (2024)</td>
-<td>把推荐当序列生成任务，和传统范式差在哪</td>
+<td>P2</td>
+<td>把推荐当序列生成，和传统范式差在哪</td>
+</tr>
+<tr>
+<td>OneRec (2025)</td>
+<td>P2</td>
+<td>统一召回和排序的代价是什么</td>
+</tr>
+<tr>
+<td>PRM (2018)</td>
+<td>P2</td>
+<td>重排为什么要看上下文</td>
 </tr>
 </tbody></table></div>
-<h2 id="四、四个项目">四、四个项目</h2>
-<h3 id="项目-a：端到端两阶段推荐（4-周，必须有）">项目 A：端到端两阶段推荐（4 周，必须有）</h3>
-<ul>
-<li>数据：Amazon Beauty（更接近电商业务）或 MovieLens-1M</li>
-<li>链路：多路召回（双塔 + i2i 协同 + 热门兜底）→ 精排（DIN）→ 重排（DPP 多样性）</li>
-<li>必须做的细节：<strong>全库评估</strong>（不是负采样评估）、GAUC、覆盖率、P99 延迟</li>
-<li>交付：repo + README，写清“每个决策为什么、指标动了多少”</li>
-<li>面试怎么讲：先说约束（数据量、延迟预算），再说取舍（为什么双塔而不是交叉特征），最后说结果与失败尝试</li>
-</ul>
-<h3 id="项目-b：一个真实业务问题（2-周）">项目 B：一个真实业务问题（2 周）</h3>
-<p>选<strong>冷启动</strong>：新 item 的曝光怎么分配。搭一个 bandit 模拟器（用户响应模型 + 曝光反馈），对比 ε-greedy / UCB / Thompson，报三个数：新 item 的 7 日 CTR、曝光占比、整体 NDCG 的损失。</p>
-<p>这个项目的价值在于它是<strong>有取舍的</strong>：探索必然损害短期指标，业务方关心的正是“损失多少、换回多少”。</p>
-<h3 id="项目-c：系统化（2-周）">项目 C：系统化（2 周）</h3>
-<p>FastAPI + Faiss + Redis 特征，做三件事：压测 P99、杀掉一个依赖演示降级、写一个特征一致性检查脚本（离线特征与在线特征逐字段比对）。</p>
-<p>这一段直接对上系统工程岗，也是面试里最能体现“你上过生产”的部分。</p>
-<h3 id="项目-d：差异化（可选，2-周）">项目 D：差异化（可选，2 周）</h3>
-<p>做<strong>推荐系统的鲁棒性评测</strong>：注入/投毒检测，或 LLM 推荐 agent 的记忆污染测量。对口生态治理、内容安全岗，而且绝大多数候选人没有这个视角。</p>
-<h2 id="五、12-周执行表">五、12 周执行表</h2>
-<h3 id="第-12-周：地基">第 1–2 周：地基</h3>
-<ul>
-<li><input disabled="" type="checkbox"> 读 YouTubeDNN、DIN、SASRec，各写 300 字笔记（解决什么问题 / 结构 / 指标）</li>
-<li><input disabled="" type="checkbox"> 下载 Amazon Beauty，用 RecBole 跑通 BPR baseline</li>
-<li><input disabled="" type="checkbox"> 记录基线数字：HR@10、NDCG@10（这是后面所有对比的原点）</li>
-</ul>
-<h3 id="第-34-周：项目-a-主体">第 3–4 周：项目 A 主体</h3>
-<ul>
-<li><input disabled="" type="checkbox"> 双塔召回训练 + Faiss 建索引，实现全库评估</li>
-<li><input disabled="" type="checkbox"> DIN 精排，复现论文里的 attention 结构</li>
-<li><input disabled="" type="checkbox"> 对比：热门召回 / i2i / 双塔，报 Recall@50、Recall@200</li>
-</ul>
-<h3 id="第-56-周：消融">第 5–6 周：消融</h3>
-<ul>
-<li><input disabled="" type="checkbox"> 序列特征（最近 N 次交互）加与不加的对比</li>
-<li><input disabled="" type="checkbox"> 负采样比例对排序指标的影响（并解释为什么采样评估会骗人）</li>
-<li><input disabled="" type="checkbox"> MMoE 或 PLE 加一个辅助目标（如点击 + 时长），看是否跷跷板</li>
-</ul>
-<h3 id="第-78-周：项目-b">第 7–8 周：项目 B</h3>
-<ul>
-<li><input disabled="" type="checkbox"> 写 bandit 模拟器（用户偏好 + 噪声 + 曝光反馈）</li>
-<li><input disabled="" type="checkbox"> 跑 ε-greedy / UCB / Thompson 三组，产出“探索率与长期收益”曲线</li>
-<li><input disabled="" type="checkbox"> 写一页结论：什么条件下该多探索</li>
-</ul>
-<h3 id="第-910-周：项目-c">第 9–10 周：项目 C</h3>
-<ul>
-<li><input disabled="" type="checkbox"> 在线服务：召回 + 排序串起来，压测 P99</li>
-<li><input disabled="" type="checkbox"> 降级：向量库不可用时回落到热门</li>
-<li><input disabled="" type="checkbox"> 特征一致性检查脚本，找出至少一处偏差</li>
-</ul>
-<h3 id="第-11-周：整理">第 11 周：整理</h3>
-<ul>
-<li><input disabled="" type="checkbox"> 三个 repo 的 README 改写成“问题—方案—指标—反思”</li>
-<li><input disabled="" type="checkbox"> 简历改成一页，每条经历都带数字</li>
-<li><input disabled="" type="checkbox"> 把 12 周的失败记录整理成一页（面试最爱问“你踩过什么坑”）</li>
-</ul>
-<h3 id="第-12-周：面试冲刺">第 12 周：面试冲刺</h3>
-<ul>
-<li><input disabled="" type="checkbox"> 手撕：LR、GBDT、Attention、负采样、Top-K 堆、AUC（含并列）</li>
-<li><input disabled="" type="checkbox"> 系统设计：白板画一遍“首页推荐系统”</li>
-<li><input disabled="" type="checkbox"> 业务 case：准备三个（留存下降、多样性下降、AB 不显著）</li>
-</ul>
-<h2 id="六、面试四类题">六、面试四类题</h2>
-<h3 id="1-手撕">1. 手撕</h3>
-<p>LR 与 GBDT 的推导、Attention、负采样、Top-K 用堆、AUC 计算（并列分数怎么处理）。这些是门槛题，答错直接出局。</p>
-<h3 id="2-系统设计">2. 系统设计</h3>
-<p>“设计一个首页推荐系统”是必考题。答题顺序：</p>
-<ol>
-<li>先问约束：日活多少、QPS、延迟预算、有没有冷启动压力；</li>
-<li>画链路：多路召回 → 粗排 → 精排 → 重排；</li>
-<li>讲一致性：特征离线/在线怎么对齐；</li>
-<li>讲降级：依赖挂了怎么办；</li>
-<li>讲实验：怎么验证改动有效。</li>
-</ol>
-<p><strong>画图 + 讲取舍</strong>，不要背结构。</p>
-<h3 id="3-业务-case">3. 业务 case</h3>
-<p>“新用户次日留存掉了 3% 怎么排查”这类题，答法是固定套路：</p>
-<ol>
-<li>分层拆解（人群、场景、端、供给）；</li>
-<li>提出假设（新用户变多导致冷启动占比上升？某个渠道质量下降？）；</li>
-<li>说清需要什么数据（漏斗、分渠道留存、供给覆盖率）；</li>
-<li>给验证方案（灰度、AB、样本量与观察周期）；</li>
-<li>说风险（指标互相拉扯、长期效应）。</li>
-</ol>
-<h3 id="4-八股清单">4. 八股清单</h3>
-<ul>
-<li>GAUC 和 AUC 的区别，为什么线上看 GAUC</li>
-<li>负采样比例怎么选，采样评估为什么虚高</li>
-<li>位置偏差怎么产生、怎么去偏（PAL / 蒸馏）</li>
-<li>特征穿越与样本泄漏的典型例子</li>
-<li>实时特征与离线特征不一致会怎样</li>
-<li>embedding 冲突、哈希冲突怎么处理</li>
-<li>多目标融合：加权、约束、Pareto 各适合什么场景</li>
-<li>冷启动的三条路：内容侧、探索、迁移</li>
-<li>延迟预算怎么拆（召回/排序/网络/序列化）</li>
-<li>AB 不显著时怎么办（功效不足、指标选错、长期效应）</li>
-</ul>
-<h2 id="七、简历怎么写">七、简历怎么写</h2>
-<p>对比一下同一件事的两种写法：</p>
-<blockquote>
-<p>差：基于 DIN 实现了推荐排序模型，提升了效果。</p>
-</blockquote>
-<blockquote>
-<p>好：在 Amazon Beauty 上实现双塔召回 + DIN 精排，全库评估 HR@10 从 0.xx 到 0.xx；推理 P99 从 xx ms 降到 xx ms（批处理 + 量化）；上线前做特征一致性校验，发现并修复 3 处离线/在线偏差。</p>
-</blockquote>
-<p>差别不在技术，在于<strong>有没有数字、有没有规模、有没有代价</strong>。</p>
-<h2 id="八、两个差异化优势">八、两个差异化优势</h2>
-<ol>
-<li><strong>Infra 能力</strong>：推理优化、延迟与成本、批处理、加速器后端。业务方最缺“能把模型压进延迟预算的人”。</li>
-<li><strong>评测与安全</strong>：会设计指标、会做对抗评测、懂注入与投毒。生态治理、内容安全算法岗的候选人里，受过系统评测训练的人极少。</li>
-</ol>
-<p>这两条不需要额外包装，只要在项目里真的做过，写出来就是差异。</p>
-<h2 id="九、这周就动手的三件事">九、这周就动手的三件事</h2>
-<ol>
-<li>读 YouTubeDNN 和 DIN，各写 300 字笔记；</li>
-<li>下载 Amazon Beauty，用 RecBole 跑 BPR，记下 HR@10 与 NDCG@10 当基线；</li>
-<li>决定项目 A 的数据集与延迟预算（比如 P99 小于 100 ms），把它写进 README 第一行。</li>
-</ol>
-<h2 id="十、几个坑">十、几个坑</h2>
-<ul>
-<li><strong>只做模型不做系统</strong>：面试一问特征一致性就露馅；</li>
-<li><strong>只报离线指标</strong>：没有代价和延迟的指标，业务方不信；</li>
-<li><strong>项目没有失败记录</strong>：讲不出踩过的坑，说明没真跑过；</li>
-<li><strong>追新模型</strong>：HSTU、OneRec 是加分项，不是主线，基础不牢时读它们只会更慌。</li>
-</ul>
-<p>计划是给人用的，不是给人看的。12 周里允许两周掉链子，但<strong>项目 A 必须完整跑完一遍</strong>——它是所有面试话题的载体。</p>
+<p><strong>数据集</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>数据</th>
+<th>用途</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>KuaiRec 2.0</td>
+<td>bandit、曝光偏差、AB</td>
+<td>有 full exposure matrix，项目 B 首选</td>
+</tr>
+<tr>
+<td>Tenrec</td>
+<td>多场景、短视频</td>
+<td>曝光 + 点击 + 时长齐全</td>
+</tr>
+<tr>
+<td>Ali-CCP</td>
+<td>CTR / CVR 多目标</td>
+<td>练 ESMM / MMoE / PLE</td>
+</tr>
+<tr>
+<td>Criteo</td>
+<td>大规模 CTR</td>
+<td>练特征工程与稀疏模型</td>
+</tr>
+<tr>
+<td>Amazon 2018 / 2023</td>
+<td>序列推荐</td>
+<td>注意 2018 版的 dense subset 争议</td>
+</tr>
+<tr>
+<td>MovieLens-1M</td>
+<td>快速验证</td>
+<td>太小，容易过拟合，只当 baseline</td>
+</tr>
+</tbody></table></div>
+<p><strong>工具</strong>：RecBole、Faiss、Redis、FastAPI、Docker、MLflow 或 W&amp;B（实验追踪，从 W0 就要有）、wrk / locust、scipy / statsmodels。</p>
+<p><strong>书两本</strong>：王喆《深度学习推荐系统》（业务视角最好的一本）、项亮《推荐系统实践》（老，但当历史读）。</p>
+<p>计划是给人用的，不是给人看的。12 周里允许掉一周链子，但<strong>项目 A 必须完整跑完一遍</strong>——它是所有面试话题的载体。</p>
 
         <div class="button-row">
           <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
