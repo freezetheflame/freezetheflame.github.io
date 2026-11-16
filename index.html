@@ -465,11 +465,11 @@
         <button class="tag-pill" data-tag="Windows相关">Windows相关<span class="tag-count">25</span></button>
           <button class="tag-pill" data-tag="AI">AI<span class="tag-count">17</span></button>
           <button class="tag-pill" data-tag="AI Infra">AI Infra<span class="tag-count">16</span></button>
+          <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">13</span></button>
           <button class="tag-pill" data-tag="Triton">Triton<span class="tag-count">13</span></button>
           <button class="tag-pill" data-tag="计算机基础">计算机基础<span class="tag-count">13</span></button>
           <button class="tag-pill" data-tag="C++">C++<span class="tag-count">12</span></button>
           <button class="tag-pill" data-tag="CG">CG<span class="tag-count">12</span></button>
-          <button class="tag-pill" data-tag="LLM">LLM<span class="tag-count">12</span></button>
           <button class="tag-pill" data-tag="服务器后端内容">服务器后端内容<span class="tag-count">12</span></button>
           <button class="tag-pill" data-tag="深度学习">深度学习<span class="tag-count">11</span></button>
           <button class="tag-pill" data-tag="GPU 编程">GPU 编程<span class="tag-count">9</span></button>
@@ -519,6 +519,7 @@
           <button class="tag-pill" data-tag="算子优化">算子优化<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="经济">经济<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="编译器">编译器<span class="tag-count">2</span></button>
+          <button class="tag-pill" data-tag="论文综述">论文综述<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="论文解读">论文解读<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="转载">转载<span class="tag-count">2</span></button>
           <button class="tag-pill" data-tag="软件工程">软件工程<span class="tag-count">2</span></button>
@@ -622,6 +623,7 @@
           <button class="tag-pill" data-tag="最佳实践">最佳实践<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="最短路">最短路<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="博客">博客<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="可解释性">可解释性<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="多 Agent 编排">多 Agent 编排<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="威胁建模">威胁建模<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="学习路线">学习路线<span class="tag-count">1</span></button>
@@ -648,10 +650,12 @@
           <button class="tag-pill" data-tag="数据增强">数据增强<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据库">数据库<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="数据结构">数据结构<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="权重空间编程">权重空间编程<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="架构分析">架构分析<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="标注">标注<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="框架">框架<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="模型架构">模型架构<span class="tag-count">1</span></button>
+          <button class="tag-pill" data-tag="模型编辑">模型编辑<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="求职">求职<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="注意力机制">注意力机制<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="测试生成">测试生成<span class="tag-count">1</span></button>
@@ -670,7 +674,6 @@
           <button class="tag-pill" data-tag="自演进">自演进<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="融合算子">融合算子<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="计网">计网<span class="tag-count">1</span></button>
-          <button class="tag-pill" data-tag="论文综述">论文综述<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="设计模式">设计模式<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="评测">评测<span class="tag-count">1</span></button>
           <button class="tag-pill" data-tag="课程学习">课程学习<span class="tag-count">1</span></button>
@@ -686,7 +689,7 @@
     </div>
 
     <div class="sidebar-footer">
-      共 180 篇文章
+      共 181 篇文章
     </div>
   </aside>
 
@@ -710,12 +713,23 @@
     <section>
       <div class="section-header">
         <h2>最新文章</h2>
-        <span class="section-count" id="visibleCount">15 / 180</span>
+        <span class="section-count" id="visibleCount">15 / 181</span>
       </div>
 
       <div class="active-filters" id="activeFilters" style="display:none"></div>
 
       <ul class="post-list" id="postList">
+          <li class="post-card" data-tags="权重空间编程,可解释性,LLM,模型编辑,论文综述">
+            <div class="post-card-body">
+              <h3 class="post-card-title"><a href="posts/2026-11-16-weight-space-programming/weight-space-programming.html">权重空间编程：LLM 直接读写神经网络权重，这件事到底有几分真</a></h3>
+              <p class="post-preview">一句话结论 2026 年 11 月 2 日，MIT CSAIL 的 DSPy 一作 Omar Khattab 团队发了一篇博客，主张通用 LLM 可以像读代码一样读、改、写另一个神经网络的权重——不过优化器、不过梯度、不写训练循环</p>
+              <div class="post-card-meta">
+                <span class="post-date">2026-11-16</span>
+                <span class="post-card-tags"><span class="post-tag">权重空间编程</span><span class="post-tag">可解释性</span><span class="post-tag">LLM</span><span class="post-tag">模型编辑</span><span class="post-tag">论文综述</span></span>
+              </div>
+            </div>
+            <a href="posts/2026-11-16-weight-space-programming/weight-space-programming.html" class="post-card-arrow" aria-hidden="true">→</a>
+          </li>
           <li class="post-card" data-tags="agent,security,memory,论文综述">
             <div class="post-card-body">
               <h3 class="post-card-title"><a href="posts/2026-11-03-agent-memory-security/agent-memory-security.html">Agent 记忆系统的安全边界：从记忆投毒到跨边界溯源</a></h3>
@@ -870,20 +884,9 @@
             </div>
             <a href="posts/2026-07-22-serena-agent/serena-agent.html" class="post-card-arrow" aria-hidden="true">→</a>
           </li>
-          <li class="post-card" data-tags="Grok Build,xAI,Rust,AI Agent,多 Agent 编排,架构分析">
-            <div class="post-card-body">
-              <h3 class="post-card-title"><a href="posts/2026-07-16-grok-build-orchestration/grok-build-orchestration.html">Grok Build 对话编排系统深度解析：多 Agent 架构的设计哲学</a></h3>
-              <p class="post-preview">2026 年 7 月 15 日，xAI 开源了 Grok Build——一个 132 万行 Rust、77 个 crate 的终端 AI 编程 Agent。各大媒体都在报道它的安装方式、定价策略和隐私争议，但很少有人深入它的对话编排系统</p>
-              <div class="post-card-meta">
-                <span class="post-date">2026-07-16</span>
-                <span class="post-card-tags"><span class="post-tag">Grok Build</span><span class="post-tag">xAI</span><span class="post-tag">Rust</span><span class="post-tag">AI Agent</span><span class="post-tag">多 Agent 编排</span><span class="post-tag">架构分析</span></span>
-              </div>
-            </div>
-            <a href="posts/2026-07-16-grok-build-orchestration/grok-build-orchestration.html" class="post-card-arrow" aria-hidden="true">→</a>
-          </li>
       </ul>
 
-      <a href="posts/index.html" class="view-all">查看全部 180 篇文章 →</a>
+      <a href="posts/index.html" class="view-all">查看全部 181 篇文章 →</a>
     </section>
   </main>
 

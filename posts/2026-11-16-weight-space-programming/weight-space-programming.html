@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>权重空间编程：LLM 直接读写神经网络权重，这件事到底有几分真 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-11-16</p>
+        <h1>权重空间编程：LLM 直接读写神经网络权重，这件事到底有几分真</h1>
+        <div class="post-meta">
+          <span>2026-11-16</span>
+          <span class="tag">权重空间编程</span><span class="tag">可解释性</span><span class="tag">LLM</span><span class="tag">模型编辑</span><span class="tag">论文综述</span>
+        </div>
+        <h2 id="一句话结论">一句话结论</h2>
+<p>2026 年 11 月 2 日，MIT CSAIL 的 DSPy 一作 Omar Khattab 团队发了一篇博客，主张通用 LLM 可以<strong>像读代码一样读、改、写另一个神经网络的权重</strong>——不过优化器、不过梯度、不写训练循环。</p>
+<p>结论是：<strong>这件事有一半是真的，但被标题夸大了两倍。</strong> 局部故障修复、万级参数网络的零样本编写，已被多个独立团队复现；而&quot;读懂权重语义&quot;在严谨审计下更像是&quot;局部算术 + 数据集先验&quot;，标签一换就穿帮。</p>
+<h2 id="它到底主张什么">它到底主张什么</h2>
+<p>Weight-Space Programming（WSP）的定义很直接：把权重张量当作程序文本，LLM 根据自然语言目标直接编辑它。</p>
+<p>作者自己加了两个限定，值得先记住：</p>
+<ul>
+<li><strong>natively</strong> 指&quot;由 LLM 自己推理决定改什么&quot;，不是调用一个专门训练的权重读写模型；Python 只是推理工具，部分实验完全不给工具，部分只允许有限次前向；</li>
+<li><strong>WSP 是&quot;能力火花&quot;，不是方法</strong>。类比 GPT-3 展示 in-context learning——证明能力存在，不宣称打败微调或 RL。</li>
+</ul>
+<p>主角模型是 GPT-6 Astra，目标网络从 17,253 个参数的小 MLP，一直到 0.8B 的 Qwen3.5-0.8B。</p>
+<h2 id="三类实验：读、修、写">三类实验：读、修、写</h2>
+<h3 id="读：它能看到什么">读：它能看到什么</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>实验</th>
+<th>设置</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>猜游戏</td>
+<td>4 个 PPO 训练的网格游戏策略，17,253 个权重以纯文本给出，无工具</td>
+<td>4/4 全对，依据是第一层权重的空间分布</td>
+</tr>
+<tr>
+<td>猜扩散模型</td>
+<td>3 个 DDPM，23,824 个权重，禁止前向</td>
+<td>3/3 全对；把实心形状读成&quot;轮廓&quot;，说明读的是几何而非模拟前向</td>
+</tr>
+<tr>
+<td>只给中间层猜语言</td>
+<td>7.2M 字符级 transformer，删掉输入输出层</td>
+<td>3/3 全对，并精确找出全部 induction heads</td>
+</tr>
+<tr>
+<td>找谄媚模型</td>
+<td>诚实版 vs 谄媚版 Gemma 3 270M</td>
+<td><strong>纯权重 4 次全败</strong>；允许看注意力模式后 3/3</td>
+</tr>
+</tbody></table></div>
+<p>最后一行是整篇博客最重要的边界：<strong>权重的稠密中间语义，目前读不动。</strong> 能读的是结构性的、低维的、与几何强相关的信息。</p>
+<h3 id="修：改-35-的权重，成功率从-0-到-100">修：改 3.5% 的权重，成功率从 0 到 100%</h3>
+<p>Kinetix 赛车爬坡任务，PPO 训了 10 亿步陷入局部最优——它不会先倒车助跑。给全部 171,664 个权重、场景描述和一段录像，模型单次回复改了 <strong>6,073 个权重（3.5%）</strong>，成功率 **0% → 100%**（1,024 episodes），而且改出来的是一条可读的小通路：&quot;先倒车，越过红带后关闭&quot;。</p>
+<p>更受关注的是 Qwen3.5-0.8B 的数学能力：</p>
+<ul>
+<li>定位到第 15/19 层 MLP 写出的&quot;思考死循环方向&quot;，从每层 64 个输出列中减去该方向；</li>
+<li>共改 <strong>131,072 个权重（0.016%）</strong>；</li>
+<li>MATH-500 **7.9% → 48.1%**，GSM8K 13.8% → 67.1%，IFEval 21.0% → 62.3%；</li>
+<li>截断率 93% → 33.1%。</li>
+</ul>
+<p>同一套流程用在 Gemma 3 270M 上<strong>完全失败</strong>（6.8% → 最高 7.7%），因为那个模型没有循环病理，错误是普通算术错误。作者自己的总结很准确：<strong>编辑权重能移除挡住能力的障碍，但不能凭空添加模型没有的能力。</strong></p>
+<h3 id="写：零数据、零梯度地编译一个网络">写：零数据、零梯度地&quot;编译&quot;一个网络</h3>
+<ul>
+<li>MinAtar 游戏：给规则和游戏源码，从全零网络一次写出全部权重，Breakout 得分 <strong>517.4</strong>，对比 PPO-100M 步的 15.8、PPO-500M 步的 25.3；</li>
+<li>9×9 围棋：1,480,274 个权重，击败同规模、训了 2000 万局的 PPO 网络。</li>
+</ul>
+<p>这两项最像&quot;程序合成&quot;：不是学出来的，是把&quot;算球落点 → 移挡板&quot;这样的过程直接编译进权重。</p>
+<h2 id="三个必须打折扣的地方">三个必须打折扣的地方</h2>
+<p><strong>第一，&quot;读语义&quot;很大程度靠记忆。</strong></p>
+<p>BRAC University 的审计论文（arXiv 2611.08070）用 Claude Opus 5.5、无工具、无前向地读 5 个数据集训练的小 CNN。结论是零样本&quot;读权重&quot;更像<strong>局部算术 + 数据集先验</strong>：</p>
+<ul>
+<li>局部计算很准，能从 BatchNorm 统计推断出约 3 步 Adam 更新；</li>
+<li>但语义靠模板套：KMNIST 认成 MNIST，99.57% 准确率的 SAT-6 卫星图网络被读成&quot;CIFAR-10 动物照片&quot;；</li>
+<li><strong>标签置换对照</strong>是关键——输出分组结构找对了，9 对类名全错。这说明类名来自记住的 CIFAR-10 标签顺序，不是从权重推出来的。</li>
+</ul>
+<p>注意这篇的边界：它<strong>不否定</strong>原博客的编辑与写入结果，只审计&quot;读&quot;的机制。</p>
+<p><strong>第二，头条数字是&quot;修复病理&quot;，不是&quot;注入能力&quot;。</strong></p>
+<p>7.9% 的基线是病态采样：93% 的答案因死循环被截断。579 个被救回的答案里，576 个原本就是截断输出；原本能正常完成的题目，正确率没变。也就是说，它修的是&quot;卡死&quot;，不是&quot;不会数学&quot;。这一点原博客自己披露了，但传播时被标题吃掉了。</p>
+<p><strong>第三，证据面很窄。</strong></p>
+<p>全部结果来自单一 LLM、目标网络不超过 0.8B、博客未经同行评审。弱基线的批评成立（Go 基线 MLP 太弱、Qwen 基线被病理污染），虽然作者回应说这是&quot;给零经验写网络定价&quot;，不是刷榜。</p>
+<h2 id="复现生态：这才是它真正的分量">复现生态：这才是它真正的分量</h2>
+<p>一个博客能在两周内引出上百项复现，说明它触到了真问题。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>工作</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Simon Willison 本地复现</td>
+<td>用笔记本上的 Qwen 27B，3/4 正确（每题 46 分钟到 1 小时、4 万+ 推理 token）；能力不专属于 GPT-6</td>
+</tr>
+<tr>
+<td>Hugging Face 复现</td>
+<td>重建编辑版 checkpoint，独立重跑 MATH-500 得 **51.0%**，模型与演示空间开源</td>
+</tr>
+<tr>
+<td>arXiv 2611.09382 系统评测</td>
+<td>16 条编辑轨迹 × 7 个基准：MATH-500 最高 <strong>+29.45pp（只改 1,023 个参数）</strong>、IFEval +36.72、SciBench +17.11；但 <strong>16 条里 6 条因无法可靠验证提升而保留原权重</strong></td>
+</tr>
+<tr>
+<td>IWIBench</td>
+<td>首个&quot;梯度无关的模型驱动权重内注入&quot;agentic 基准</td>
+</tr>
+<tr>
+<td>Physics2Weight（2611.12954）</td>
+<td>把 WSP 扩展到解 PDE，误差低于 PINN，但非线性 PDE 的物理一致性仍不足</td>
+</tr>
+<tr>
+<td>Snowflake-Labs</td>
+<td>企业侧复现仓库，在 Snowflake 上让 LLM 修网络</td>
+</tr>
+</tbody></table></div>
+<p><strong>&quot;6/16 放弃&quot;是最该被引用的数字</strong>——它说明干预点的发现是可靠的瓶颈，而不是随便改改就能涨分。</p>
+<h2 id="技术谱系：新在哪，不新在哪">技术谱系：新在哪，不新在哪</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>路线</th>
+<th>代表</th>
+<th>与 WSP 的差别</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>机制可解释性</td>
+<td>Distill Circuits、ROME/MEMIT、单方向拒绝消融</td>
+<td>人类研究者 + 专用工具；WSP 的新意是通用 LLM 零样本自发组合这些技术</td>
+</tr>
+<tr>
+<td>训练出来的权重读取器</td>
+<td>Weight Oracles（2610.07334，NeurIPS workshop）</td>
+<td>微调专用模型读权重，后门检测 AUROC 0.93；与&quot;原生能力&quot;互补</td>
+</tr>
+<tr>
+<td>超网络 / 模型生成权重</td>
+<td>HyperNetworks、p-diff、NeuroGen</td>
+<td>需要专门训练或搜索；WSP 主张免训练、推理驱动</td>
+</tr>
+<tr>
+<td>无梯度优化</td>
+<td>SPSA、ES、MeZO</td>
+<td>仍靠试错；WSP 靠语义推理定位干预点</td>
+</tr>
+<tr>
+<td>LLM 优化文本制品</td>
+<td>OPRO → DSPy/MIPRO → GEPA → autoresearch</td>
+<td>WSP 把&quot;推理驱动优化&quot;推进到可微网络本体</td>
+</tr>
+</tbody></table></div>
+<p>一句话：<strong>技术组件大多不新，新的是&quot;前沿 LLM 不用教就会用它们&quot;。</strong></p>
+<h2 id="怎么判断一条-wsp-声明可不可信">怎么判断一条 WSP 声明可不可信</h2>
+<p>看完这些材料，我整理了一份检查清单，比记住任何一个数字都有用：</p>
+<ol>
+<li><strong>基线有没有被病理污染</strong>——截断率、超时率是多少？提升是&quot;救回卡死&quot;还是&quot;学会解题&quot;？</li>
+<li><strong>有没有随机方向对照</strong>——改一个随机方向涨多少？原博客里这个数是 +1.6，这才是真实效应量；</li>
+<li><strong>有没有层隔离对照</strong>——改第 15 层有效，改第 3 层呢？没有层间对照，就不知道是定位还是碰巧；</li>
+<li><strong>有没有报告放弃的轨迹</strong>——16 条里放弃 6 条，和不提这 6 条，是两个结论；</li>
+<li><strong>有没有做标签置换</strong>——&quot;读&quot;类实验不做置换，就无法排除记忆；</li>
+<li><strong>换模型还成不成立</strong>——单模型结果只能算 existence proof。</li>
+</ol>
+<h2 id="我的判断">我的判断</h2>
+<p><strong>真的部分</strong>：权重确实可以作为文本制品被 LLM 分析；高度局部化的单因故障修复效果惊人且已独立复现；万级参数网络可以零样本一次写成。这三条足够支撑&quot;这是一项真实的新兴能力&quot;。</p>
+<p><strong>要打折的部分</strong>：语义读取依赖数据集记忆；头条提升主要是修故障；可靠性（16 条里 6 条失败）和验证方法都还没解决；&quot;递归自我改进&quot;的解读证据不足——连批评者都承认它 impressive，但&quot;改进训练&quot;短期仍是正道。</p>
+<p><strong>值得做的方向</strong>：权重级安全审计（后门检测、篡改检测）、免数据的定向修复与 unlearning、跨架构的电路移植。这三件事都有明确的工程价值，而且不依赖&quot;LLM 真的读懂了权重&quot;这个强主张。</p>
+<h2 id="上手资源">上手资源</h2>
+<ul>
+<li>原文与作者回应：<a href="https://rikiyat.github.io/blog/weight-space-programming/">https://rikiyat.github.io/blog/weight-space-programming/</a></li>
+<li>完整日志与原始 prompt：<a href="https://github.com/RikiyaT/lm_understand-logs">https://github.com/RikiyaT/lm_understand-logs</a> （Exp1 单条 prompt 约 7.4 万 token，API 重放不到 1 美元）</li>
+<li>编辑后模型与演示：<a href="https://huggingface.co/RikiyaT/Qwen3.5-0.8B-weight-space-programming">https://huggingface.co/RikiyaT/Qwen3.5-0.8B-weight-space-programming</a></li>
+<li>审计协议与反面证据：<a href="https://arxiv.org/abs/2611.08070">https://arxiv.org/abs/2611.08070</a></li>
+<li>系统评测：<a href="https://arxiv.org/abs/2611.09382">https://arxiv.org/abs/2611.09382</a></li>
+<li>权重读取器对照：<a href="https://arxiv.org/abs/2610.07334">https://arxiv.org/abs/2610.07334</a></li>
+</ul>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
