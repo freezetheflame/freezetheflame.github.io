@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>结构性后门：当触发器就是 tool_use 本身——一个 WSP 边界研究提案 | Freeze the Flame</title>
+  <link rel="stylesheet" href="../../assets/site.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="../../index.html" aria-label="Freeze the Flame 首页">
+        <span class="brand-mark">F</span>
+        <span>Freeze the Flame</span>
+      </a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="../../index.html">首页</a>
+        <a href="../../posts/index.html">文章</a>
+        <a href="../../llm-wiki/index.html">LLM Wiki</a>
+        <a href="../../chatbot.html" class="bot-link">Blog Bot</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="panel article">
+        <p class="eyebrow">2026-11-16</p>
+        <h1>结构性后门：当触发器就是 tool_use 本身——一个 WSP 边界研究提案</h1>
+        <div class="post-meta">
+          <span>2026-11-16</span>
+          <span class="tag">agent安全</span><span class="tag">权重空间编程</span><span class="tag">后门</span><span class="tag">研究提案</span><span class="tag">tool-use</span>
+        </div>
+        <h2 id="问题">问题</h2>
+<p>过去两周，权重空间编程（WSP）从&quot;LLM 能读写权重&quot;迅速走到了&quot;LLM 能写后门&quot;：arXiv 2611.17395 已经证明，通用模型可以在无数据、无前向、无梯度的条件下，往 MLP、ResNet 和 Qwen2.5-0.5B 里注入后门并保持干净性能；Microsoft 的 Lazarus 更极端——<strong>改写不到 10 个休眠神经元</strong>，就能让一个通过全部标准评测的 agent，在某个平凡触发条件下输出&quot;下载并运行攻击者代码&quot;的命令。</p>
+<p>这些工作的触发器都是<strong>一个可枚举的信号</strong>：一个罕见字符串、一个日期、一次特定输入。于是防御也沿着同一个假设构建：找触发词、扫输入、过滤异常样本。</p>
+<p>这份提案问的是另一个问题：</p>
+<blockquote>
+<p><strong>如果后门没有触发词，触发条件就是&quot;模型正在生成 tool_use 这个结构化输出&quot;本身，现有防御还剩下什么？</strong></p>
+</blockquote>
+<h2 id="一、威胁模型">一、威胁模型</h2>
+<p><strong>资产</strong>：agent 在工具调用中传递的参数——URL、收件人、账号、文件路径。</p>
+<p><strong>攻击者能力</strong>：能提供一份被编辑过的开源权重（模型供应链）；不需要训练数据、不需要梯度、不需要推理时访问。</p>
+<p><strong>载荷</strong>：把工具调用里的 URL 参数替换为攻击者控制的目标，或改写其路径/查询串。为安全起见，实验中只用保留域名，不产生真实外联。</p>
+<p><strong>成功定义</strong>：分三层，必须分开计——模型&quot;想改&quot;、调用&quot;发出去&quot;、请求&quot;真的到达&quot;。把三者合成一个 ASR，是这一类研究最常见的度量错误。</p>
+<h2 id="二、与已有工作的差异">二、与已有工作的差异</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>工作</th>
+<th>触发方式</th>
+<th>载荷</th>
+<th>与本提案的关系</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Can LLMs Write Backdoors?（2611.17395）</td>
+<td>罕见字符串</td>
+<td>分类标签翻转</td>
+<td>证明 WSP 可写后门，但触发可枚举</td>
+</tr>
+<tr>
+<td>Lazarus（MSR，2026-11）</td>
+<td>日期等平凡条件</td>
+<td>命令执行</td>
+<td>极少量神经元即可，检测需 diff 原始权重</td>
+</tr>
+<tr>
+<td>Backdoored Tool Use（ACL Findings 2026）</td>
+<td>数据投毒</td>
+<td>工具调用外泄</td>
+<td>走训练路径，不是权重编辑</td>
+</tr>
+<tr>
+<td>AgentQ（EMNLP 2026）</td>
+<td>量化条件</td>
+<td>结构化函数</td>
+<td>正交维度：发作时机而非触发形态</td>
+</tr>
+<tr>
+<td><strong>本提案</strong></td>
+<td><strong>输出格式状态（tool_use）</strong></td>
+<td><strong>参数槽（URL）</strong></td>
+<td><strong>无触发词可扫描</strong></td>
+</tr>
+</tbody></table></div>
+<p>差异可以用一句话概括：<strong>别人研究&quot;什么样的输入会激活后门&quot;，这里研究&quot;后门能不能以输出格式为条件&quot;。</strong></p>
+<p>这个区别不是文字游戏。它直接决定防御形态：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>罕见触发</th>
+<th>结构性触发</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>触发信号</td>
+<td>token / 短语</td>
+<td>生成状态（进入 JSON 参数）</td>
+</tr>
+<tr>
+<td>可扫描性</td>
+<td>可（n-gram、trigger search）</td>
+<td><strong>不可</strong>，没有词可找</td>
+</tr>
+<tr>
+<td>良性误触发</td>
+<td>低</td>
+<td>天然高，每次工具调用都满足</td>
+</tr>
+<tr>
+<td>检测路径</td>
+<td>输入过滤</td>
+<td>权重 diff + provenance</td>
+</tr>
+</tbody></table></div>
+<h2 id="三、可行性假设">三、可行性假设</h2>
+<p>WSP 目前的所有成功案例有三个共同点：<strong>单点、低维、效果可立即验证</strong>。删掉一个导致死循环的方向、把成功率从 0 拉到 100%、从零写一个 17K 参数的策略网络——都属于这一类。</p>
+<p>而&quot;结构性后门&quot;需要的是<strong>条件组合</strong>：识别&quot;我正在生成工具调用&quot;这个状态，并且只在这个状态里改变参数分布。这更接近写程序，而不是修一条通路。</p>
+<p>由此提出两个假设：</p>
+<ul>
+<li><strong>H1</strong>：非条件化的参数偏置（L0）与浅层格式条件化（L1）可以成功，但会泄漏到普通文本，选择性不足；</li>
+<li><strong>H2</strong>：语义级条件门控（L2）在 0.5B–0.8B 规模上会失败——不是&quot;效果差&quot;，而是&quot;改不动&quot;。这与 WeightBench 的结论一致：前沿 agent 能读写小网络、能写控制策略，但<strong>还不能 patch 语言模型</strong>。</li>
+</ul>
+<p>我押 H2 成立。负结果在这里比正结果更干净：它不受&quot;弱基线&quot;&quot;调参调到成功&quot;这类质疑影响，直接划出 WSP 的能力边界。</p>
+<h2 id="四、实验阶梯">四、实验阶梯</h2>
+<p>四级，每级都有明确的 go/no-go，不允许跳级。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>级别</th>
+<th>目标</th>
+<th>判据（全部满足才进下一级）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>L0 全局偏置</strong></td>
+<td>URL 槽位的目标域名概率整体抬高</td>
+<td>命中率显著高于基线；JSON 合法率不降；能力评测下降 &lt;2%</td>
+</tr>
+<tr>
+<td><strong>L1 格式条件化</strong></td>
+<td>只在 tool_use 参数生成时生效</td>
+<td>tool_use 内命中率 / 普通文本误命中率 ≥ 5；干净任务 FPR &lt;5%</td>
+</tr>
+<tr>
+<td><strong>L2 语义门控</strong></td>
+<td>只在特定话题 + 特定工具时生效</td>
+<td>触发 ASR &gt;50%，同时干净 FPR &lt;1%</td>
+</tr>
+<tr>
+<td><strong>L3 隐身</strong></td>
+<td>L2 + 抗量化 + 抗一次 SFT</td>
+<td>量化后 ASR 保持 &gt;80%；SFT 后仍 &gt;50%</td>
+</tr>
+</tbody></table></div>
+<p>L0/L1 失败意味着&quot;连偏置都写不进去&quot;，那 WSP 的边界比预期更窄；L2 失败则是有价值的负结果。</p>
+<h2 id="五、评测协议">五、评测协议</h2>
+<p><strong>目标模型</strong>：Qwen2.5-0.5B-Instruct（2611.17395 用过，有公开基线）、Qwen3.5-0.8B（WSP 有公开 checkpoint）。</p>
+<p><strong>任务环境</strong>：一个最小 fetch agent，20 个良性任务 + 20 个触发任务，工具签名固定，参数为结构化 JSON。</p>
+<p><strong>基线三组</strong>：</p>
+<ol>
+<li>数据投毒微调（强基线，代表&quot;正常训练路径能做什么&quot;）；</li>
+<li>激活 steering（不落权重，代表&quot;推理时干预&quot;）；</li>
+<li>WSP 权重编辑（本提案方法）。</li>
+</ol>
+<p><strong>指标六层</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>层</th>
+<th>指标</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>触发</td>
+<td>trigger ASR</td>
+<td>触发时是否改写</td>
+</tr>
+<tr>
+<td>干净</td>
+<td>clean FPR</td>
+<td>结构性后门的命门</td>
+</tr>
+<tr>
+<td>格式</td>
+<td>JSON 合法率</td>
+<td>排除&quot;改坏了所以没触发&quot;的假阴性</td>
+</tr>
+<tr>
+<td>能力</td>
+<td>MMLU / IFEval / 工具任务成功率</td>
+<td>局部性</td>
+</tr>
+<tr>
+<td>持久</td>
+<td>量化后 / SFT 后</td>
+<td>研究现象 vs 部署威胁</td>
+</tr>
+<tr>
+<td>可检</td>
+<td>权重 diff、激活探针、trigger search</td>
+<td>防御能否跟上</td>
+</tr>
+</tbody></table></div>
+<p><strong>预注册</strong>：实验前把判据、样本量、随机种子写死。这类研究最大的可信度风险不是方法错，而是&quot;试到成功为止&quot;。</p>
+<h2 id="六、工具与检测">六、工具与检测</h2>
+<ul>
+<li><strong>W-ISA</strong>（2611.13232）：把权重干预写成可回滚的事务，避免把模型改坏后无法复原；</li>
+<li><strong>WeightBench</strong>（2611.18553）：作为&quot;这个模型原本能做什么&quot;的基线，区分&quot;编辑无效&quot;与&quot;模型本来就不会&quot;；</li>
+<li><strong>检测侧</strong>：按 Lazarus 的结论，可靠检测依赖与原版权重的 diff，而不是行为测试；本提案会把&quot;能否被 diff 发现&quot;作为一项指标，而不是假设它不会被发现。</li>
+</ul>
+<h2 id="七、两种结果的价值">七、两种结果的价值</h2>
+<p><strong>若 L2 成功</strong>：证明存在一类<strong>没有触发词的后门</strong>，所有基于输入扫描的防御对它无效。这会把防御重心推向权重来源与完整性验证——与 Lazarus 的结论互相印证，但补上了&quot;结构性触发&quot;这一类。</p>
+<p><strong>若 L2 失败</strong>：给出 WSP 的能力边界——它能移除障碍、能写小网络，但写不出条件组合。这个结论可以和&quot;16 条编辑轨迹中 6 条被放弃&quot;&quot;不能 patch 语言模型&quot;放在一起，构成对 WSP 现阶段能力的完整刻画。</p>
+<p>两种结果都能写。区别只在于投哪里：正结果偏安全会议，负结果偏评测/方法论。</p>
+<h2 id="八、边界与伦理">八、边界与伦理</h2>
+<p>这份提案的所有实验都在<strong>本地开源权重</strong>上完成，且遵守五条约束：</p>
+<ol>
+<li>不针对任何线上服务，不接触真实凭据；</li>
+<li>载荷只用保留域名，不做真实外联；</li>
+<li>不公开发布被后门的权重，论文只给方法与指标；</li>
+<li>若发现真实部署模型可被同样方式修改，走协调披露；</li>
+<li>实验协议预注册，结果不论正负都报告。</li>
+</ol>
+<h2 id="九、四周时间表">九、四周时间表</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>周</th>
+<th>工作</th>
+<th>交付</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>搭 fetch agent 与评测集；跑通 W-ISA 与基线</td>
+<td>可复现的评测脚本 + 基线数字</td>
+</tr>
+<tr>
+<td>2</td>
+<td>L0 + L1</td>
+<td>偏置是否可写入、泄漏率多少</td>
+</tr>
+<tr>
+<td>3</td>
+<td>L2（语义门控）</td>
+<td>成功或失败的判定</td>
+</tr>
+<tr>
+<td>4</td>
+<td>量化/SFT 持久性 + 检测实验</td>
+<td>完整指标表 + 结论</td>
+</tr>
+</tbody></table></div>
+<h2 id="十、开放问题">十、开放问题</h2>
+<ol>
+<li>结构性触发是否真的&quot;不可扫描&quot;？也许存在激活层的格式状态探针，能间接发现异常——这本身值得测；</li>
+<li>如果 WSP 写不出条件组合，是因为编辑方法太弱，还是因为条件行为本来就是分布式表征？前者可以用更好的编辑算法解决，后者是原理性限制；</li>
+<li>同样的方法用在更大的模型上，是变容易还是变难？WeightBench 的结论是&quot;越大越难&quot;，但样本还很少。</li>
+</ol>
+<hr>
+<p><strong>参考</strong></p>
+<ul>
+<li>Can LLMs Write Backdoors? An Empirical Security Study of Weight-Space Programming：<a href="https://arxiv.org/abs/2611.17395">https://arxiv.org/abs/2611.17395</a></li>
+<li>Lazarus（Microsoft Research）：<a href="https://www.microsoft.com/en-us/research/blog/lazare-veni-foras-reprogramming-dormant-neurons-to-backdoor-ai-agents/">https://www.microsoft.com/en-us/research/blog/lazare-veni-foras-reprogramming-dormant-neurons-to-backdoor-ai-agents/</a></li>
+<li>WeightBench：<a href="https://arxiv.org/abs/2611.18553">https://arxiv.org/abs/2611.18553</a></li>
+<li>W-ISA：<a href="https://arxiv.org/abs/2611.13232">https://arxiv.org/abs/2611.13232</a></li>
+<li>Exploring Weight-Space Programming：<a href="https://arxiv.org/abs/2611.09382">https://arxiv.org/abs/2611.09382</a></li>
+<li>AGENTQ：<a href="https://arxiv.org/abs/2609.14060">https://arxiv.org/abs/2609.14060</a></li>
+</ul>
+
+        <div class="button-row">
+          <a href="../../posts/index.html" class="button secondary">返回文章中心</a>
+          <a href="../../chatbot.html" class="button primary">询问 Blog Bot</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    window.BLOG_BOT_CONFIG = {
+      endpoint: "https://blog-deepseek-bot.jwshen2344.workers.dev/chat",
+      title: "Blog Bot",
+      launcherText: "Bot"
+    };
+  </script>
+  <script src="../../assets/chatbot-widget.js" defer></script>
+</body>
+</html>
